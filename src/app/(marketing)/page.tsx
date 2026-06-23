@@ -1,12 +1,47 @@
-export default function HomePage() {
+import type { Metadata } from 'next';
+
+import {
+  HeroSection,
+  TrustBar,
+  CategoryShowcase,
+  BrandStatement,
+  FeaturedProducts,
+  WholesaleCallout,
+} from '@/components/marketing';
+import { categoryRepository, productRepository } from '@/lib/repositories';
+
+const PAGE_TITLE = 'Brisal by Salvador | Accesorios Premium en Acero y Rodio';
+const PAGE_DESCRIPTION =
+  'Descubre nuestra colección de accesorios en acero y rodio. Elegancia y calidad premium para cada ocasión.';
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: PAGE_TITLE },
+    description: PAGE_DESCRIPTION,
+    openGraph: {
+      title: PAGE_TITLE,
+      description: PAGE_DESCRIPTION,
+      type: 'website',
+    },
+  };
+}
+
+export default async function HomePage() {
+  const parentSlug = 'accesorios';
+
+  const [categories, featuredProducts] = await Promise.all([
+    categoryRepository.getChildren(parentSlug),
+    productRepository.getFeatured(),
+  ]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="font-serif text-4xl font-bold text-brand-gold">
-        Brisal by Salvador
-      </h1>
-      <p className="mt-4 font-sans text-lg text-foreground/80">
-        Catálogo virtual de accesorios premium (acero, rodio) - Próximamente
-      </p>
-    </main>
+    <>
+      <HeroSection />
+      <TrustBar />
+      <CategoryShowcase categories={categories} parentSlug={parentSlug} />
+      <BrandStatement />
+      <FeaturedProducts products={featuredProducts} />
+      <WholesaleCallout />
+    </>
   );
 }
