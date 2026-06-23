@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import type { Tag } from '@/types';
@@ -9,7 +10,7 @@ import type { Tag } from '@/types';
 export interface ProductFiltersProps {
   tags: Tag[];
   activeTagSlug?: string;
-  onTagChange: (tagSlug: string | undefined) => void;
+  onTagChange?: (tagSlug: string | undefined) => void;
   className?: string;
 }
 
@@ -22,6 +23,24 @@ export function ProductFilters({
   onTagChange,
   className,
 }: ProductFiltersProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleTagChange = React.useCallback(
+    (tagSlug: string | undefined) => {
+      if (onTagChange) {
+        onTagChange(tagSlug);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (tagSlug) params.set('tag', tagSlug);
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname);
+    },
+    [onTagChange, pathname, router],
+  );
+
   return (
     <div
       role="group"
@@ -32,7 +51,7 @@ export function ProductFilters({
       <FilterChip
         label="Todos"
         isActive={activeTagSlug === undefined}
-        onClick={() => onTagChange(undefined)}
+        onClick={() => handleTagChange(undefined)}
       />
 
       {/* One chip per tag received in props — no hardcoded strings here */}
@@ -42,7 +61,7 @@ export function ProductFilters({
           label={tag.name}
           isActive={activeTagSlug === tag.slug}
           onClick={() =>
-            onTagChange(activeTagSlug === tag.slug ? undefined : tag.slug)
+            handleTagChange(activeTagSlug === tag.slug ? undefined : tag.slug)
           }
         />
       ))}

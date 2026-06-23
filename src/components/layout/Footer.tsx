@@ -22,7 +22,7 @@ function FacebookIcon({ size = 18 }: { size?: number }) {
 // ─── Configurable constants ───────────────────────────────────────────────────
 const CONTACT_EMAIL = 'contacto@brisalbysalvador.com';
 const CONTACT_PHONE = '+57 300 000 0000';
-const COPYRIGHT_YEAR = 2025;
+const COPYRIGHT_YEAR = 2026;
 
 // ─── TikTok icon (lucide-react doesn't include it — SVG inline) ───────────────
 function TikTokIcon({ size = 18 }: { size?: number }) {
@@ -172,7 +172,7 @@ export function Footer() {
             © {COPYRIGHT_YEAR} Brisal by Salvador. Todos los derechos reservados.
           </p>
           <p className="font-sans text-xs text-brand-neutral-600">
-            Diseñado con elegancia ✦
+            Diseñado con elegancia
           </p>
         </div>
       </div>
