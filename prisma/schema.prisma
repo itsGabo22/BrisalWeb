@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────
+
+enum Role {
+  CLIENTE
+  MAYORISTA
+  ADMIN
+}
+
+enum DiscountScope {
+  GLOBAL
+  CATEGORY
+  PRODUCT
+}
+
+// ── Models ─────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+  discounts   Discount[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  name     String       @unique
+  slug     String       @unique
+  products ProductTag[]
+}
+
+model Product {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  description  String?
+  price        Decimal      @db.Decimal(10, 2)
+  comparePrice Decimal?     @db.Decimal(10, 2)
+  sku          String?      @unique
+  stock        Int          @default(0)
+  material     String?
+  imageUrls    String[]
+  featured     Boolean      @default(false)
+  active       Boolean      @default(true)
+  categoryId   String
+  category     Category     @relation(fields: [categoryId], references: [id])
+  tags         ProductTag[]
+  discounts    Discount[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+}
+
+model Discount {
+  id         String        @id @default(cuid())
+  code       String?       @unique
+  label      String
+  percentage Decimal       @db.Decimal(5, 2)
+  scope      DiscountScope
+  productId  String?
+  product    Product?      @relation(fields: [productId], references: [id])
+  categoryId String?
+  category   Category?     @relation(fields: [categoryId], references: [id])
+  startsAt   DateTime?
+  endsAt     DateTime?
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  authId       String   @unique
+  email        String   @unique
+  name         String?
+  role         Role     @default(CLIENTE)
+  businessName String?
+  taxId        String?
+  approved     Boolean  @default(true) // set to false explicitly when a wholesale signup is pending review; not used for CLIENTE
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
