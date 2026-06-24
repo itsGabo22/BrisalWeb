@@ -4,7 +4,6 @@ import {
   HeroSection,
   TrustBar,
   CategoryBar,
-  CategoryShowcase,
   BrandStatement,
   FeaturedProducts,
   WholesaleCallout,
@@ -28,11 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const parentSlug = 'accesorios';
-
-  const [rootCategories, categories, featuredProducts] = await Promise.all([
+  const [rootCategories, featuredProducts] = await Promise.all([
     categoryRepository.getTree(),
-    categoryRepository.getChildren(parentSlug),
     productRepository.getFeatured(),
   ]);
 
@@ -41,7 +37,6 @@ export default async function HomePage() {
       <HeroSection />
       <TrustBar />
       <CategoryBar categories={rootCategories} />
-      <CategoryShowcase categories={categories} parentSlug={parentSlug} />
       <BrandStatement />
       <FeaturedProducts products={featuredProducts} />
       <WholesaleCallout />
