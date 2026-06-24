@@ -7,9 +7,10 @@ interface CategoryIconProps {
   slug: string;
   name: string;
   fallbackEmoji: string;
+  className?: string;
 }
 
-export function CategoryIcon({ slug, name, fallbackEmoji }: CategoryIconProps) {
+export function CategoryIcon({ slug, name, fallbackEmoji, className }: CategoryIconProps) {
   const [hasError, setHasError] = React.useState(false);
   const iconPath = `/icons/categories/cat-${slug}.png`;
 
@@ -27,7 +28,7 @@ export function CategoryIcon({ slug, name, fallbackEmoji }: CategoryIconProps) {
       alt={name}
       width={40}
       height={40}
-      className="h-10 w-10 object-contain transition-transform group-hover:scale-110"
+      className={`h-10 w-10 object-contain transition-transform group-hover:scale-110 ${className || ''}`}
       onError={() => setHasError(true)}
       unoptimized
     />

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import {
   HeroSection,
   TrustBar,
+  CategoryBar,
   CategoryShowcase,
   BrandStatement,
   FeaturedProducts,
@@ -29,7 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const parentSlug = 'accesorios';
 
-  const [categories, featuredProducts] = await Promise.all([
+  const [rootCategories, categories, featuredProducts] = await Promise.all([
+    categoryRepository.getTree(),
     categoryRepository.getChildren(parentSlug),
     productRepository.getFeatured(),
   ]);
@@ -38,6 +40,7 @@ export default async function HomePage() {
     <>
       <HeroSection />
       <TrustBar />
+      <CategoryBar categories={rootCategories} />
       <CategoryShowcase categories={categories} parentSlug={parentSlug} />
       <BrandStatement />
       <FeaturedProducts products={featuredProducts} />
