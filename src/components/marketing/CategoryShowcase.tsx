@@ -8,16 +8,20 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
 
-/** Visual gradient keyed by category slug — not display text. */
 const GRADIENT_BY_SLUG: Record<string, string> = {
-  acero:
-    'bg-gradient-to-br from-brand-neutral-700 via-brand-neutral-800 to-slate-900',
-  rodio:
-    'bg-gradient-to-br from-brand-neutral-800 via-amber-950/80 to-brand-neutral-900',
+  aretes:
+    'bg-gradient-to-br from-brand-neutral-800 via-rose-900/80 to-brand-neutral-900',
+  collares:
+    'bg-gradient-to-br from-brand-neutral-800 via-brand-gold/40 to-brand-neutral-900',
+  brazaletes:
+    'bg-gradient-to-br from-brand-neutral-800 via-emerald-950/70 to-brand-neutral-900',
+  belleza:
+    'bg-gradient-to-br from-brand-neutral-800 via-stone-700 to-brand-neutral-900',
 };
 
 const DEFAULT_GRADIENT =
   'bg-gradient-to-br from-brand-neutral-800 to-brand-neutral-900';
+const SHOWCASE_SLUGS = ['aretes', 'collares', 'brazaletes', 'belleza'];
 
 export interface CategoryShowcaseProps {
   categories: Category[];
@@ -27,17 +31,15 @@ export interface CategoryShowcaseProps {
 interface CategoryCardProps {
   category: Category;
   index: number;
-  parentSlug: string;
 }
 
-function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
+function CategoryCard({ category, index }: CategoryCardProps) {
   const cardRef = React.useRef<HTMLElement>(null);
   const isInView = useInView(cardRef, { once: true, margin: '-80px' });
   const reducedMotion = useReducedMotion();
   const fromLeft = index % 2 === 0;
 
   const gradientClass = GRADIENT_BY_SLUG[category.slug] ?? DEFAULT_GRADIENT;
-  const href = `/catalogo/${parentSlug}/${category.slug}`;
 
   return (
     <motion.article
@@ -50,10 +52,12 @@ function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
         opacity: isInView ? 1 : reducedMotion ? 1 : 0,
         x: isInView ? 0 : reducedMotion ? 0 : fromLeft ? -48 : 48,
       }}
-      transition={{ duration: reducedMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative min-h-[320px] overflow-hidden rounded-2xl sm:min-h-[380px]"
+      transition={{
+        duration: reducedMotion ? 0 : 0.7,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className="group relative min-h-[320px] w-[82vw] shrink-0 snap-start overflow-hidden rounded-2xl sm:min-h-[380px] sm:w-[420px] md:w-auto"
     >
-      {/* Background layer — ready for real image via category.imageUrl */}
       <div
         className={cn(
           'absolute inset-0 transition-transform duration-[400ms] ease-out group-hover:scale-105',
@@ -67,8 +71,6 @@ function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
         }
         aria-hidden="true"
       />
-
-      {/* Dark overlay — lightens slightly on hover */}
       <div
         className="absolute inset-0 bg-black/50 transition-colors duration-[400ms] group-hover:bg-black/40"
         aria-hidden="true"
@@ -79,7 +81,7 @@ function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
           {category.name}
         </h3>
         {category.description ? (
-          <p className="mt-2 max-w-sm font-sans text-sm leading-relaxed text-brand-neutral-200/90 sm:text-base">
+          <p className="text-brand-neutral-200/90 mt-2 max-w-sm font-sans text-sm leading-relaxed sm:text-base">
             {category.description}
           </p>
         ) : null}
@@ -88,9 +90,9 @@ function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
             variant="ghost"
             size="md"
             asChild
-            className="border border-white/25 text-white hover:bg-white/10 hover:text-brand-gold-light"
+            className="hover:text-brand-gold-light border border-white/25 text-white hover:bg-white/10"
           >
-            <Link href={href}>Ver colección</Link>
+            <Link href={`/catalogo/${category.slug}`}>Ver colección</Link>
           </Button>
         </div>
       </div>
@@ -98,13 +100,15 @@ function CategoryCard({ category, index, parentSlug }: CategoryCardProps) {
   );
 }
 
-export function CategoryShowcase({
-  categories,
-  parentSlug,
-}: CategoryShowcaseProps) {
+export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
   const sectionRef = React.useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: '-60px' });
   const reducedMotion = useReducedMotion();
+  const showcaseCategories = SHOWCASE_SLUGS.map((slug) =>
+    categories.find(
+      (category) => category.parentId === null && category.slug === slug,
+    ),
+  ).filter((category): category is Category => Boolean(category));
 
   return (
     <section
@@ -124,24 +128,19 @@ export function CategoryShowcase({
         <div className="mb-12 text-center">
           <h2
             id="collections-heading"
-            className="font-serif text-3xl font-medium text-brand-neutral-900 md:text-4xl"
+            className="text-brand-neutral-900 font-serif text-3xl font-medium md:text-4xl"
           >
             Nuestras Colecciones
           </h2>
           <div
-            className="mx-auto mt-4 h-px w-20 bg-brand-gold"
+            className="bg-brand-gold mx-auto mt-4 h-px w-20"
             aria-hidden="true"
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-          {categories.map((category, index) => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              index={index}
-              parentSlug={parentSlug}
-            />
+        <div className="-mx-6 flex snap-x gap-4 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-2 md:gap-8 md:overflow-visible md:px-0 md:pb-0">
+          {showcaseCategories.map((category, index) => (
+            <CategoryCard key={category.id} category={category} index={index} />
           ))}
         </div>
       </motion.div>

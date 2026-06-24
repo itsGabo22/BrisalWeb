@@ -6,9 +6,9 @@
  * Switching from mock to real only requires changing the exported singleton.
  */
 import type { Product } from '@/types';
-import { CAT_ACCESORIOS, CAT_ACERO, CAT_RODIO, MOCK_PRODUCTS } from './mock-data';
+import { ALL_CATEGORIES, MOCK_PRODUCTS } from './mock-data';
 
-const MOCK_CATEGORIES = [CAT_ACCESORIOS, CAT_ACERO, CAT_RODIO];
+const MOCK_CATEGORIES = ALL_CATEGORIES;
 
 export interface GetAllProductsOptions {
   categorySlug?: string;
@@ -38,16 +38,14 @@ class MockProductRepository implements IProductRepository {
           product.category.parentId != null,
       );
     } else if (options.categorySlug) {
-      const parentCategory = MOCK_CATEGORIES.find(
+      const category = MOCK_CATEGORIES.find(
         (category) => category.slug === options.categorySlug,
       );
 
       results = results.filter(
         (product) =>
           product.category.slug === options.categorySlug ||
-          (parentCategory
-            ? product.category.parentId === parentCategory.id
-            : false),
+          (category ? product.category.parentId === category.id : false),
       );
     }
 
@@ -58,7 +56,9 @@ class MockProductRepository implements IProductRepository {
     }
 
     if (options.featured !== undefined) {
-      results = results.filter((product) => product.featured === options.featured);
+      results = results.filter(
+        (product) => product.featured === options.featured,
+      );
     }
 
     return results;
@@ -83,4 +83,5 @@ class MockProductRepository implements IProductRepository {
   }
 }
 
-export const productRepository: IProductRepository = new MockProductRepository();
+export const productRepository: IProductRepository =
+  new MockProductRepository();

@@ -5,14 +5,19 @@
  * future Prisma implementation (Fase 3: category.repository.prisma.ts).
  */
 import type { Category } from '@/types';
-import {
-  CAT_ACCESORIOS,
-  CAT_ACCESORIOS_WITH_CHILDREN,
-  CAT_ACERO,
-  CAT_RODIO,
-} from './mock-data';
+import { ALL_CATEGORIES, ROOT_CATEGORIES } from './mock-data';
 
-const ALL_FLAT: Category[] = [CAT_ACCESORIOS, CAT_ACERO, CAT_RODIO];
+const LEGACY_ACCESSORIES_SLUG = 'accesorios';
+
+function withChildren(category: Category): Category {
+  return {
+    ...category,
+    children: ALL_CATEGORIES.filter((child) => child.parentId === category.id),
+  };
+}
+
+export const categoryNavigationTree: Category[] =
+  ROOT_CATEGORIES.map(withChildren);
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 export interface ICategoryRepository {
@@ -26,24 +31,31 @@ export interface ICategoryRepository {
 // ─── Mock implementation ──────────────────────────────────────────────────────
 class MockCategoryRepository implements ICategoryRepository {
   async getAll(): Promise<Category[]> {
-    return ALL_FLAT;
+    return ALL_CATEGORIES;
   }
 
   async getBySlug(slug: string): Promise<Category | null> {
-    return ALL_FLAT.find((c) => c.slug === slug) ?? null;
+    return ALL_CATEGORIES.find((category) => category.slug === slug) ?? null;
   }
 
   async getChildren(parentSlug: string): Promise<Category[]> {
-    const parent = ALL_FLAT.find((c) => c.slug === parentSlug);
+    // Backward-compatible bridge for the untouched marketing home page.
+    if (parentSlug === LEGACY_ACCESSORIES_SLUG) {
+      return ROOT_CATEGORIES;
+    }
+
+    const parent = ALL_CATEGORIES.find(
+      (category) => category.slug === parentSlug,
+    );
     if (!parent) return [];
-    return ALL_FLAT.filter((c) => c.parentId === parent.id);
+    return ALL_CATEGORIES.filter((category) => category.parentId === parent.id);
   }
 
   async getTree(): Promise<Category[]> {
-    // Only root categories (parentId === null) are returned, with children nested.
-    return [CAT_ACCESORIOS_WITH_CHILDREN];
+    return categoryNavigationTree;
   }
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
-export const categoryRepository: ICategoryRepository = new MockCategoryRepository();
+export const categoryRepository: ICategoryRepository =
+  new MockCategoryRepository();

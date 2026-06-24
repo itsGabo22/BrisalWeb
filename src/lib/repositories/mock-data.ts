@@ -1,53 +1,171 @@
 /**
- * Mock data for development — mirrors the shape of the Prisma models.
- * Replace this file's consumers with real repository implementations (Fase 3)
- * without touching any component.
+ * Mock data for development. It mirrors the shape of the Prisma models so
+ * consumers can switch to real repositories in Fase 3 without component edits.
  */
-import type { Category, Tag, Discount, Product } from '@/types';
+import type { Category, Discount, Product, Tag } from '@/types';
 
-// ─── Categories ───────────────────────────────────────────────────────────────
-export const CAT_ACCESORIOS: Category = {
-  id: 'cat-accesorios',
-  name: 'Accesorios',
-  slug: 'accesorios',
-  description: 'Colección completa de accesorios premium Brisal.',
+// Categories
+export const CAT_ARETES: Category = {
+  id: 'cat-aretes',
+  name: 'Aretes',
+  slug: 'aretes',
+  description: 'Aretes premium para elevar cualquier look.',
   imageUrl: null,
   parentId: null,
 };
 
-export const CAT_ACERO: Category = {
-  id: 'cat-acero',
-  name: 'Acero',
-  slug: 'acero',
-  description: 'Accesorios de acero inoxidable de alta calidad.',
+export const CAT_COLLARES: Category = {
+  id: 'cat-collares',
+  name: 'Collares',
+  slug: 'collares',
+  description: 'Collares de brillo sutil y presencia elegante.',
   imageUrl: null,
-  parentId: 'cat-accesorios',
+  parentId: null,
 };
 
-export const CAT_RODIO: Category = {
-  id: 'cat-rodio',
-  name: 'Rodio',
-  slug: 'rodio',
-  description: 'Accesorios bañados en rodio, durabilidad y brillo.',
+export const CAT_BRAZALETES: Category = {
+  id: 'cat-brazaletes',
+  name: 'Brazaletes',
+  slug: 'brazaletes',
+  description: 'Brazaletes con acabados pulidos y sofisticados.',
   imageUrl: null,
-  parentId: 'cat-accesorios',
+  parentId: null,
 };
 
-// Attach children to the parent for tree queries
-export const CAT_ACCESORIOS_WITH_CHILDREN: Category = {
-  ...CAT_ACCESORIOS,
-  children: [CAT_ACERO, CAT_RODIO],
+export const CAT_ANILLOS: Category = {
+  id: 'cat-anillos',
+  name: 'Anillos',
+  slug: 'anillos',
+  description: 'Anillos de diseño moderno para uso diario.',
+  imageUrl: null,
+  parentId: null,
 };
 
-// ─── Tags ─────────────────────────────────────────────────────────────────────
+export const CAT_PULSERAS: Category = {
+  id: 'cat-pulseras',
+  name: 'Pulseras',
+  slug: 'pulseras',
+  description: 'Pulseras delicadas para combinar en capas.',
+  imageUrl: null,
+  parentId: null,
+};
+
+export const CAT_TOPITOS: Category = {
+  id: 'cat-topitos',
+  name: 'Topitos',
+  slug: 'topitos',
+  description: 'Topitos versatiles con brillo discreto.',
+  imageUrl: null,
+  parentId: null,
+};
+
+export const CAT_PRENDEDORES: Category = {
+  id: 'cat-prendedores',
+  name: 'Prendedores',
+  slug: 'prendedores',
+  description: 'Prendedores para acentos elegantes y personales.',
+  imageUrl: null,
+  parentId: null,
+};
+
+export const CAT_BANDANAS: Category = {
+  id: 'cat-bandanas',
+  name: 'Bandanas',
+  slug: 'bandanas',
+  description: 'Bandanas suaves para complementar el styling.',
+  imageUrl: null,
+  parentId: null,
+};
+
+export const CAT_BELLEZA: Category = {
+  id: 'cat-belleza',
+  name: 'Belleza',
+  slug: 'belleza',
+  description: 'Cuidado personal, fragancias y maquillaje.',
+  imageUrl: null,
+  parentId: null,
+};
+
+export const CAT_CREMAS: Category = {
+  id: 'cat-cremas',
+  name: 'Cremas',
+  slug: 'cremas',
+  description: 'Cremas para rutinas de cuidado personal.',
+  imageUrl: null,
+  parentId: 'cat-belleza',
+};
+
+export const CAT_PERFUMES: Category = {
+  id: 'cat-perfumes',
+  name: 'Perfumes',
+  slug: 'perfumes',
+  description: 'Perfumes para dejar una firma elegante.',
+  imageUrl: null,
+  parentId: 'cat-belleza',
+};
+
+export const CAT_MAQUILLAJE: Category = {
+  id: 'cat-maquillaje',
+  name: 'Maquillaje',
+  slug: 'maquillaje',
+  description: 'Maquillaje seleccionado para acabados pulidos.',
+  imageUrl: null,
+  parentId: 'cat-belleza',
+};
+
+export const ROOT_CATEGORIES: Category[] = [
+  CAT_ARETES,
+  CAT_COLLARES,
+  CAT_BRAZALETES,
+  CAT_ANILLOS,
+  CAT_PULSERAS,
+  CAT_TOPITOS,
+  CAT_PRENDEDORES,
+  CAT_BANDANAS,
+  CAT_BELLEZA,
+];
+
+export const SUBCATEGORIES: Category[] = [
+  CAT_CREMAS,
+  CAT_PERFUMES,
+  CAT_MAQUILLAJE,
+];
+
+export const ALL_CATEGORIES: Category[] = [
+  ...ROOT_CATEGORIES,
+  ...SUBCATEGORIES,
+];
+
+// Tags
 export const TAG_NUEVO: Tag = { id: 'tag-nuevo', name: 'Nuevo', slug: 'nuevo' };
-export const TAG_MAS_VENDIDO: Tag = { id: 'tag-mas-vendido', name: 'Más vendido', slug: 'mas-vendido' };
-export const TAG_EN_OFERTA: Tag = { id: 'tag-en-oferta', name: 'En oferta', slug: 'en-oferta' };
-export const TAG_TENDENCIA: Tag = { id: 'tag-tendencia', name: 'Tendencia', slug: 'tendencia' };
+export const TAG_MAS_VENDIDO: Tag = {
+  id: 'tag-mas-vendido',
+  name: 'Más vendido',
+  slug: 'mas-vendido',
+};
+export const TAG_EN_OFERTA: Tag = {
+  id: 'tag-en-oferta',
+  name: 'En oferta',
+  slug: 'en-oferta',
+};
+export const TAG_TENDENCIA: Tag = {
+  id: 'tag-tendencia',
+  name: 'Tendencia',
+  slug: 'tendencia',
+};
+export const TAG_ACERO: Tag = { id: 'tag-acero', name: 'Acero', slug: 'acero' };
+export const TAG_RODIO: Tag = { id: 'tag-rodio', name: 'Rodio', slug: 'rodio' };
 
-export const ALL_TAGS: Tag[] = [TAG_NUEVO, TAG_MAS_VENDIDO, TAG_EN_OFERTA, TAG_TENDENCIA];
+export const ALL_TAGS: Tag[] = [
+  TAG_NUEVO,
+  TAG_MAS_VENDIDO,
+  TAG_EN_OFERTA,
+  TAG_TENDENCIA,
+  TAG_ACERO,
+  TAG_RODIO,
+];
 
-// ─── Discounts ────────────────────────────────────────────────────────────────
+// Discounts
 const DISCOUNT_COLLAR_ESLABONES: Discount = {
   id: 'disc-collar-eslabones',
   percentage: 20,
@@ -68,9 +186,8 @@ const DISCOUNT_ANILLO_SELLO: Discount = {
   endsAt: null,
 };
 
-// ─── Products ─────────────────────────────────────────────────────────────────
+// Products
 export const MOCK_PRODUCTS: Product[] = [
-  // ── ACERO (4 productos) ───────────────────────────────────────────────────
   {
     id: 'prod-collar-eslabones-acero',
     name: 'Collar Eslabones Acero',
@@ -88,9 +205,9 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: true,
     active: true,
-    categoryId: 'cat-acero',
-    category: CAT_ACERO,
-    tags: [TAG_EN_OFERTA, TAG_MAS_VENDIDO],
+    categoryId: CAT_COLLARES.id,
+    category: CAT_COLLARES,
+    tags: [TAG_ACERO, TAG_EN_OFERTA, TAG_MAS_VENDIDO],
     discounts: [DISCOUNT_COLLAR_ESLABONES],
   },
   {
@@ -110,16 +227,17 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: true,
     active: true,
-    categoryId: 'cat-acero',
-    category: CAT_ACERO,
-    tags: [TAG_NUEVO],
+    categoryId: CAT_PULSERAS.id,
+    category: CAT_PULSERAS,
+    tags: [TAG_ACERO, TAG_NUEVO],
     discounts: [],
   },
   {
     id: 'prod-aretes-argolla-acero',
     name: 'Aretes Argolla Acero',
     slug: 'aretes-argolla-acero',
-    description: 'Argollas lisas de acero inoxidable, disponibles en 30 mm. Hipoalergénicas.',
+    description:
+      'Argollas lisas de acero inoxidable, disponibles en 30 mm. Hipoalergénicas.',
     price: 48000,
     comparePrice: null,
     sku: 'BSA-ARE-001',
@@ -131,20 +249,20 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: false,
     active: true,
-    categoryId: 'cat-acero',
-    category: CAT_ACERO,
-    tags: [TAG_MAS_VENDIDO],
+    categoryId: CAT_ARETES.id,
+    category: CAT_ARETES,
+    tags: [TAG_ACERO, TAG_MAS_VENDIDO],
     discounts: [],
   },
   {
     id: 'prod-tobillera-doble-acero',
-    name: 'Tobillera Doble Cadena Acero',
-    slug: 'tobillera-doble-cadena-acero',
+    name: 'Brazalete Doble Cadena Acero',
+    slug: 'brazalete-doble-cadena-acero',
     description:
-      'Tobillera con doble cadena fina en acero brillante. Perfecta para el verano.',
+      'Brazalete con doble cadena fina en acero brillante. Perfecto para combinar.',
     price: 52000,
     comparePrice: null,
-    sku: 'BSA-TOB-001',
+    sku: 'BSA-BRA-001',
     stock: 15,
     material: 'Acero inoxidable',
     imageUrls: [
@@ -153,22 +271,20 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: false,
     active: true,
-    categoryId: 'cat-acero',
-    category: CAT_ACERO,
-    tags: [TAG_TENDENCIA],
+    categoryId: CAT_BRAZALETES.id,
+    category: CAT_BRAZALETES,
+    tags: [TAG_ACERO, TAG_TENDENCIA],
     discounts: [],
   },
-
-  // ── RODIO (4 productos) ───────────────────────────────────────────────────
   {
     id: 'prod-collar-perla-rodio',
-    name: 'Collar Perla Rodio',
-    slug: 'collar-perla-rodio',
+    name: 'Topitos Perla Rodio',
+    slug: 'topitos-perla-rodio',
     description:
-      'Collar con colgante de perla sintética en baño de rodio blanco. Elegancia atemporal.',
+      'Topitos con perla sintética y baño de rodio blanco. Elegancia atemporal.',
     price: 98000,
     comparePrice: null,
-    sku: 'BSR-COL-001',
+    sku: 'BSR-TOP-001',
     stock: 6,
     material: 'Baño de rodio blanco',
     imageUrls: [
@@ -177,9 +293,9 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: true,
     active: true,
-    categoryId: 'cat-rodio',
-    category: CAT_RODIO,
-    tags: [TAG_NUEVO, TAG_TENDENCIA],
+    categoryId: CAT_TOPITOS.id,
+    category: CAT_TOPITOS,
+    tags: [TAG_RODIO, TAG_NUEVO, TAG_TENDENCIA],
     discounts: [],
   },
   {
@@ -199,20 +315,20 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: false,
     active: true,
-    categoryId: 'cat-rodio',
-    category: CAT_RODIO,
-    tags: [TAG_EN_OFERTA],
+    categoryId: CAT_ANILLOS.id,
+    category: CAT_ANILLOS,
+    tags: [TAG_RODIO, TAG_EN_OFERTA],
     discounts: [DISCOUNT_ANILLO_SELLO],
   },
   {
     id: 'prod-pulsera-charm-rodio',
-    name: 'Pulsera Charm Rodio',
-    slug: 'pulsera-charm-rodio',
+    name: 'Prendedor Charm Rodio',
+    slug: 'prendedor-charm-rodio',
     description:
-      'Pulsera delicada con tres charms de estrella bañados en rodio. Ligera y elegante.',
+      'Prendedor delicado con charms de estrella bañados en rodio. Ligero y elegante.',
     price: 82000,
     comparePrice: null,
-    sku: 'BSR-PUL-001',
+    sku: 'BSR-PRE-001',
     stock: 9,
     material: 'Baño de rodio',
     imageUrls: [
@@ -221,20 +337,20 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: false,
     active: true,
-    categoryId: 'cat-rodio',
-    category: CAT_RODIO,
-    tags: [TAG_MAS_VENDIDO],
+    categoryId: CAT_PRENDEDORES.id,
+    category: CAT_PRENDEDORES,
+    tags: [TAG_RODIO, TAG_MAS_VENDIDO],
     discounts: [],
   },
   {
     id: 'prod-aretes-gota-rodio',
-    name: 'Aretes Gota Rodio',
-    slug: 'aretes-gota-rodio',
+    name: 'Bandana Gota Rodio',
+    slug: 'bandana-gota-rodio',
     description:
-      'Aretes en forma de gota alargada, baño de rodio y detalle de zirconia. Hipoalergénicos.',
+      'Bandana suave con dije en forma de gota, baño de rodio y detalle de zirconia.',
     price: 68000,
     comparePrice: null,
-    sku: 'BSR-ARE-001',
+    sku: 'BSR-BAN-001',
     stock: 14,
     material: 'Baño de rodio + zirconia',
     imageUrls: [
@@ -243,9 +359,9 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     featured: false,
     active: true,
-    categoryId: 'cat-rodio',
-    category: CAT_RODIO,
-    tags: [TAG_TENDENCIA],
+    categoryId: CAT_BANDANAS.id,
+    category: CAT_BANDANAS,
+    tags: [TAG_RODIO, TAG_TENDENCIA],
     discounts: [],
   },
 ];
