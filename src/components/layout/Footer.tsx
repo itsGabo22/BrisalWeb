@@ -45,6 +45,7 @@ const NAV_LINKS = [
   { label: 'Catálogo', href: '/catalogo' },
   { label: 'Buscar', href: '/buscar' },
   { label: 'Mayoristas', href: '/mayoristas' },
+  { label: 'Contacto', href: '/contacto' },
 ];
 
 const LEGAL_LINKS = [
