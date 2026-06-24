@@ -1,4 +1,5 @@
 export { ProductGallery } from './ProductGallery';
 export type { ProductGalleryProps } from './ProductGallery';
-
-// ProductInfo and RelatedProducts will be added in Phase 2.3 (product detail page)
+export { ProductBreadcrumb } from './ProductBreadcrumb';
+export { ProductInfo } from './ProductInfo';
+export { RelatedProducts } from './RelatedProducts';

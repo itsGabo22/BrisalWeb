@@ -7,6 +7,7 @@ import { Search, Heart, User, ShoppingBag } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { useCartStore } from '@/stores/cartStore';
 
 // ─── Configurable constants (no business text in JSX) ────────────────────────
 const ANNOUNCEMENT_TEXT = 'Envíos gratis en compras superiores a $200.000';
@@ -138,8 +139,7 @@ export function Header() {
     setOpenMenuId((prev) => (prev === id ? null : id));
   };
 
-  // Placeholder cart count — will be connected to cartStore in Phase 2.4
-  const cartItemCount = 0;
+  const cartItemCount = useCartStore((state) => state.getItemCount());
 
   return (
     <>
