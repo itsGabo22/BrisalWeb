@@ -126,6 +126,7 @@ export function Header() {
   const [scrolled, setScrolled] = React.useState(false);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
 
   const { scrollY } = useScroll();
@@ -135,6 +136,7 @@ export function Header() {
   });
 
   React.useEffect(() => {
+    setMounted(true);
     const handleClickOutside = (event: MouseEvent) => {
       if (
         headerRef.current &&
@@ -152,7 +154,8 @@ export function Header() {
     setOpenMenuId((prev) => (prev === id ? null : id));
   };
 
-  const cartItemCount = useCartStore((state) => state.getItemCount());
+  const rawCartItemCount = useCartStore((state) => state.getItemCount());
+  const cartItemCount = mounted ? rawCartItemCount : 0;
 
   return (
     <>
