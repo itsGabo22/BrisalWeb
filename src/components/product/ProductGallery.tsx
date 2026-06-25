@@ -5,6 +5,10 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
+import {
+  PRODUCT_IMAGE_PLACEHOLDER,
+  resolveProductImageUrl,
+} from '@/lib/utils/product-images';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface ProductGalleryProps {
@@ -21,6 +25,14 @@ export function ProductGallery({
 }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [direction, setDirection] = React.useState<1 | -1>(1);
+  const [failedImages, setFailedImages] = React.useState<Record<string, boolean>>({});
+
+  const getImageSrc = (src: string) =>
+    failedImages[src] ? PRODUCT_IMAGE_PLACEHOLDER : resolveProductImageUrl(src);
+
+  const markImageFailed = (src: string) => {
+    setFailedImages((prev) => ({ ...prev, [src]: true }));
+  };
 
   const handleSelect = (index: number) => {
     setDirection(index > activeIndex ? 1 : -1);
@@ -77,12 +89,13 @@ export function ProductGallery({
             className="absolute inset-0"
           >
             <Image
-              src={images[activeIndex]}
+              src={getImageSrc(images[activeIndex])}
               alt={`${productName} — imagen ${activeIndex + 1}`}
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
               priority={activeIndex === 0}
+              onError={() => markImageFailed(images[activeIndex])}
             />
           </motion.div>
         </AnimatePresence>
@@ -111,11 +124,12 @@ export function ProductGallery({
               )}
             >
               <Image
-                src={src}
+                src={getImageSrc(src)}
                 alt=""
                 fill
                 sizes="64px"
                 className="object-cover"
+                onError={() => markImageFailed(src)}
               />
             </button>
           ))}

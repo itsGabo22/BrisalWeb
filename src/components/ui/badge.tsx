@@ -10,7 +10,7 @@ const badgeVariants = cva(
       variant: {
         nuevo: 'bg-badge-nuevo-bg text-badge-nuevo-fg border-brand-gold/20 shadow-sm',
         'mas-vendido': 'bg-badge-vendido-bg text-badge-vendido-fg border-brand-gold-light/10 shadow-sm',
-        'en-oferta': 'bg-badge-oferta-bg text-badge-oferta-fg border-red-200/50 shadow-sm',
+        'en-oferta': 'bg-badge-oferta-bg text-badge-oferta-fg border-red-200/50 shadow-sm uppercase tracking-wider',
         tendencia: 'bg-badge-tendencia-bg text-badge-tendencia-fg border-purple-200/50 shadow-sm',
       },
     },

@@ -42,15 +42,15 @@ export function CategoryBar({ categories }: CategoryBarProps) {
                 href={`/catalogo/${category.slug}`}
                 className="group flex shrink-0 items-center gap-2.5 rounded-full px-1.5 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-neutral-200 bg-brand-neutral-50/50 transition-all group-hover:scale-105 group-hover:border-brand-gold group-hover:bg-brand-gold/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-neutral-200 bg-brand-neutral-50/50 transition-all group-hover:scale-105 group-hover:border-brand-gold group-hover:bg-brand-gold/10">
                   <CategoryIcon
                     slug={category.slug}
                     name={category.name}
                     fallbackEmoji={fallbackEmoji}
-                    className="h-5 w-5 object-contain"
+                    className="h-7 w-7 object-contain"
                   />
                 </div>
-                <span className="font-sans text-[11px] font-semibold tracking-wider text-brand-neutral-800 uppercase transition-colors group-hover:text-brand-gold sm:text-xs">
+                <span className="font-sans text-sm font-semibold tracking-wider text-brand-neutral-800 uppercase transition-colors group-hover:text-brand-gold sm:text-base">
                   {category.name}
                 </span>
               </Link>

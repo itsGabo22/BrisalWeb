@@ -76,7 +76,7 @@ function TrustItem({
       <span className="font-serif text-sm text-brand-neutral-800" aria-hidden="true">
         {'\u2726'}
       </span>
-      <p className="whitespace-nowrap font-sans text-sm font-medium tracking-wide md:whitespace-normal md:text-center">
+      <p className="whitespace-nowrap font-sans text-sm font-medium uppercase tracking-wider md:whitespace-normal md:text-center">
         {label}
       </p>
     </div>

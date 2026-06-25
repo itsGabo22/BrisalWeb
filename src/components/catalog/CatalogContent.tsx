@@ -71,8 +71,18 @@ export function CatalogContent({
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         title="Filtros"
-        className="fixed inset-x-0 bottom-0 top-auto max-w-none rounded-b-none rounded-t-xl p-5 sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl"
+        className="fixed inset-x-0 bottom-0 top-auto max-h-[85vh] max-w-none rounded-b-none rounded-t-xl sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:max-h-[85vh] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl"
         glass
+        footer={
+          <Button
+            type="button"
+            variant="primary"
+            className="w-full"
+            onClick={() => setFiltersOpen(false)}
+          >
+            Ver resultados ({products.length})
+          </Button>
+        }
       >
         <CatalogSidebar
           tags={tags}

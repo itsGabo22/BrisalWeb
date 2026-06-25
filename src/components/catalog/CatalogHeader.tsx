@@ -64,7 +64,7 @@ export function CatalogHeader({
         </nav>
 
         <div className="max-w-3xl">
-          <h1 className="font-serif text-3xl font-semibold leading-tight text-brand-neutral-900 sm:text-4xl">
+          <h1 className="font-serif text-3xl font-semibold uppercase tracking-wider leading-tight text-brand-neutral-900 sm:text-4xl">
             {title}
           </h1>
           {subtitle && (

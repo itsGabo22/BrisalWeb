@@ -14,6 +14,8 @@ export interface ModalProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  bodyClassName?: string;
+  footer?: React.ReactNode;
   glass?: boolean;
 }
 
@@ -24,8 +26,12 @@ export function Modal({
   description,
   children,
   className,
+  bodyClassName,
+  footer,
   glass = false,
 }: ModalProps) {
+  const hasDrawerLayout = Boolean(footer);
+
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AnimatePresence>
@@ -51,25 +57,48 @@ export function Modal({
                   className={cn(
                     'relative w-full max-w-lg rounded-xl border border-brand-neutral-200 bg-brand-pearl p-6 shadow-xl dark:border-brand-neutral-800 dark:bg-brand-neutral-900 focus:outline-none',
                     glass && 'backdrop-blur-md bg-white/40 border-white/30 dark:bg-brand-neutral-900/40 dark:border-white/10',
+                    hasDrawerLayout && 'flex flex-col overflow-hidden p-0',
                     className
                   )}
                 >
-                  <div className="flex flex-col gap-1 pr-8">
-                    {title && (
-                      <DialogPrimitive.Title className="font-serif text-xl font-bold text-brand-neutral-900 dark:text-brand-neutral-50">
-                        {title}
-                      </DialogPrimitive.Title>
-                    )}
-                    {description && (
-                      <DialogPrimitive.Description className="font-sans text-sm text-brand-neutral-500 dark:text-brand-neutral-400">
-                        {description}
-                      </DialogPrimitive.Description>
-                    )}
-                  </div>
+                  {(title || description) && (
+                    <div
+                      className={cn(
+                        'flex flex-col gap-1 pr-8',
+                        hasDrawerLayout &&
+                          'shrink-0 border-b border-brand-neutral-200/80 px-5 py-4 dark:border-brand-neutral-800',
+                      )}
+                    >
+                      {title && (
+                        <DialogPrimitive.Title className="font-serif text-xl font-bold text-brand-neutral-900 dark:text-brand-neutral-50">
+                          {title}
+                        </DialogPrimitive.Title>
+                      )}
+                      {description && (
+                        <DialogPrimitive.Description className="font-sans text-sm text-brand-neutral-500 dark:text-brand-neutral-400">
+                          {description}
+                        </DialogPrimitive.Description>
+                      )}
+                    </div>
+                  )}
 
-                  <div className="mt-4 font-sans text-brand-neutral-800 dark:text-brand-neutral-200">
+                  <div
+                    className={cn(
+                      'font-sans text-brand-neutral-800 dark:text-brand-neutral-200',
+                      hasDrawerLayout
+                        ? 'flex-1 overflow-y-auto px-5 py-4'
+                        : 'mt-4',
+                      bodyClassName,
+                    )}
+                  >
                     {children}
                   </div>
+
+                  {footer ? (
+                    <div className="shrink-0 border-t border-brand-neutral-200/80 px-5 py-4 dark:border-brand-neutral-800">
+                      {footer}
+                    </div>
+                  ) : null}
 
                   <DialogPrimitive.Close asChild>
                     <button

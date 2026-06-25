@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   motion,
   useReducedMotion,
-  useScroll,
   useTransform,
   useMotionValueEvent,
 } from 'framer-motion';
@@ -13,6 +12,7 @@ import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { usePageScroll } from '@/hooks/usePageScroll';
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '';
 
@@ -56,24 +56,18 @@ const itemVariantsReduced = {
 };
 
 export function HeroSection() {
-  const sectionRef = React.useRef<HTMLElement>(null);
   const reducedMotion = useReducedMotion();
   const [scrolled, setScrolled] = React.useState(false);
 
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start start', 'end start'],
-  });
+  const { scrollY } = usePageScroll();
+  const parallaxY = useTransform(scrollY, [0, 800], [0, -60]);
 
-  const parallaxY = useTransform(scrollYProgress, [0, 1], [0, -60]);
-
-  useMotionValueEvent(scrollYProgress, 'change', (value) => {
-    setScrolled(value > 0.05);
+  useMotionValueEvent(scrollY, 'change', (latest) => {
+    setScrolled(latest > 40);
   });
 
   return (
     <section
-      ref={sectionRef}
       aria-label="Presentación de marca"
       className="relative flex h-[100dvh] min-h-[600px] w-full items-center justify-center overflow-hidden bg-brand-neutral-900"
     >
@@ -83,7 +77,7 @@ export function HeroSection() {
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(204,164,45,0.12),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(201,169,110,0.12),transparent)]"
         aria-hidden="true"
       />
 

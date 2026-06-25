@@ -89,6 +89,7 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'brisal-cart',
+      skipHydration: true,
     },
   ),
 );

@@ -3,9 +3,8 @@ import { Inter, Playfair_Display } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 import './globals.css';
 
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
+import { SiteChrome } from '@/components/layout/SiteChrome';
+import { PageScrollProvider } from '@/hooks/usePageScroll';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -62,12 +61,9 @@ export default function RootLayout({
         read or set the drawer state (e.g., a "quick-add" from a product card).
       */}
       <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-hidden">
-        <Header />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
-        <WhatsAppButton />
+        <PageScrollProvider>
+          <SiteChrome>{children}</SiteChrome>
+        </PageScrollProvider>
       </body>
     </html>
   );

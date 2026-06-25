@@ -1,14 +1,8 @@
 /**
- * Product repository - interface + mock implementation.
- *
- * The method signatures are intentionally identical to what the real Prisma
- * implementation will expose (Fase 3: product.repository.prisma.ts).
- * Switching from mock to real only requires changing the exported singleton.
+ * Product repository - interface + mock implementation using adminStore.
  */
 import type { Product } from '@/types';
-import { ALL_CATEGORIES, MOCK_PRODUCTS } from './mock-data';
-
-const MOCK_CATEGORIES = ALL_CATEGORIES;
+import { productStore, categoryStore } from '@/lib/stores/adminStore';
 
 export interface GetAllProductsOptions {
   categorySlug?: string;
@@ -26,7 +20,7 @@ export interface IProductRepository {
 
 class MockProductRepository implements IProductRepository {
   async getAll(options: GetAllProductsOptions = {}): Promise<Product[]> {
-    let results = [...MOCK_PRODUCTS];
+    let results = [...productStore.getAll()];
 
     const activeFilter = options.active ?? true;
     results = results.filter((product) => product.active === activeFilter);
@@ -38,7 +32,7 @@ class MockProductRepository implements IProductRepository {
           product.category.parentId != null,
       );
     } else if (options.categorySlug) {
-      const category = MOCK_CATEGORIES.find(
+      const category = categoryStore.getAll().find(
         (category) => category.slug === options.categorySlug,
       );
 
@@ -65,11 +59,11 @@ class MockProductRepository implements IProductRepository {
   }
 
   async getBySlug(slug: string): Promise<Product | null> {
-    return MOCK_PRODUCTS.find((product) => product.slug === slug) ?? null;
+    return productStore.getBySlug(slug);
   }
 
   async getFeatured(tagSlug?: string): Promise<Product[]> {
-    let results = MOCK_PRODUCTS.filter(
+    let results = productStore.getAll().filter(
       (product) => product.featured && product.active,
     );
 

@@ -30,14 +30,24 @@ export interface Tag {
 // ─── Discount ─────────────────────────────────────────────────────────────────
 export interface Discount {
   id: string;
+  label?: string | null;
   /** Percentage stored as a plain number on the client (0–100). */
   percentage: number;
   scope: 'GLOBAL' | 'CATEGORY' | 'PRODUCT';
   categoryId?: string | null;
   productId?: string | null;
+  couponCode?: string | null;
   startsAt?: Date | null;
   endsAt?: Date | null;
   active: boolean;
+}
+
+// ─── ProductVariant ───────────────────────────────────────────────────────────
+export interface ProductVariant {
+  id: string;
+  name: string; // e.g. "Dorado - Talla M"
+  stock: number;
+  sku?: string | null;
 }
 
 // ─── Product ──────────────────────────────────────────────────────────────────
@@ -66,4 +76,31 @@ export interface Product {
   category: Category;
   tags: Tag[];
   discounts: Discount[];
+  /** Product variants (colors, sizes, etc.). Optional. */
+  variants?: ProductVariant[];
+  /** Free-form custom attributes — key/value pairs (e.g. "Largo": "45 cm"). */
+  customAttributes?: Record<string, string>;
+}
+
+// ─── CartItem ─────────────────────────────────────────────────────────────────
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  variantId?: string | null;
+}
+
+// ─── Wholesaler ───────────────────────────────────────────────────────────────
+export type WholesalerStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+
+export interface Wholesaler {
+  id: string;
+  nombre: string;
+  negocio: string;
+  nit: string;
+  email: string;
+  telefono: string;
+  ciudad: string;
+  mensaje?: string | null;
+  fechaRegistro: string; // ISO date string
+  estado: WholesalerStatus;
 }

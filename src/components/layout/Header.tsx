@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
+import { motion, useMotionValueEvent } from 'framer-motion';
 import { Heart, Search, ShoppingBag, User } from 'lucide-react';
 
 import { MobileNav } from '@/components/layout/MobileNav';
 import { cn } from '@/lib/utils';
 import { categoryNavigationTree } from '@/lib/repositories';
+import { usePageScroll } from '@/hooks/usePageScroll';
 import { useCartStore } from '@/stores/cartStore';
 
 const ANNOUNCEMENT_TEXT = 'Envíos gratis en compras superiores a $200.000';
@@ -129,14 +130,23 @@ export function Header() {
   const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
 
-  const { scrollY } = useScroll();
+  const { scrollY } = usePageScroll();
 
   useMotionValueEvent(scrollY, 'change', (latest) => {
     setScrolled(latest > 20);
   });
 
   React.useEffect(() => {
-    setMounted(true);
+    const unsubscribe = useCartStore.persist.onFinishHydration(() => {
+      setMounted(true);
+    });
+
+    void useCartStore.persist.rehydrate();
+
+    return unsubscribe;
+  }, []);
+
+  React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         headerRef.current &&
@@ -160,8 +170,8 @@ export function Header() {
   return (
     <>
       <div
-        className="w-full px-4 py-2 text-center font-sans text-xs font-medium tracking-wide"
-        style={{ backgroundColor: '#CCA42D', color: '#1F1E1B' }}
+        className="w-full px-4 py-2 text-center font-sans text-xs font-medium uppercase tracking-wider"
+        style={{ backgroundColor: '#C9A96E', color: '#1F1E1B' }}
         role="banner"
         aria-label="Anuncio de la tienda"
       >
@@ -183,10 +193,54 @@ export function Header() {
         )}
         aria-label="Navegación principal"
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Mobile: hamburger left */}
+          <button
+            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav"
+          >
+            <span className="sr-only">Menú</span>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
+          {/* Desktop: logo left */}
           <Link
             href="/"
-            className="focus-visible:ring-brand-gold flex flex-col rounded-sm leading-none focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-brand-gold hidden flex-col rounded-sm leading-none focus-visible:ring-2 focus-visible:outline-none md:flex"
+            aria-label="Brisal by Salvador - Inicio"
+          >
+            <span
+              className="text-brand-neutral-900 font-serif text-lg font-bold tracking-widest"
+              style={{ letterSpacing: '0.2em' }}
+            >
+              BRISAL
+            </span>
+            <span className="text-brand-gold font-sans text-[9px] font-semibold tracking-[0.35em] uppercase">
+              BY SALVADOR
+            </span>
+          </Link>
+
+          {/* Mobile: logo centered */}
+          <Link
+            href="/"
+            className="focus-visible:ring-brand-gold absolute left-1/2 flex -translate-x-1/2 flex-col rounded-sm leading-none focus-visible:ring-2 focus-visible:outline-none md:hidden"
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
@@ -222,6 +276,12 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-1">
+            <HeaderIconButton
+              href="/buscar"
+              label="Buscar"
+              icon={<Search size={18} />}
+              className="md:hidden"
+            />
             <div className="hidden items-center gap-1 lg:flex">
               <HeaderIconButton
                 href="/buscar"
@@ -255,31 +315,6 @@ export function Header() {
                 </span>
               )}
             </Link>
-
-            <button
-              className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold ml-1 flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Abrir menú"
-              aria-expanded={mobileNavOpen}
-              aria-controls="mobile-nav"
-            >
-              <span className="sr-only">Menú</span>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
           </div>
         </div>
       </motion.header>
@@ -298,16 +333,21 @@ function HeaderIconButton({
   href,
   label,
   icon,
+  className,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
+  className?: string;
 }) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className={cn(
+        'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none',
+        className,
+      )}
     >
       {icon}
     </Link>

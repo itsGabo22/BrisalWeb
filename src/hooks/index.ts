@@ -1,2 +1,2 @@
-// Custom react hooks placeholders
-export const usePlaceholderHook = () => null;
+// Custom react hooks
+export { PageScrollProvider, usePageScroll } from './usePageScroll';

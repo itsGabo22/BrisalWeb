@@ -1,23 +1,24 @@
 /**
- * Category repository — interface + mock implementation.
- *
- * Same design contract as the product repository: method signatures match the
- * future Prisma implementation (Fase 3: category.repository.prisma.ts).
+ * Category repository — interface + mock implementation using categoryStore.
  */
 import type { Category } from '@/types';
-import { ALL_CATEGORIES, ROOT_CATEGORIES } from './mock-data';
+import { categoryStore } from '@/lib/stores/adminStore';
+import { ROOT_CATEGORIES, SUBCATEGORIES } from './mock-data';
+
+export const categoryNavigationTree: Category[] = ROOT_CATEGORIES.map((root) => ({
+  ...root,
+  children: SUBCATEGORIES.filter((sub) => sub.parentId === root.id),
+}));
 
 const LEGACY_ACCESSORIES_SLUG = 'accesorios';
 
-function withChildren(category: Category): Category {
+
+function withChildren(category: Category, allCategories: Category[]): Category {
   return {
     ...category,
-    children: ALL_CATEGORIES.filter((child) => child.parentId === category.id),
+    children: allCategories.filter((child) => child.parentId === category.id),
   };
 }
-
-export const categoryNavigationTree: Category[] =
-  ROOT_CATEGORIES.map(withChildren);
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 export interface ICategoryRepository {
@@ -31,28 +32,33 @@ export interface ICategoryRepository {
 // ─── Mock implementation ──────────────────────────────────────────────────────
 class MockCategoryRepository implements ICategoryRepository {
   async getAll(): Promise<Category[]> {
-    return ALL_CATEGORIES;
+    return categoryStore.getAll();
   }
 
   async getBySlug(slug: string): Promise<Category | null> {
-    return ALL_CATEGORIES.find((category) => category.slug === slug) ?? null;
+    return categoryStore.getBySlug(slug);
   }
 
   async getChildren(parentSlug: string): Promise<Category[]> {
+    const all = categoryStore.getAll();
+    const roots = all.filter((c) => !c.parentId);
+    
     // Backward-compatible bridge for the untouched marketing home page.
     if (parentSlug === LEGACY_ACCESSORIES_SLUG) {
-      return ROOT_CATEGORIES;
+      return roots;
     }
 
-    const parent = ALL_CATEGORIES.find(
+    const parent = all.find(
       (category) => category.slug === parentSlug,
     );
     if (!parent) return [];
-    return ALL_CATEGORIES.filter((category) => category.parentId === parent.id);
+    return all.filter((category) => category.parentId === parent.id);
   }
 
   async getTree(): Promise<Category[]> {
-    return categoryNavigationTree;
+    const all = categoryStore.getAll();
+    const roots = all.filter((c) => !c.parentId);
+    return roots.map((root) => withChildren(root, all));
   }
 }
 

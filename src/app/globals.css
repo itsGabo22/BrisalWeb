@@ -6,8 +6,8 @@
 
 @theme inline {
   /* ── Brand tokens ────────────────────────────────── */
-  --color-brand-gold: #CCA42D;
-  --color-brand-gold-light: #E2CC93;
+  --color-brand-gold: #C9A96E;
+  --color-brand-gold-light: #E8D5B0;
   --color-brand-pearl: #FAF8F5;
 
   /* ── Brand Neutrals Scale ────────────────────────── */
@@ -24,9 +24,9 @@
 
   /* ── Semantic Badge Colors ───────────────────────── */
   --color-badge-nuevo-bg: #FAF9F6;
-  --color-badge-nuevo-fg: #CCA42D;
+  --color-badge-nuevo-fg: #C9A96E;
   --color-badge-vendido-bg: #0F0E0D;
-  --color-badge-vendido-fg: #E2CC93;
+  --color-badge-vendido-fg: #E8D5B0;
   --color-badge-oferta-bg: #F5E6E6;
   --color-badge-oferta-fg: #C13B3B;
   --color-badge-tendencia-bg: #EAE6F5;

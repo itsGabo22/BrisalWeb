@@ -146,7 +146,7 @@ export function MobileNav({
             {/* ── Header strip ──────────────────────────── */}
             <div
               className="border-brand-neutral-200 flex items-center justify-between border-b px-6 py-4"
-              style={{ backgroundColor: '#CCA42D' }}
+              style={{ backgroundColor: '#C9A96E' }}
             >
               <div className="flex flex-col leading-none">
                 <span className="text-brand-neutral-900 font-serif text-base font-bold tracking-widest">

@@ -3,6 +3,7 @@
  * consumers can switch to real repositories in Fase 3 without component edits.
  */
 import type { Category, Discount, Product, Tag } from '@/types';
+import { PRODUCT_IMAGE_PLACEHOLDER } from '@/lib/utils/product-images';
 
 // ─── Root Categories ──────────────────────────────────────────────────────────
 export const CAT_ARETES: Category = {
@@ -411,25 +412,46 @@ export const ALL_TAGS: Tag[] = [
 ];
 
 // ─── Discounts ────────────────────────────────────────────────────────────────
-const DISCOUNT_COLLAR_ESLABONES: Discount = {
+export const DISCOUNT_COLLAR_ESLABONES: Discount = {
   id: 'disc-collar-eslabones',
+  label: 'Promo Collar Eslabones',
   percentage: 20,
   scope: 'PRODUCT',
   productId: 'prod-collar-eslabones-acero',
+  couponCode: null,
   active: true,
   startsAt: null,
   endsAt: null,
 };
 
-const DISCOUNT_ANILLO_SELLO: Discount = {
+export const DISCOUNT_ANILLO_SELLO: Discount = {
   id: 'disc-anillo-sello',
+  label: 'Promo Anillo Sello',
   percentage: 15,
   scope: 'PRODUCT',
   productId: 'prod-anillo-sello-rodio',
+  couponCode: null,
   active: true,
   startsAt: null,
   endsAt: null,
 };
+
+export const DISCOUNT_VERANO_GLOBAL: Discount = {
+  id: 'disc-verano-global',
+  label: 'Promo Verano',
+  percentage: 10,
+  scope: 'GLOBAL',
+  couponCode: 'VERANO10',
+  active: false,
+  startsAt: null,
+  endsAt: null,
+};
+
+export const MOCK_DISCOUNTS: Discount[] = [
+  DISCOUNT_COLLAR_ESLABONES,
+  DISCOUNT_ANILLO_SELLO,
+  DISCOUNT_VERANO_GLOBAL,
+];
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const MOCK_PRODUCTS: Product[] = [
@@ -444,10 +466,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSA-COL-001',
     stock: 12,
     material: 'Acero inoxidable 316L',
-    imageUrls: [
-      '/images/products/collar-eslabones-acero-1.jpg',
-      '/images/products/collar-eslabones-acero-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: true,
     active: true,
     categoryId: CAT_GARGANTILLAS.id,
@@ -466,10 +485,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSA-PUL-001',
     stock: 8,
     material: 'Acero Inoxidable',
-    imageUrls: [
-      '/images/products/pulsera-tejida-acero-1.jpg',
-      '/images/products/pulsera-tejida-acero-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: true,
     active: true,
     categoryId: CAT_PULSERAS_AJUSTABLES.id,
@@ -488,10 +504,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSA-ARE-001',
     stock: 20,
     material: 'Acero Inoxidable',
-    imageUrls: [
-      '/images/products/aretes-argolla-acero-1.jpg',
-      '/images/products/aretes-argolla-acero-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: false,
     active: true,
     categoryId: CAT_ARETES_ARGOLLA.id,
@@ -510,10 +523,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSA-BRA-001',
     stock: 15,
     material: 'Acero Inoxidable',
-    imageUrls: [
-      '/images/products/tobillera-doble-cadena-acero-1.jpg',
-      '/images/products/tobillera-doble-cadena-acero-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: false,
     active: true,
     categoryId: CAT_BRAZALETES_RIGIDOS.id,
@@ -532,10 +542,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSR-TOP-001',
     stock: 6,
     material: 'Baño de rodio blanco',
-    imageUrls: [
-      '/images/products/collar-perla-rodio-1.jpg',
-      '/images/products/collar-perla-rodio-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: true,
     active: true,
     categoryId: CAT_TOPITOS.id,
@@ -554,10 +561,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSR-ANI-001',
     stock: 10,
     material: 'Baño de rodio',
-    imageUrls: [
-      '/images/products/anillo-sello-rodio-1.jpg',
-      '/images/products/anillo-sello-rodio-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: false,
     active: true,
     categoryId: CAT_ANILLOS_AJUSTABLES.id,
@@ -576,10 +580,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSR-PRE-001',
     stock: 9,
     material: 'Baño de rodio',
-    imageUrls: [
-      '/images/products/pulsera-charm-rodio-1.jpg',
-      '/images/products/pulsera-charm-rodio-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: false,
     active: true,
     categoryId: CAT_PRENDEDORES_ELEGANTES.id,
@@ -598,10 +599,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sku: 'BSR-BAN-001',
     stock: 14,
     material: 'Baño de rodio + zirconia',
-    imageUrls: [
-      '/images/products/aretes-gota-rodio-1.jpg',
-      '/images/products/aretes-gota-rodio-2.jpg',
-    ],
+    imageUrls: [PRODUCT_IMAGE_PLACEHOLDER, PRODUCT_IMAGE_PLACEHOLDER],
     featured: false,
     active: true,
     categoryId: CAT_BANDANAS.id,
@@ -610,3 +608,43 @@ export const MOCK_PRODUCTS: Product[] = [
     discounts: [],
   },
 ];
+
+export const MOCK_WHOLESALERS = [
+  {
+    id: 'ws-1',
+    nombre: 'Ana María Gómez',
+    negocio: 'Accesorios Ana',
+    nit: '123456789-0',
+    email: 'ana@accesoriosana.com',
+    telefono: '3123456789',
+    ciudad: 'Bogotá',
+    mensaje: 'Quiero comprar al por mayor para mi tienda física.',
+    fechaRegistro: '2026-06-20T10:00:00.000Z',
+    estado: 'PENDIENTE' as const,
+  },
+  {
+    id: 'ws-2',
+    nombre: 'Carlos Pérez',
+    negocio: 'Brisas Doradas',
+    nit: '987654321-1',
+    email: 'carlos@brisasdoradas.com',
+    telefono: '3159876543',
+    ciudad: 'Medellín',
+    mensaje: 'Interesado en anillos y aretes premium.',
+    fechaRegistro: '2026-06-18T14:30:00.000Z',
+    estado: 'APROBADO' as const,
+  },
+  {
+    id: 'ws-3',
+    nombre: 'Laura Rodríguez',
+    negocio: 'Estilo Único',
+    nit: '456789123-2',
+    email: 'laura@estilounico.co',
+    telefono: '3104567890',
+    ciudad: 'Cali',
+    mensaje: 'Solicito catálogo completo.',
+    fechaRegistro: '2026-06-15T09:15:00.000Z',
+    estado: 'RECHAZADO' as const,
+  },
+];
+

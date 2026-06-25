@@ -7,6 +7,10 @@ import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import { hasActiveSalePrice, formatCOP } from '@/lib/utils/pricing';
+import {
+  PRODUCT_IMAGE_PLACEHOLDER,
+  resolveProductImageUrl,
+} from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
 import type { Product, Tag } from '@/types';
 
@@ -35,8 +39,12 @@ export interface ProductCardProps {
 // ─── Card ─────────────────────────────────────────────────────────────────────
 export function ProductCard({ product, className }: ProductCardProps) {
   const [hovered, setHovered] = React.useState(false);
+  const [imageError, setImageError] = React.useState(false);
   const onSale = hasActiveSalePrice(product);
   const href = `/producto/${product.slug}`;
+  const imageSrc = imageError
+    ? PRODUCT_IMAGE_PLACEHOLDER
+    : resolveProductImageUrl(product.imageUrls[0]);
 
   return (
     <article
@@ -54,11 +62,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
       >
         {product.imageUrls[0] ? (
           <Image
-            src={product.imageUrls[0]}
+            src={imageSrc}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
+            onError={() => setImageError(true)}
           />
         ) : (
           // Placeholder when no image is available

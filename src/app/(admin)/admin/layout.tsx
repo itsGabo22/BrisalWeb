@@ -1,26 +1,37 @@
-import Link from 'next/link';
+'use client';
+
+import * as React from 'react';
+import { usePathname } from 'next/navigation';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminTopBar } from '@/components/admin/AdminTopBar';
 
 export default function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/admin/login';
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b bg-muted/30 p-4">
-        <div className="container mx-auto flex items-center justify-between">
-          <span className="font-serif text-xl font-bold text-brand-gold">
-            Brisal Admin
-          </span>
-          <nav className="flex gap-4 font-sans text-sm">
-            <Link href="/admin/productos" className="hover:text-brand-gold">Productos</Link>
-            <Link href="/admin/categorias" className="hover:text-brand-gold">Categorías</Link>
-            <Link href="/admin/descuentos" className="hover:text-brand-gold">Descuentos</Link>
-            <Link href="/admin/mayoristas" className="hover:text-brand-gold">Mayoristas</Link>
-          </nav>
-        </div>
-      </header>
-      <div className="flex-1 container mx-auto p-6">{children}</div>
+    <div className="min-h-screen bg-brand-pearl dark:bg-brand-neutral-950 transition-colors">
+      {/* Sidebar */}
+      <AdminSidebar />
+
+      {/* Main Content Area */}
+      <div className="flex flex-col min-h-screen lg:pl-64 transition-all duration-300">
+        {/* TopBar */}
+        <AdminTopBar />
+
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 font-sans">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
