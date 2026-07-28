@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
-import { discountStore } from '@/lib/stores/adminStore';
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { discountAdminSchema } from '@/lib/validators';
+import { toDiscount } from '@/lib/repositories/mappers';
 
 export async function GET() {
-  const discounts = discountStore.getAll();
-  return NextResponse.json(discounts);
+  const discounts = await prisma.discount.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return NextResponse.json(discounts.map(toDiscount));
 }
 
 export async function POST(request: Request) {
@@ -15,16 +20,28 @@ export async function POST(request: Request) {
     if (!result.success) {
       return NextResponse.json(
         { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const newDiscount = discountStore.create(result.data);
-    return NextResponse.json(newDiscount, { status: 201 });
-  } catch {
+    const { couponCode, ...rest } = result.data;
+
+    const newDiscount = await prisma.discount.create({
+      data: { ...rest, code: couponCode ?? null },
+    });
+
+    return NextResponse.json(toDiscount(newDiscount), { status: 201 });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Ya existe un descuento con este código de cupón' },
+        { status: 409 },
+      );
+    }
+    console.error('[admin/descuentos] Error al crear descuento:', err);
     return NextResponse.json(
       { error: 'Error al crear descuento' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

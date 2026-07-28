@@ -90,6 +90,7 @@ export const productAdminSchema = z.object({
   imageUrls: z.array(z.string()).min(1, 'Debes agregar al menos una imagen'),
   featured: z.boolean().default(false),
   active: z.boolean().default(true),
+  tagIds: z.array(z.string()).default([]),
   variants: z.array(productVariantSchema).default([]),
   customAttributes: z.record(z.string(), z.string()).default({}),
 });

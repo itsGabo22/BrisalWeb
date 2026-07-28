@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server';
-import { productStore } from '@/lib/stores/adminStore';
+import type { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { productAdminSchema } from '@/lib/validators';
+import { toProduct } from '@/lib/repositories/mappers';
+
+const PRODUCT_INCLUDE = {
+  category: true,
+  tags: { include: { tag: true } },
+  discounts: true,
+} satisfies Prisma.ProductInclude;
 
 function slugify(text: string): string {
   return text
     .toString()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{Diacritic}/gu, '')
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
@@ -15,8 +23,12 @@ function slugify(text: string): string {
 }
 
 export async function GET() {
-  const products = productStore.getAll();
-  return NextResponse.json(products);
+  const products = await prisma.product.findMany({
+    include: PRODUCT_INCLUDE,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return NextResponse.json(products.map(toProduct));
 }
 
 export async function POST(request: Request) {
@@ -27,21 +39,58 @@ export async function POST(request: Request) {
     if (!result.success) {
       return NextResponse.json(
         { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const newProduct = productStore.create({
-      ...result.data,
-      slug: slugify(result.data.name),
-      tags: [],
+    // variants/customAttributes have no Prisma columns yet — not persisted.
+    const {
+      name,
+      price,
+      comparePrice,
+      categoryId,
+      sku,
+      stock,
+      material,
+      imageUrls,
+      featured,
+      active,
+      tagIds,
+    } = result.data;
+    const slug = slugify(name);
+
+    const existing = await prisma.product.findUnique({ where: { slug } });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Ya existe un producto con este nombre' },
+        { status: 409 },
+      );
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        name,
+        slug,
+        price,
+        comparePrice,
+        categoryId,
+        sku,
+        stock,
+        material,
+        imageUrls,
+        featured,
+        active,
+        tags: { create: tagIds.map((tagId) => ({ tagId })) },
+      },
+      include: PRODUCT_INCLUDE,
     });
-    return NextResponse.json(newProduct, { status: 201 });
-  } catch {
+
+    return NextResponse.json(toProduct(newProduct), { status: 201 });
+  } catch (err) {
+    console.error('[admin/productos] Error al crear producto:', err);
     return NextResponse.json(
       { error: 'Error al crear producto' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
