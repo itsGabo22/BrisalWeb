@@ -1,24 +1,11 @@
 /**
- * Category repository — interface + mock implementation using categoryStore.
+ * Category repository — interface + Prisma implementation.
  */
+import { prisma } from '@/lib/prisma';
 import type { Category } from '@/types';
-import { categoryStore } from '@/lib/stores/adminStore';
-import { ROOT_CATEGORIES, SUBCATEGORIES } from './mock-data';
-
-export const categoryNavigationTree: Category[] = ROOT_CATEGORIES.map((root) => ({
-  ...root,
-  children: SUBCATEGORIES.filter((sub) => sub.parentId === root.id),
-}));
+import { toCategory } from './mappers';
 
 const LEGACY_ACCESSORIES_SLUG = 'accesorios';
-
-
-function withChildren(category: Category, allCategories: Category[]): Category {
-  return {
-    ...category,
-    children: allCategories.filter((child) => child.parentId === category.id),
-  };
-}
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 export interface ICategoryRepository {
@@ -29,39 +16,52 @@ export interface ICategoryRepository {
   getTree(): Promise<Category[]>;
 }
 
-// ─── Mock implementation ──────────────────────────────────────────────────────
-class MockCategoryRepository implements ICategoryRepository {
+// ─── Prisma implementation ─────────────────────────────────────────────────────
+class PrismaCategoryRepository implements ICategoryRepository {
   async getAll(): Promise<Category[]> {
-    return categoryStore.getAll();
+    const categories = await prisma.category.findMany();
+    return categories.map((category) => toCategory(category));
   }
 
   async getBySlug(slug: string): Promise<Category | null> {
-    return categoryStore.getBySlug(slug);
+    const category = await prisma.category.findUnique({ where: { slug } });
+    return category ? toCategory(category) : null;
   }
 
   async getChildren(parentSlug: string): Promise<Category[]> {
-    const all = categoryStore.getAll();
-    const roots = all.filter((c) => !c.parentId);
-    
     // Backward-compatible bridge for the untouched marketing home page.
     if (parentSlug === LEGACY_ACCESSORIES_SLUG) {
-      return roots;
+      const roots = await prisma.category.findMany({
+        where: { parentId: null },
+      });
+      return roots.map((category) => toCategory(category));
     }
 
-    const parent = all.find(
-      (category) => category.slug === parentSlug,
-    );
+    const parent = await prisma.category.findUnique({
+      where: { slug: parentSlug },
+    });
     if (!parent) return [];
-    return all.filter((category) => category.parentId === parent.id);
+
+    const children = await prisma.category.findMany({
+      where: { parentId: parent.id },
+    });
+    return children.map((category) => toCategory(category));
   }
 
   async getTree(): Promise<Category[]> {
-    const all = categoryStore.getAll();
-    const roots = all.filter((c) => !c.parentId);
-    return roots.map((root) => withChildren(root, all));
+    const roots = await prisma.category.findMany({
+      where: { parentId: null },
+      include: { children: true },
+    });
+    return roots.map((root) => toCategory(root));
   }
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
 export const categoryRepository: ICategoryRepository =
-  new MockCategoryRepository();
+  new PrismaCategoryRepository();
+
+/** Server-side fetch of the nav tree — call from a Server Component and pass down as props. */
+export async function getCategoryNavigationTree(): Promise<Category[]> {
+  return categoryRepository.getTree();
+}

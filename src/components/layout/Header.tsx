@@ -3,11 +3,12 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { motion, useMotionValueEvent } from 'framer-motion';
-import { Heart, Search, ShoppingBag, User } from 'lucide-react';
+import { Search, ShoppingBag } from 'lucide-react';
 
 import { MobileNav } from '@/components/layout/MobileNav';
+import { WholesaleNavIndicator } from '@/components/layout/WholesaleNavIndicator';
 import { cn } from '@/lib/utils';
-import { categoryNavigationTree } from '@/lib/repositories';
+import type { Category } from '@/types';
 import { usePageScroll } from '@/hooks/usePageScroll';
 import { useCartStore } from '@/stores/cartStore';
 
@@ -21,8 +22,8 @@ type NavCategory = {
   children: { id: string; name: string; slug: string }[];
 };
 
-const NAV_CATEGORIES: NavCategory[] = categoryNavigationTree.map(
-  (category) => ({
+function toNavCategories(categories: Category[]): NavCategory[] {
+  return categories.map((category) => ({
     id: category.id,
     name: category.name,
     slug: category.slug,
@@ -32,8 +33,8 @@ const NAV_CATEGORIES: NavCategory[] = categoryNavigationTree.map(
         name: child.name,
         slug: child.slug,
       })) ?? [],
-  }),
-);
+  }));
+}
 
 interface MegaMenuProps {
   category: NavCategory;
@@ -123,7 +124,11 @@ function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
   );
 }
 
-export function Header() {
+export function Header({ categories }: { categories: Category[] }) {
+  const NAV_CATEGORIES = React.useMemo(
+    () => toNavCategories(categories),
+    [categories],
+  );
   const [scrolled, setScrolled] = React.useState(false);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -288,16 +293,7 @@ export function Header() {
                 label="Buscar"
                 icon={<Search size={18} />}
               />
-              <HeaderIconButton
-                href="/cuenta/favoritos"
-                label="Lista de deseos"
-                icon={<Heart size={18} />}
-              />
-              <HeaderIconButton
-                href="/cuenta"
-                label="Mi cuenta"
-                icon={<User size={18} />}
-              />
+              <WholesaleNavIndicator />
             </div>
 
             <Link

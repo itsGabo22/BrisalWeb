@@ -65,6 +65,8 @@ export interface Product {
    * src/lib/utils/pricing.ts for the canonical calculation.
    */
   comparePrice?: number | null;
+  /** Wholesale tier price (mayoristas). No distributor tier — retail + wholesale only. */
+  wholesalePrice?: number | null;
   sku?: string | null;
   stock: number;
   material?: string | null;

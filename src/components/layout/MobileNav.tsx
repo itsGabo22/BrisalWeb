@@ -3,9 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, Heart, User, ShoppingBag, X, ChevronDown } from 'lucide-react';
+import { Search, ShoppingBag, X, ChevronDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { WholesaleNavLink } from '@/components/layout/WholesaleNavIndicator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type NavCategory = {
@@ -249,18 +250,7 @@ export function MobileNav({
                   icon={<Search size={16} />}
                   onClick={handleLinkClick}
                 />
-                <MobileNavLink
-                  href="/cuenta/favoritos"
-                  label="Lista de deseos"
-                  icon={<Heart size={16} />}
-                  onClick={handleLinkClick}
-                />
-                <MobileNavLink
-                  href="/cuenta"
-                  label="Mi cuenta"
-                  icon={<User size={16} />}
-                  onClick={handleLinkClick}
-                />
+                <WholesaleNavLink onClick={handleLinkClick} />
                 <MobileNavLink
                   href="/carrito"
                   label={`Carrito${cartItemCount > 0 ? ` (${cartItemCount})` : ''}`}

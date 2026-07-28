@@ -45,24 +45,25 @@ model Tag {
 }
 
 model Product {
-  id           String       @id @default(cuid())
-  name         String
-  slug         String       @unique
-  description  String?
-  price        Decimal      @db.Decimal(10, 2)
-  comparePrice Decimal?     @db.Decimal(10, 2)
-  sku          String?      @unique
-  stock        Int          @default(0)
-  material     String?
-  imageUrls    String[]
-  featured     Boolean      @default(false)
-  active       Boolean      @default(true)
-  categoryId   String
-  category     Category     @relation(fields: [categoryId], references: [id])
-  tags         ProductTag[]
-  discounts    Discount[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  name           String
+  slug           String       @unique
+  description    String?
+  price          Decimal      @db.Decimal(10, 2)
+  comparePrice   Decimal?     @db.Decimal(10, 2)
+  wholesalePrice Decimal?     @db.Decimal(10, 2)
+  sku            String?      @unique
+  stock          Int          @default(0)
+  material       String?
+  imageUrls      String[]
+  featured       Boolean      @default(false)
+  active         Boolean      @default(true)
+  categoryId     String
+  category       Category     @relation(fields: [categoryId], references: [id])
+  tags           ProductTag[]
+  discounts      Discount[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model ProductTag {
@@ -91,14 +92,84 @@ model Discount {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  authId       String   @unique
-  email        String   @unique
+  id           String    @id @default(cuid())
+  authId       String    @unique
+  email        String    @unique
   name         String?
-  role         Role     @default(CLIENTE)
+  role         Role      @default(CLIENTE)
   businessName String?
   taxId        String?
-  approved     Boolean  @default(true) // set to false explicitly when a wholesale signup is pending review; not used for CLIENTE
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  city         String?
+  phone        String?
+  approved     Boolean   @default(true) // set to false explicitly when a wholesale signup is pending review; not used for CLIENTE
+  lastOrderAt  DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  items           OrderItem[]
+  total           Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING_WHATSAPP)
+  customerName    String?
+  customerPhone   String?
+  wholesaleUserId String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING_WHATSAPP
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  price     Decimal @db.Decimal(10, 2)
+  quantity  Int
+  imageUrl  String?
+}
+
+model SiteConfig {
+  id                 String   @id @default("singleton")
+  announcementText   String   @default("Envíos gratis en compras superiores a $200.000")
+  announcementActive Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+model HeroSlide {
+  id         String        @id @default(cuid())
+  type       HeroSlideType @default(IMAGE)
+  desktopUrl String
+  mobileUrl  String?
+  title      String?
+  subtitle   String?
+  ctaText    String?
+  ctaHref    String?
+  order      Int           @default(0)
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+}
+
+enum HeroSlideType {
+  IMAGE
+  VIDEO
+}
+
+model ImageBandeja {
+  id        String   @id @default(cuid())
+  url       String
+  filename  String
+  assigned  Boolean  @default(false)
+  productId String?
+  createdAt DateTime @default(now())
 }

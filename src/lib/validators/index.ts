@@ -28,34 +28,46 @@ export const contactSchema = z.object({
 export type ContactFormData = z.infer<typeof contactSchema>;
 
 // ─── Mayoristas ───────────────────────────────────────────────────────────────
-export const wholesaleSchema = z.object({
-  nombre: z
-    .string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
-    .max(80, 'El nombre no puede superar 80 caracteres'),
-  nombreNegocio: z
-    .string()
-    .min(2, 'El nombre del negocio debe tener al menos 2 caracteres')
-    .max(120, 'El nombre del negocio no puede superar 120 caracteres'),
-  nitCedula: z
-    .string()
-    .min(6, 'El NIT o cédula debe tener al menos 6 caracteres')
-    .max(20, 'El NIT o cédula no puede superar 20 caracteres'),
+export const registroMayoristaSchema = z
+  .object({
+    nombre: z
+      .string()
+      .min(2, 'El nombre debe tener al menos 2 caracteres')
+      .max(80, 'El nombre no puede superar 80 caracteres'),
+    nombreNegocio: z
+      .string()
+      .min(2, 'El nombre del negocio debe tener al menos 2 caracteres')
+      .max(120, 'El nombre del negocio no puede superar 120 caracteres'),
+    nitCedula: z
+      .string()
+      .min(6, 'El NIT o cédula debe tener al menos 6 caracteres')
+      .max(20, 'El NIT o cédula no puede superar 20 caracteres'),
+    ciudad: z
+      .string()
+      .min(2, 'La ciudad debe tener al menos 2 caracteres')
+      .max(80, 'La ciudad no puede superar 80 caracteres'),
+    telefono: z
+      .string()
+      .min(7, 'El teléfono debe tener al menos 7 dígitos'),
+    email: z.string().email('Ingresa un correo electrónico válido'),
+    password: z
+      .string()
+      .min(8, 'La contraseña debe tener al menos 8 caracteres'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
+
+export type RegistroMayoristaFormData = z.infer<typeof registroMayoristaSchema>;
+
+export const mayoristaLoginSchema = z.object({
   email: z.string().email('Ingresa un correo electrónico válido'),
-  telefono: z
-    .string()
-    .min(7, 'El teléfono debe tener al menos 7 dígitos'),
-  ciudad: z
-    .string()
-    .min(2, 'La ciudad debe tener al menos 2 caracteres')
-    .max(80, 'La ciudad no puede superar 80 caracteres'),
-  mensaje: z
-    .string()
-    .min(10, 'El mensaje debe tener al menos 10 caracteres')
-    .max(800, 'El mensaje no puede superar 800 caracteres'),
+  password: z.string().min(1, 'Ingresa tu contraseña'),
 });
 
-export type WholesaleFormData = z.infer<typeof wholesaleSchema>;
+export type MayoristaLoginFormData = z.infer<typeof mayoristaLoginSchema>;
 
 // ─── Administrador ────────────────────────────────────────────────────────────
 

@@ -7,11 +7,13 @@ import { Eye, EyeOff, Lock, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [pin, setPin] = React.useState('');
-  const [showPin, setShowPin] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -21,15 +23,17 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/admin/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
-      });
+      const supabase = createClient();
+      const { data, error: signInError } =
+        await supabase.auth.signInWithPassword({ email, password });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'PIN incorrecto');
+      if (signInError) {
+        throw new Error('Credenciales incorrectas.');
+      }
+
+      if (data.user?.user_metadata?.role !== 'admin') {
+        await supabase.auth.signOut();
+        throw new Error('No tienes permisos de administrador.');
       }
 
       router.push('/admin');
@@ -80,22 +84,48 @@ export default function AdminLoginPage() {
             <form className="space-y-6 px-8 py-8" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <label
-                  htmlFor="pin"
+                  htmlFor="email"
                   className="block font-sans text-sm font-semibold text-brand-neutral-800"
                 >
-                  PIN de acceso administrador
+                  Correo electrónico
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@brisalbysalvador.com"
+                  className={cn(
+                    'w-full rounded-lg border bg-white px-4 py-3.5 font-sans text-brand-neutral-900 shadow-sm',
+                    'placeholder:text-brand-neutral-400',
+                    'focus:border-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold/25',
+                    error
+                      ? 'border-red-300 focus:border-red-400 focus:ring-red-200/40'
+                      : 'border-brand-neutral-200',
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="password"
+                  className="block font-sans text-sm font-semibold text-brand-neutral-800"
+                >
+                  Contraseña
                 </label>
                 <div className="relative">
                   <input
-                    id="pin"
-                    name="pin"
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="Ingresa tu PIN"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Ingresa tu contraseña"
                     className={cn(
                       'w-full rounded-lg border bg-white px-4 py-3.5 pr-12 font-sans text-brand-neutral-900 shadow-sm',
                       'placeholder:text-brand-neutral-400',
@@ -107,11 +137,11 @@ export default function AdminLoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPin(!showPin)}
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-brand-neutral-400 transition-colors hover:text-brand-neutral-700"
-                    aria-label={showPin ? 'Ocultar PIN' : 'Mostrar PIN'}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
-                    {showPin ? (
+                    {showPassword ? (
                       <EyeOff className="size-5" aria-hidden="true" />
                     ) : (
                       <Eye className="size-5" aria-hidden="true" />
@@ -133,7 +163,7 @@ export default function AdminLoginPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                disabled={isLoading || !pin}
+                disabled={isLoading || !email || !password}
                 className="w-full gap-2"
               >
                 {isLoading ? (

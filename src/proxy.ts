@@ -1,37 +1,44 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
 
-export function proxy(request: NextRequest) {
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+};
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const { response, user } = await updateSession(request);
 
-  // Exclude login page and API auth endpoints
-  if (
-    pathname === '/admin/login' ||
-    pathname === '/api/admin/auth/login' ||
-    pathname === '/api/admin/auth/logout'
-  ) {
-    return NextResponse.next();
+  const isAdmin = user?.user_metadata?.role === 'admin';
+
+  if (pathname === '/admin/login') {
+    if (isAdmin) {
+      const redirect = NextResponse.redirect(new URL('/admin', request.url));
+      redirect.headers.set('Cache-Control', NO_STORE_HEADERS['Cache-Control']);
+      return redirect;
+    }
+    return response;
   }
 
-  // Protect all other /admin pages and /api/admin endpoints
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    const session = request.cookies.get('admin_session')?.value;
-
-    if (session !== 'active') {
-      // If it is an API request, return a 401 Unauthorized response
+    if (!isAdmin) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
       }
 
-      // If it is a page request, redirect to the login page
       const loginUrl = new URL('/admin/login', request.url);
-      return NextResponse.redirect(loginUrl);
+      const redirect = NextResponse.redirect(loginUrl);
+      redirect.headers.set('Cache-Control', NO_STORE_HEADERS['Cache-Control']);
+      return redirect;
     }
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  // Runs on every route (except static assets) so the Supabase session cookie
+  // stays refreshed everywhere, not just on /admin.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

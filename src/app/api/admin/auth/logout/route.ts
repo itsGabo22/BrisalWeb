@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+
   const response = NextResponse.json({ success: true });
-  
-  // Clear the admin session cookie by setting its maxAge to 0
-  response.cookies.set('admin_session', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 0,
-    path: '/',
-  });
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   return response;
 }

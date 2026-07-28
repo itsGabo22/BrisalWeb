@@ -1,35 +1,40 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
-import { wholesaleSchema, type WholesaleFormData } from '@/lib/validators';
+import {
+  registroMayoristaSchema,
+  type RegistroMayoristaFormData,
+} from '@/lib/validators';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 type FormStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export function WholesaleForm() {
+  const router = useRouter();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
-  } = useForm<WholesaleFormData>({
-    resolver: zodResolver(wholesaleSchema),
+  } = useForm<RegistroMayoristaFormData>({
+    resolver: zodResolver(registroMayoristaSchema),
   });
 
-  const onSubmit = async (data: WholesaleFormData) => {
+  const onSubmit = async (data: RegistroMayoristaFormData) => {
     setStatus('loading');
     setErrorMessage('');
 
     try {
-      const res = await fetch('/api/mayoristas', {
+      const res = await fetch('/api/auth/registro-mayorista', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -37,11 +42,11 @@ export function WholesaleForm() {
 
       if (!res.ok) {
         const body = (await res.json()) as { error?: string };
-        throw new Error(body.error ?? 'Error al enviar la solicitud');
+        throw new Error(body.error ?? 'Error al crear la cuenta');
       }
 
       setStatus('success');
-      reset();
+      setTimeout(() => router.push('/mayoristas/pendiente'), 1500);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Ocurrió un error inesperado';
@@ -62,18 +67,9 @@ export function WholesaleForm() {
           aria-hidden="true"
         />
         <p className="font-sans text-base font-semibold text-emerald-800">
-          ✓ Tu solicitud fue recibida. Te contactaremos en máximo 48 horas
-          para confirmar tu registro como mayorista.
+          ✓ Tu cuenta fue creada. Nuestro equipo revisará tu solicitud antes
+          de habilitar el acceso mayorista.
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setStatus('idle')}
-          className="mt-2 text-emerald-700 hover:text-emerald-900"
-        >
-          Enviar otra solicitud
-        </Button>
       </div>
     );
   }
@@ -146,39 +142,40 @@ export function WholesaleForm() {
         />
       </div>
 
-      {/* Textarea using the same styling as Input — not recreating ui/Input to stay within rules */}
-      <div className="flex w-full flex-col gap-1.5">
-        <label
-          htmlFor="wholesale-mensaje"
-          className="font-sans text-sm font-semibold text-brand-neutral-700"
-        >
-          Mensaje *
-        </label>
-        <textarea
-          id="wholesale-mensaje"
-          rows={5}
-          placeholder="Cuéntanos sobre tu negocio y qué productos te interesan"
-          aria-describedby={
-            errors.mensaje ? 'wholesale-mensaje-error' : undefined
-          }
-          className={[
-            'flex w-full resize-y rounded-md border bg-brand-pearl px-3 py-2 font-sans text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold',
-            'disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
-            errors.mensaje
-              ? 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500'
-              : 'border-brand-neutral-200',
-          ].join(' ')}
-          {...register('mensaje')}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Input
+          label="Contraseña *"
+          id="wholesale-password"
+          type={showPassword ? 'text' : 'password'}
+          autoComplete="new-password"
+          placeholder="Mínimo 8 caracteres"
+          error={errors.password?.message}
+          {...register('password')}
         />
-        {errors.mensaje && (
-          <p
-            id="wholesale-mensaje-error"
-            className="font-sans text-xs text-red-500"
+
+        <div className="relative">
+          <Input
+            label="Confirmar contraseña *"
+            id="wholesale-confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Repite tu contraseña"
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-9 text-brand-neutral-400 transition-colors hover:text-brand-neutral-700"
+            aria-label={showPassword ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
           >
-            {errors.mensaje.message}
-          </p>
-        )}
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
       {status === 'error' && (
@@ -219,10 +216,10 @@ export function WholesaleForm() {
               className="mr-2 h-4 w-4 animate-spin"
               aria-hidden="true"
             />
-            Enviando…
+            Creando cuenta…
           </>
         ) : (
-          'Enviar solicitud'
+          'Crear cuenta mayorista'
         )}
       </Button>
     </form>

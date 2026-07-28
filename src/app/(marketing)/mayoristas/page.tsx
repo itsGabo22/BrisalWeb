@@ -188,8 +188,9 @@ export default async function MayoristasPage() {
             Solicita tu registro
           </h2>
           <p className="mb-8 font-sans text-sm text-brand-neutral-600">
-            Completa el formulario y nuestro equipo comercial se comunicará
-            contigo en un plazo máximo de 48 horas hábiles.
+            Crea tu cuenta mayorista. Nuestro equipo comercial revisará tu
+            solicitud y habilitará tu acceso en un plazo máximo de 48 horas
+            hábiles.
           </p>
           <WholesaleForm />
         </div>

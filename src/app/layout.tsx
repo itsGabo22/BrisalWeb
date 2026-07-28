@@ -5,6 +5,7 @@ import './globals.css';
 
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { PageScrollProvider } from '@/hooks/usePageScroll';
+import { getCategoryNavigationTree } from '@/lib/repositories';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -22,6 +23,10 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
+
+// Nav categories, admin auth, and wholesale session all read live DB/auth state
+// on every request — nothing under this layout can be statically prerendered.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: {
@@ -42,11 +47,13 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const categories = await getCategoryNavigationTree();
+
   return (
     <html
       lang="es"
@@ -62,7 +69,7 @@ export default function RootLayout({
       */}
       <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-hidden">
         <PageScrollProvider>
-          <SiteChrome>{children}</SiteChrome>
+          <SiteChrome categories={categories}>{children}</SiteChrome>
         </PageScrollProvider>
       </body>
     </html>

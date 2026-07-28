@@ -1,16 +1,14 @@
-import type { Product, Category, Discount, Wholesaler } from '@/types';
+import type { Product, Category, Discount } from '@/types';
 import {
   MOCK_PRODUCTS,
   ALL_CATEGORIES,
   MOCK_DISCOUNTS,
-  MOCK_WHOLESALERS,
 } from '../repositories/mock-data';
 
 interface InMemoryState {
   products: Product[];
   categories: Category[];
   discounts: Discount[];
-  wholesalers: Wholesaler[];
 }
 
 const globalForAdminStore = globalThis as unknown as {
@@ -23,7 +21,6 @@ if (!globalForAdminStore.adminStoreState) {
     products: JSON.parse(JSON.stringify(MOCK_PRODUCTS)),
     categories: JSON.parse(JSON.stringify(ALL_CATEGORIES)),
     discounts: JSON.parse(JSON.stringify(MOCK_DISCOUNTS)),
-    wholesalers: JSON.parse(JSON.stringify(MOCK_WHOLESALERS)),
   };
 }
 
@@ -162,26 +159,5 @@ export const discountStore = {
       return true;
     }
     return false;
-  },
-};
-
-export const wholesalerStore = {
-  getAll: () => state.wholesalers,
-  getById: (id: string) => state.wholesalers.find((w) => w.id === id) || null,
-  create: (wholesaler: Omit<Wholesaler, 'id' | 'fechaRegistro'>) => {
-    const id = `ws-${Math.random().toString(36).substr(2, 9)}`;
-    const newWholesaler: Wholesaler = {
-      ...wholesaler,
-      id,
-      fechaRegistro: new Date().toISOString(),
-    };
-    state.wholesalers.push(newWholesaler);
-    return newWholesaler;
-  },
-  updateStatus: (id: string, estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO') => {
-    const index = state.wholesalers.findIndex((w) => w.id === id);
-    if (index === -1) return null;
-    state.wholesalers[index].estado = estado;
-    return state.wholesalers[index];
   },
 };

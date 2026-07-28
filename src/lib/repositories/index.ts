@@ -10,6 +10,6 @@ export { productRepository } from './product.repository';
 
 export type { ICategoryRepository } from './category.repository';
 export {
-  categoryNavigationTree,
   categoryRepository,
+  getCategoryNavigationTree,
 } from './category.repository';
