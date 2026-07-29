@@ -5,11 +5,14 @@ import {
   TrustBar,
   CategoryBar,
   BrandStatement,
-  FeaturedProducts,
+  ProductShowcaseSection,
   WholesaleCallout,
+  PromoPopup,
 } from '@/components/marketing';
 import { categoryRepository, productRepository } from '@/lib/repositories';
 import { prisma } from '@/lib/prisma';
+
+const SHOWCASE_LIMIT = 8;
 
 const PAGE_TITLE = 'Brisal by Salvador | Accesorios Premium en Acero y Rodio';
 const PAGE_DESCRIPTION =
@@ -28,10 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [rootCategories, featuredProducts, heroSlides] = await Promise.all([
+  const [rootCategories, newestProducts, bestSellers, heroSlides, promoPopup] = await Promise.all([
     categoryRepository.getTree(),
+    productRepository.getAll({ active: true }),
     productRepository.getFeatured(),
     prisma.heroSlide.findMany({ where: { active: true }, orderBy: { order: 'asc' } }),
+    prisma.promoPopup.findUnique({ where: { id: 'singleton' } }),
   ]);
 
   return (
@@ -40,8 +45,22 @@ export default async function HomePage() {
       <TrustBar />
       <CategoryBar categories={rootCategories} />
       <BrandStatement />
-      <FeaturedProducts products={featuredProducts} />
+      <ProductShowcaseSection
+        eyebrow="Recién llegado"
+        title="Novedades"
+        products={newestProducts.slice(0, SHOWCASE_LIMIT)}
+        viewAllHref="/catalogo"
+        tint="pearl"
+      />
+      <ProductShowcaseSection
+        eyebrow="Los favoritos"
+        title="Más Vendidos"
+        products={bestSellers.slice(0, SHOWCASE_LIMIT)}
+        viewAllHref="/catalogo"
+        tint="warm"
+      />
       <WholesaleCallout />
+      <PromoPopup popup={promoPopup?.active ? promoPopup : null} />
     </>
   );
 }

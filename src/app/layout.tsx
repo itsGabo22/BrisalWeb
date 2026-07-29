@@ -6,6 +6,7 @@ import './globals.css';
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { PageScrollProvider } from '@/hooks/usePageScroll';
 import { getCategoryNavigationTree } from '@/lib/repositories';
+import { prisma } from '@/lib/prisma';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -60,7 +61,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const categories = await getCategoryNavigationTree();
+  const [categories, siteConfig] = await Promise.all([
+    getCategoryNavigationTree(),
+    prisma.siteConfig.upsert({
+      where: { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+    }),
+  ]);
 
   return (
     <html
@@ -77,7 +85,13 @@ export default async function RootLayout({
       */}
       <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-hidden">
         <PageScrollProvider>
-          <SiteChrome categories={categories}>{children}</SiteChrome>
+          <SiteChrome
+            categories={categories}
+            announcementText={siteConfig.announcementText}
+            announcementActive={siteConfig.announcementActive}
+          >
+            {children}
+          </SiteChrome>
         </PageScrollProvider>
       </body>
     </html>

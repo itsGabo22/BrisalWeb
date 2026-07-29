@@ -16,12 +16,14 @@ interface UploadImageOptions {
   path: string;
   maxWidth?: number;
   quality?: number;
+  /** Set true for fixed, reused paths (e.g. the promo popup image) that should overwrite in place. */
+  upsert?: boolean;
 }
 
 /** Resizes + converts an image buffer to WebP, then uploads it to Supabase Storage. Returns the public URL. */
 export async function processAndUploadImage(
   buffer: Buffer,
-  { bucket, path, maxWidth = 1200, quality = 82 }: UploadImageOptions,
+  { bucket, path, maxWidth = 1200, quality = 82, upsert = false }: UploadImageOptions,
 ): Promise<string> {
   const processed = await sharp(buffer)
     .resize({ width: maxWidth, withoutEnlargement: true })
@@ -31,7 +33,7 @@ export async function processAndUploadImage(
   const supabase = createAdminClient();
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, processed, { contentType: 'image/webp', upsert: false });
+    .upload(path, processed, { contentType: 'image/webp', upsert });
 
   if (error) throw error;
 

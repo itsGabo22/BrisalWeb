@@ -97,6 +97,7 @@ export interface HeroSlide {
   type: 'IMAGE' | 'VIDEO';
   desktopUrl: string;
   mobileUrl?: string | null;
+  posterUrl?: string | null;
   title?: string | null;
   subtitle?: string | null;
   ctaText?: string | null;

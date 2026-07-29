@@ -6,13 +6,13 @@ import { motion, useMotionValueEvent } from 'framer-motion';
 import { Search, ShoppingBag } from 'lucide-react';
 
 import { MobileNav } from '@/components/layout/MobileNav';
+import { SearchOverlay } from '@/components/layout/SearchOverlay';
 import { WholesaleNavIndicator } from '@/components/layout/WholesaleNavIndicator';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
 import { usePageScroll } from '@/hooks/usePageScroll';
 import { useCartStore } from '@/stores/cartStore';
 
-const ANNOUNCEMENT_TEXT = 'Envíos gratis en compras superiores a $200.000';
 const WHOLESALE_LABEL = 'Mayorista';
 
 type NavCategory = {
@@ -124,7 +124,13 @@ function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
   );
 }
 
-export function Header({ categories }: { categories: Category[] }) {
+interface HeaderProps {
+  categories: Category[];
+  announcementText: string;
+  announcementActive: boolean;
+}
+
+export function Header({ categories, announcementText, announcementActive }: HeaderProps) {
   const NAV_CATEGORIES = React.useMemo(
     () => toNavCategories(categories),
     [categories],
@@ -132,6 +138,7 @@ export function Header({ categories }: { categories: Category[] }) {
   const [scrolled, setScrolled] = React.useState(false);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
 
@@ -174,14 +181,16 @@ export function Header({ categories }: { categories: Category[] }) {
 
   return (
     <>
-      <div
-        className="w-full px-4 py-2 text-center font-sans text-xs font-medium uppercase tracking-wider"
-        style={{ backgroundColor: '#C9A96E', color: '#1F1E1B' }}
-        role="banner"
-        aria-label="Anuncio de la tienda"
-      >
-        {ANNOUNCEMENT_TEXT}
-      </div>
+      {announcementActive && announcementText && (
+        <div
+          className="w-full px-4 py-2 text-center font-sans text-xs font-medium uppercase tracking-wider"
+          style={{ backgroundColor: '#C9A96E', color: '#1F1E1B' }}
+          role="banner"
+          aria-label="Anuncio de la tienda"
+        >
+          {announcementText}
+        </div>
+      )}
 
       <motion.header
         ref={headerRef}
@@ -283,14 +292,14 @@ export function Header({ categories }: { categories: Category[] }) {
 
           <div className="flex items-center gap-1">
             <HeaderIconButton
-              href="/buscar"
+              onClick={() => setSearchOpen(true)}
               label="Buscar"
               icon={<Search size={18} />}
               className="md:hidden"
             />
             <div className="hidden items-center gap-1 lg:flex">
               <HeaderIconButton
-                href="/buscar"
+                onClick={() => setSearchOpen(true)}
                 label="Buscar"
                 icon={<Search size={18} />}
               />
@@ -326,30 +335,40 @@ export function Header({ categories }: { categories: Category[] }) {
         categories={NAV_CATEGORIES}
         cartItemCount={cartItemCount}
       />
+
+      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }
 
 function HeaderIconButton({
   href,
+  onClick,
   label,
   icon,
   className,
 }: {
-  href: string;
+  href?: string;
+  onClick?: () => void;
   label: string;
   icon: React.ReactNode;
   className?: string;
 }) {
+  const sharedClassName = cn(
+    'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
+    className,
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={label} className={sharedClassName}>
+        {icon}
+      </button>
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      aria-label={label}
-      className={cn(
-        'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
-        className,
-      )}
-    >
+    <Link href={href ?? '#'} aria-label={label} className={sharedClassName}>
       {icon}
     </Link>
   );

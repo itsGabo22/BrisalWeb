@@ -14,9 +14,13 @@ const AUTH_ROUTES = ['/login', '/registro', '/registro-mayorista', '/mayoristas/
 export function SiteChrome({
   children,
   categories,
+  announcementText,
+  announcementActive,
 }: {
   children: React.ReactNode;
   categories: Category[];
+  announcementText: string;
+  announcementActive: boolean;
 }) {
   const pathname = usePathname();
   const isAdminRoute = pathname.startsWith('/admin');
@@ -30,7 +34,11 @@ export function SiteChrome({
 
   return (
     <>
-      <Header categories={categories} />
+      <Header
+        categories={categories}
+        announcementText={announcementText}
+        announcementActive={announcementActive}
+      />
       <main className="flex-1">{children}</main>
       <Footer />
       <WhatsAppButton />

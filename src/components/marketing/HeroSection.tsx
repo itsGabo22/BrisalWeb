@@ -272,6 +272,7 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
               <video
                 key={activeSlide.desktopUrl}
                 src={activeSlide.desktopUrl}
+                poster={activeSlide.posterUrl ?? undefined}
                 autoPlay
                 muted
                 loop

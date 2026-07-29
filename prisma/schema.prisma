@@ -151,6 +151,7 @@ model HeroSlide {
   type       HeroSlideType @default(IMAGE)
   desktopUrl String
   mobileUrl  String?
+  posterUrl  String?
   title      String?
   subtitle   String?
   ctaText    String?
@@ -172,4 +173,16 @@ model ImageBandeja {
   assigned  Boolean  @default(false)
   productId String?
   createdAt DateTime @default(now())
+}
+
+model PromoPopup {
+  id        String   @id @default("singleton")
+  active    Boolean  @default(false)
+  imageUrl  String?
+  title     String?
+  subtitle  String?
+  ctaText   String?  @default("Ver oferta")
+  ctaHref   String?
+  showOnce  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }

@@ -8,6 +8,7 @@ import {
   RelatedProducts,
 } from '@/components/product';
 import { productRepository } from '@/lib/repositories';
+import { getFrequentlyBoughtTogether } from '@/lib/recommendations';
 
 interface ProductoPageProps {
   params: Promise<{
@@ -50,14 +51,10 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
     notFound();
   }
 
-  const related = (
-    await productRepository.getAll({
-      categorySlug: product.category.slug,
-      active: true,
-    })
-  )
-    .filter((item) => item.id !== product.id)
-    .slice(0, 4);
+  const [related, frequentlyBoughtTogether] = await Promise.all([
+    productRepository.getRelated(product, 4),
+    getFrequentlyBoughtTogether(product.id, 4),
+  ]);
 
   return (
     <main className="bg-brand-pearl">
@@ -71,6 +68,13 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
         />
         <ProductInfo product={product} />
       </section>
+
+      {frequentlyBoughtTogether && frequentlyBoughtTogether.length > 0 && (
+        <RelatedProducts
+          products={frequentlyBoughtTogether}
+          title="Frecuentemente comprados juntos"
+        />
+      )}
 
       {related.length > 0 && <RelatedProducts products={related} />}
     </main>

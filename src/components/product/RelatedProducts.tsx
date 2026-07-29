@@ -3,14 +3,18 @@ import type { Product } from '@/types';
 
 interface RelatedProductsProps {
   products: Product[];
+  title?: string;
 }
 
-export function RelatedProducts({ products }: RelatedProductsProps) {
+export function RelatedProducts({
+  products,
+  title = 'También te puede interesar',
+}: RelatedProductsProps) {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pb-20">
       <div className="mb-8 flex flex-col gap-3">
         <h2 className="font-serif text-2xl font-semibold text-brand-neutral-900 sm:text-3xl">
-          También te puede interesar
+          {title}
         </h2>
         <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
       </div>

@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const ctaHref = formData.get('ctaHref');
     const desktopFile = formData.get('desktopFile');
     const mobileFile = formData.get('mobileFile');
+    const posterFile = formData.get('posterFile');
 
     if (type !== 'IMAGE' && type !== 'VIDEO') {
       return NextResponse.json({ error: 'Tipo de slide inválido' }, { status: 400 });
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
 
     let desktopUrl: string;
     let mobileUrl: string | null = null;
+    let posterUrl: string | null = null;
     const timestamp = Date.now();
     const baseName = slugifyFilename(desktopFile.name.replace(/\.[^.]+$/, '')) || 'slide';
 
@@ -75,6 +77,19 @@ export async function POST(request: Request) {
         { bucket: 'hero-media', path: `slides/${timestamp}-${baseName}.${ext}` },
         desktopFile.type,
       );
+
+      if (posterFile instanceof File && posterFile.size > 0) {
+        if (!posterFile.type.startsWith('image/')) {
+          return NextResponse.json({ error: 'La miniatura debe ser una imagen' }, { status: 400 });
+        }
+        const posterBuffer = Buffer.from(await posterFile.arrayBuffer());
+        posterUrl = await processAndUploadImage(posterBuffer, {
+          bucket: 'hero-media',
+          path: `slides/${timestamp}-${baseName}-poster.webp`,
+          maxWidth: 800,
+          quality: 82,
+        });
+      }
     }
 
     const order = await prisma.heroSlide.count();
@@ -84,6 +99,7 @@ export async function POST(request: Request) {
         type,
         desktopUrl,
         mobileUrl,
+        posterUrl,
         title: typeof title === 'string' && title.trim() ? title.trim() : null,
         subtitle: typeof subtitle === 'string' && subtitle.trim() ? subtitle.trim() : null,
         ctaText: typeof ctaText === 'string' && ctaText.trim() ? ctaText.trim() : null,
@@ -93,7 +109,13 @@ export async function POST(request: Request) {
       },
     });
 
-    revalidatePath('/');
+    // Never let a revalidation hiccup turn an already-successful write into a
+    // client-visible failure (the slide is safely persisted at this point).
+    try {
+      revalidatePath('/');
+    } catch (revalidateErr) {
+      console.error('[admin/hero-slides] revalidatePath failed (non-fatal):', revalidateErr);
+    }
 
     return NextResponse.json(slide, { status: 201 });
   } catch (err) {

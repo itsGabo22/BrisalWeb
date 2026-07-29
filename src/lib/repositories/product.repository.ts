@@ -18,9 +18,11 @@ export interface IProductRepository {
   getAll(options?: GetAllProductsOptions): Promise<Product[]>;
   getBySlug(slug: string): Promise<Product | null>;
   getFeatured(tagSlug?: string): Promise<Product[]>;
+  search(query: string): Promise<Product[]>;
+  getRelated(product: Product, limit?: number): Promise<Product[]>;
 }
 
-const PRODUCT_INCLUDE = {
+export const PRODUCT_INCLUDE = {
   category: true,
   tags: { include: { tag: true } },
   discounts: true,
@@ -86,6 +88,55 @@ class PrismaProductRepository implements IProductRepository {
     });
 
     return products.map(toProduct);
+  }
+
+  async search(query: string): Promise<Product[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    const products = await prisma.product.findMany({
+      where: {
+        active: true,
+        OR: [
+          { name: { contains: trimmed, mode: 'insensitive' } },
+          { description: { contains: trimmed, mode: 'insensitive' } },
+        ],
+      },
+      include: PRODUCT_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return products.map(toProduct);
+  }
+
+  /** Same category first, then fills remaining slots with same-tag products. */
+  async getRelated(product: Product, limit = 4): Promise<Product[]> {
+    const sameCategory = await prisma.product.findMany({
+      where: { id: { not: product.id }, active: true, categoryId: product.categoryId },
+      include: PRODUCT_INCLUDE,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const related = [...sameCategory];
+    const tagIds = product.tags.map((tag) => tag.id);
+
+    if (related.length < limit && tagIds.length > 0) {
+      const excludeIds = [product.id, ...related.map((p) => p.id)];
+      const sameTag = await prisma.product.findMany({
+        where: {
+          id: { notIn: excludeIds },
+          active: true,
+          tags: { some: { tagId: { in: tagIds } } },
+        },
+        include: PRODUCT_INCLUDE,
+        take: limit - related.length,
+        orderBy: { createdAt: 'desc' },
+      });
+      related.push(...sameTag);
+    }
+
+    return related.map(toProduct);
   }
 }
 

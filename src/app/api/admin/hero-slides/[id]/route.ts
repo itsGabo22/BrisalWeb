@@ -34,6 +34,7 @@ export async function PATCH(
     const order = formData.get('order');
     const desktopFile = formData.get('desktopFile');
     const mobileFile = formData.get('mobileFile');
+    const posterFile = formData.get('posterFile');
 
     const data: Prisma.HeroSlideUpdateInput = {};
 
@@ -100,9 +101,29 @@ export async function PATCH(
       data.desktopUrl = newUrl;
     }
 
+    if (existing.type === 'VIDEO' && posterFile instanceof File && posterFile.size > 0) {
+      if (!posterFile.type.startsWith('image/')) {
+        return NextResponse.json({ error: 'La miniatura debe ser una imagen' }, { status: 400 });
+      }
+      const baseName = slugifyFilename(posterFile.name.replace(/\.[^.]+$/, '')) || 'slide';
+      const buffer = Buffer.from(await posterFile.arrayBuffer());
+      const newUrl = await processAndUploadImage(buffer, {
+        bucket: 'hero-media',
+        path: `slides/${timestamp}-${baseName}-poster.webp`,
+        maxWidth: 800,
+        quality: 82,
+      });
+      if (existing.posterUrl) await deleteFromStorageByUrl('hero-media', existing.posterUrl);
+      data.posterUrl = newUrl;
+    }
+
     const updated = await prisma.heroSlide.update({ where: { id }, data });
 
-    revalidatePath('/');
+    try {
+      revalidatePath('/');
+    } catch (revalidateErr) {
+      console.error('[admin/hero-slides/[id]] revalidatePath failed (non-fatal):', revalidateErr);
+    }
 
     return NextResponse.json(updated);
   } catch (err) {
@@ -124,9 +145,14 @@ export async function DELETE(
 
     await deleteFromStorageByUrl('hero-media', existing.desktopUrl);
     if (existing.mobileUrl) await deleteFromStorageByUrl('hero-media', existing.mobileUrl);
+    if (existing.posterUrl) await deleteFromStorageByUrl('hero-media', existing.posterUrl);
     await prisma.heroSlide.delete({ where: { id } });
 
-    revalidatePath('/');
+    try {
+      revalidatePath('/');
+    } catch (revalidateErr) {
+      console.error('[admin/hero-slides/[id]] revalidatePath failed (non-fatal):', revalidateErr);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
