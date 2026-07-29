@@ -241,8 +241,18 @@ export default function AdminCategoriasPage() {
         onClose={() => setIsModalOpen(false)}
         title={editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
         description={editingCategory ? 'Modifica los datos de la categoría.' : 'Completa el formulario para crear una categoría.'}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="category-form" disabled={isSubmitting || !name}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        <form id="category-form" onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
           {formError && (
             <div className="rounded bg-red-50 p-3 text-red-700 text-xs">
               {formError}
@@ -302,18 +312,6 @@ export default function AdminCategoriasPage() {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !name}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>

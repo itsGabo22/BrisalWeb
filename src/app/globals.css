@@ -180,6 +180,14 @@
     }
   }
 
+  /* Scroll-to-top button — gold shimmer sweep across the button face.
+     Gated by ScrollToTopButton's own prefers-reduced-motion check (sets
+     animation: none inline) rather than a media query here. */
+  @keyframes brisalGoldSweep {
+    0%   { background-position: 200% 200%; }
+    100% { background-position: -50% -50%; }
+  }
+
   /* ── Hero viewport height — iOS Safari-safe ──────────────────────────
      Declares min-height 3 times for the SAME property: unsupported
      units/functions are skipped by the parser, so the last valid one

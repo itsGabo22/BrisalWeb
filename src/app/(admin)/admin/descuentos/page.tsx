@@ -294,8 +294,18 @@ export default function AdminDescuentosPage() {
         onClose={() => setIsModalOpen(false)}
         title={editingDiscount ? 'Editar Descuento' : 'Nuevo Descuento'}
         description={editingDiscount ? 'Modifica los valores del descuento.' : 'Crea una nueva campaña promocional.'}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="discount-form" disabled={isSubmitting || !label}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        <form id="discount-form" onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
           {formError && (
             <div className="rounded bg-red-50 p-3 text-red-700 text-xs">
               {formError}
@@ -419,18 +429,6 @@ export default function AdminDescuentosPage() {
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !label}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>

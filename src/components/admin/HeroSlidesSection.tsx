@@ -326,8 +326,18 @@ export function HeroSlidesSection() {
         title={editingSlide ? 'Editar Slide' : 'Agregar Slide'}
         description="Los slides con imagen se procesan automáticamente a WebP."
         className="max-w-2xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="hero-slide-form" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-5 font-sans text-sm">
+        <form id="hero-slide-form" onSubmit={handleSubmit} className="space-y-5 font-sans text-sm">
           {formError && (
             <div className="rounded bg-red-50 p-3 text-red-700 text-xs">{formError}</div>
           )}
@@ -447,14 +457,6 @@ export function HeroSlidesSection() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>
