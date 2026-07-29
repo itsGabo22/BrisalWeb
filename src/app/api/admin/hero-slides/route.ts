@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { processAndUploadImage, slugifyFilename, uploadVideo } from '@/lib/supabase/storage';
+
+function traceHash(buf: Buffer) {
+  return createHash('sha256').update(buf).digest('hex').slice(0, 16);
+}
 
 export const runtime = 'nodejs';
 
@@ -14,6 +19,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  console.log('[TRACE 0] runtime env:', {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    region: process.env.VERCEL_REGION ?? null,
+    vercelEnv: process.env.VERCEL_ENV ?? null,
+  });
   try {
     const formData = await request.formData();
     const type = formData.get('type');
@@ -43,7 +55,18 @@ export async function POST(request: Request) {
       if (!desktopFile.type.startsWith('image/')) {
         return NextResponse.json({ error: 'El archivo principal debe ser una imagen' }, { status: 400 });
       }
-      const desktopBuffer = Buffer.from(await desktopFile.arrayBuffer());
+      const rawArrayBuffer = await desktopFile.arrayBuffer();
+      console.log('[TRACE 1] incoming file:', {
+        name: desktopFile.name,
+        mimeType: desktopFile.type,
+        sizeProp: desktopFile.size,
+        arrayBufferByteLength: rawArrayBuffer.byteLength,
+      });
+      const desktopBuffer = Buffer.from(rawArrayBuffer);
+      console.log('[TRACE 2] after Buffer.from:', {
+        length: desktopBuffer.length,
+        hash: traceHash(desktopBuffer),
+      });
       desktopUrl = await processAndUploadImage(desktopBuffer, {
         bucket: 'hero-media',
         path: `slides/${timestamp}-${baseName}-desktop.webp`,

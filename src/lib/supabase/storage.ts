@@ -1,5 +1,10 @@
 import sharp from 'sharp';
+import { createHash } from 'crypto';
 import { createAdminClient } from './admin';
+
+function traceHash(buf: Buffer) {
+  return createHash('sha256').update(buf).digest('hex').slice(0, 16);
+}
 
 export function slugifyFilename(name: string): string {
   return name
@@ -30,12 +35,43 @@ export async function processAndUploadImage(
     .webp({ quality })
     .toBuffer();
 
+  console.log('[TRACE 3] sharp output:', {
+    path,
+    isBuffer: Buffer.isBuffer(processed),
+    length: processed.length,
+    hash: traceHash(processed),
+    sharpVersions: sharp.versions,
+  });
+
   const supabase = createAdminClient();
-  const { error } = await supabase.storage
+
+  console.log('[TRACE 4] pre-upload body check:', {
+    path,
+    isBuffer: Buffer.isBuffer(processed),
+    length: processed.length,
+    hash: traceHash(processed),
+  });
+
+  const { data: uploadData, error } = await supabase.storage
     .from(bucket)
     .upload(path, processed, { contentType: 'image/webp', upsert });
 
+  console.log('[TRACE 5] upload result:', { path, uploadData, error });
+
   if (error) throw error;
+
+  const { data: downloaded, error: downloadErr } = await supabase.storage.from(bucket).download(path);
+  if (downloaded) {
+    const downloadedBuffer = Buffer.from(await downloaded.arrayBuffer());
+    console.log('[TRACE 5b] round-trip download:', {
+      path,
+      length: downloadedBuffer.length,
+      hash: traceHash(downloadedBuffer),
+      matchesTrace3: downloadedBuffer.length === processed.length && traceHash(downloadedBuffer) === traceHash(processed),
+    });
+  } else {
+    console.log('[TRACE 5b] round-trip download failed:', { path, downloadErr });
+  }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
