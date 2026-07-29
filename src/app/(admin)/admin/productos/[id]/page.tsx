@@ -10,11 +10,26 @@ import {
   Sparkles,
   Save,
   CheckCircle,
+  Images,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Category, ProductVariant } from '@/types';
 import { Button } from '@/components/ui/button';
+
+interface BandejaImage {
+  id: string;
+  url: string;
+  filename: string;
+  assigned: boolean;
+}
+
+interface PendingAssignment {
+  imageId: string;
+  url: string;
+}
 
 export default function AdminProductFormPage() {
   const router = useRouter();
@@ -86,7 +101,7 @@ export default function AdminProductFormPage() {
         }
       } catch (err) {
         console.error('Error loading data:', err);
-        setError('Error al conectar con la base de datos de prueba');
+        setError('Error al conectar con el servidor');
       } finally {
         setIsLoadingCats(false);
       }
@@ -95,24 +110,82 @@ export default function AdminProductFormPage() {
     loadData();
   }, [id, isNew]);
 
-  // Handle local image file reading (Base64)
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  // Images: bandeja picker + direct upload
+  const [imageTab, setImageTab] = React.useState<'bandeja' | 'subir'>('bandeja');
+  const [bandejaImages, setBandejaImages] = React.useState<BandejaImage[]>([]);
+  const [isLoadingBandeja, setIsLoadingBandeja] = React.useState(false);
+  const [selectedBandejaIds, setSelectedBandejaIds] = React.useState<string[]>([]);
+  const [pendingAssignments, setPendingAssignments] = React.useState<PendingAssignment[]>([]);
+  const [isUploadingSingle, setIsUploadingSingle] = React.useState(false);
+  const [imagesError, setImagesError] = React.useState<string | null>(null);
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setImageUrls((prev) => [...prev, reader.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
+  const loadBandeja = React.useCallback(async () => {
+    setIsLoadingBandeja(true);
+    try {
+      const res = await fetch('/api/admin/imagenes?assigned=false&page=1');
+      if (res.ok) {
+        const data = await res.json();
+        setBandejaImages(data.images);
+      }
+    } catch (err) {
+      console.error('Error loading bandeja:', err);
+    } finally {
+      setIsLoadingBandeja(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (imageTab === 'bandeja') void Promise.resolve().then(() => loadBandeja());
+  }, [imageTab, loadBandeja]);
+
+  const toggleBandejaSelect = (imageId: string) => {
+    setSelectedBandejaIds((prev) => {
+      if (prev.includes(imageId)) return prev.filter((selectedId) => selectedId !== imageId);
+      if (prev.length >= 3) return prev;
+      return [...prev, imageId];
     });
   };
 
+  const handleUseSelected = () => {
+    const selected = bandejaImages.filter((img) => selectedBandejaIds.includes(img.id));
+    setImageUrls((prev) => [...prev, ...selected.map((img) => img.url)]);
+    setPendingAssignments((prev) => [
+      ...prev,
+      ...selected.map((img) => ({ imageId: img.id, url: img.url })),
+    ]);
+    setBandejaImages((prev) => prev.filter((img) => !selectedBandejaIds.includes(img.id)));
+    setSelectedBandejaIds([]);
+  };
+
+  const handleSingleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImagesError(null);
+    setIsUploadingSingle(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/imagenes/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}) as { error?: string });
+        throw new Error(body.error ?? 'Error al subir la imagen');
+      }
+      const uploaded = (await res.json()) as { id: string; url: string };
+      setImageUrls((prev) => [...prev, uploaded.url]);
+      setPendingAssignments((prev) => [...prev, { imageId: uploaded.id, url: uploaded.url }]);
+    } catch (err) {
+      setImagesError(err instanceof Error ? err.message : 'Error al subir la imagen');
+    } finally {
+      setIsUploadingSingle(false);
+      e.target.value = '';
+    }
+  };
+
   const removeImage = (indexToRemove: number) => {
+    const removedUrl = imageUrls[indexToRemove];
     setImageUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setPendingAssignments((prev) => prev.filter((p) => p.url !== removedUrl));
   };
 
   // Variants helpers
@@ -198,6 +271,20 @@ export default function AdminProductFormPage() {
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Error al guardar el producto');
+      }
+
+      const savedProduct = (await res.json()) as { id: string };
+
+      if (pendingAssignments.length > 0) {
+        await Promise.all(
+          pendingAssignments.map(({ imageId }) =>
+            fetch(`/api/admin/imagenes/${imageId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ productId: savedProduct.id }),
+            }),
+          ),
+        );
       }
 
       setSuccessMsg(isNew ? 'Producto creado con éxito' : 'Producto actualizado con éxito');
@@ -334,47 +421,155 @@ export default function AdminProductFormPage() {
         {/* Section 2: Image Uploader */}
         <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 transition-colors">
           <h2 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50 mb-1 flex items-center gap-2">
-            <Upload className="size-5 text-brand-gold" />
+            <Images className="size-5 text-brand-gold" />
             <span>Imágenes del Producto</span>
           </h2>
           <p className="text-xs text-brand-neutral-400 mb-4">
-            Sube imágenes directamente desde tu dispositivo. Se guardarán localmente para esta demostración.
+            Selecciona imágenes desde la bandeja o sube una nueva directamente.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {/* Upload Button */}
+          {/* Selected images preview */}
+          {imageUrls.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-3 mb-6">
+              {imageUrls.map((url, idx) => (
+                <div
+                  key={`${url}-${idx}`}
+                  className="relative aspect-square rounded-lg border border-brand-neutral-200 overflow-hidden group dark:border-brand-neutral-800"
+                >
+                  <Image
+                    src={url}
+                    alt={`Previsualización ${idx + 1}`}
+                    fill
+                    sizes="200px"
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    aria-label="Quitar imagen"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="flex border-b border-brand-neutral-200 dark:border-brand-neutral-800 mb-4 text-sm font-sans">
+            <button
+              type="button"
+              onClick={() => setImageTab('bandeja')}
+              className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors ${
+                imageTab === 'bandeja'
+                  ? 'border-brand-gold text-brand-gold'
+                  : 'border-transparent text-brand-neutral-500 hover:text-brand-neutral-800 dark:hover:text-brand-neutral-250'
+              }`}
+            >
+              <Images className="size-4" />
+              Desde bandeja
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageTab('subir')}
+              className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors ${
+                imageTab === 'subir'
+                  ? 'border-brand-gold text-brand-gold'
+                  : 'border-transparent text-brand-neutral-500 hover:text-brand-neutral-800 dark:hover:text-brand-neutral-250'
+              }`}
+            >
+              <Upload className="size-4" />
+              Subir nueva
+            </button>
+          </div>
+
+          {imagesError && (
+            <p className="mb-3 text-xs text-red-500" role="alert">
+              {imagesError}
+            </p>
+          )}
+
+          {imageTab === 'bandeja' ? (
+            <div>
+              {isLoadingBandeja ? (
+                <div className="flex h-32 items-center justify-center">
+                  <div className="size-6 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
+                </div>
+              ) : bandejaImages.length === 0 ? (
+                <p className="text-xs text-brand-neutral-400">
+                  No hay imágenes disponibles en la bandeja.{' '}
+                  <Link href="/admin/imagenes" className="text-brand-gold hover:underline">
+                    Subir imágenes
+                  </Link>
+                </p>
+              ) : (
+                <>
+                  <div className="grid max-h-80 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-6">
+                    {bandejaImages.map((img) => {
+                      const isSelected = selectedBandejaIds.includes(img.id);
+                      return (
+                        <button
+                          type="button"
+                          key={img.id}
+                          onClick={() => toggleBandejaSelect(img.id)}
+                          className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-colors ${
+                            isSelected
+                              ? 'border-brand-gold'
+                              : 'border-transparent hover:border-brand-neutral-300'
+                          }`}
+                        >
+                          <Image
+                            src={img.url}
+                            alt={img.filename}
+                            fill
+                            sizes="120px"
+                            className="object-cover"
+                          />
+                          {isSelected && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-brand-gold/40">
+                              <Check className="size-6 text-white" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-brand-neutral-400">
+                      {selectedBandejaIds.length}/3 seleccionadas
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={selectedBandejaIds.length === 0}
+                      onClick={handleUseSelected}
+                    >
+                      Usar seleccionadas
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
             <label className="flex flex-col items-center justify-center border-2 border-dashed border-brand-neutral-300 rounded-lg p-6 hover:border-brand-gold cursor-pointer transition-colors dark:border-brand-neutral-800">
-              <Upload className="size-6 text-brand-neutral-400 mb-2" />
-              <span className="text-xs font-semibold text-brand-neutral-600 dark:text-brand-neutral-400">Seleccionar fotos</span>
+              {isUploadingSingle ? (
+                <Loader2 className="size-6 text-brand-gold mb-2 animate-spin" />
+              ) : (
+                <Upload className="size-6 text-brand-neutral-400 mb-2" />
+              )}
+              <span className="text-xs font-semibold text-brand-neutral-600 dark:text-brand-neutral-400">
+                {isUploadingSingle ? 'Subiendo…' : 'Seleccionar foto'}
+              </span>
               <input
                 type="file"
                 accept="image/*"
-                multiple
-                onChange={handleImageUpload}
+                onChange={handleSingleUpload}
+                disabled={isUploadingSingle}
                 className="hidden"
               />
             </label>
-
-            {/* Gallery Previews */}
-            {imageUrls.map((url, idx) => (
-              <div key={idx} className="relative aspect-square rounded-lg border border-brand-neutral-200 overflow-hidden group dark:border-brand-neutral-800">
-                <Image
-                  src={url}
-                  alt={`Previsualización ${idx + 1}`}
-                  fill
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                  aria-label="Remove image"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
 
         {/* Section 3: Inventory & Toggles */}

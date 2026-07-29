@@ -1,6 +1,3 @@
-'use client';
-
-import * as React from 'react';
 import Link from 'next/link';
 import {
   ShoppingBag,
@@ -10,65 +7,30 @@ import {
   ArrowRight,
   TrendingUp,
   Plus,
+  Clock,
 } from 'lucide-react';
 
-import type { Discount, Wholesaler } from '@/types';
+import { prisma } from '@/lib/prisma';
 
-interface Stats {
-  productsCount: number;
-  categoriesCount: number;
-  discountsCount: number;
-  wholesalersPendingCount: number;
-}
-
-export default function AdminDashboardPage() {
-  const [stats, setStats] = React.useState<Stats>({
-    productsCount: 0,
-    categoriesCount: 0,
-    discountsCount: 0,
-    wholesalersPendingCount: 0,
-  });
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    async function loadStats() {
-      try {
-        const [resProds, resCats, resDiscs, resWholesales] = await Promise.all([
-          fetch('/api/admin/productos'),
-          fetch('/api/admin/categorias'),
-          fetch('/api/admin/descuentos'),
-          fetch('/api/admin/mayoristas'),
-        ]);
-
-        if (resProds.ok && resCats.ok && resDiscs.ok && resWholesales.ok) {
-          const prods = await resProds.json();
-          const cats = await resCats.json();
-          const discs = await resDiscs.json();
-          const wholesales = await resWholesales.json();
-
-          setStats({
-            productsCount: prods.length,
-            categoriesCount: cats.length,
-            discountsCount: discs.filter((d: Discount) => d.active).length,
-            wholesalersPendingCount: wholesales.filter(
-              (w: Wholesaler) => w.estado === 'PENDIENTE'
-            ).length,
-          });
-        }
-      } catch (error) {
-        console.error('Error loading dashboard stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadStats();
-  }, []);
+export default async function AdminDashboardPage() {
+  const [
+    productsCount,
+    categoriesCount,
+    discountsCount,
+    wholesalersPendingCount,
+    pendingOrders,
+  ] = await Promise.all([
+    prisma.product.count(),
+    prisma.category.count(),
+    prisma.discount.count({ where: { active: true } }),
+    prisma.user.count({ where: { role: 'MAYORISTA', approved: false } }),
+    prisma.order.count({ where: { status: 'PENDING_WHATSAPP' } }),
+  ]);
 
   const cards = [
     {
       title: 'Productos en Catálogo',
-      value: stats.productsCount,
+      value: productsCount,
       description: 'Productos gestionados',
       icon: ShoppingBag,
       color: 'text-blue-500',
@@ -77,7 +39,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Categorías',
-      value: stats.categoriesCount,
+      value: categoriesCount,
       description: 'Estructura de catálogo',
       icon: FolderTree,
       color: 'text-amber-500',
@@ -86,7 +48,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Campañas de Descuento',
-      value: stats.discountsCount,
+      value: discountsCount,
       description: 'Descuentos activos',
       icon: Percent,
       color: 'text-emerald-500',
@@ -95,23 +57,15 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Solicitudes Mayoristas',
-      value: stats.wholesalersPendingCount,
+      value: wholesalersPendingCount,
       description: 'Pendientes por revisar',
       icon: Users,
       color: 'text-brand-gold',
       bgColor: 'bg-brand-gold/10',
       link: '/admin/mayoristas',
-      highlight: stats.wholesalersPendingCount > 0,
+      highlight: wholesalersPendingCount > 0,
     },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -187,25 +141,20 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* System info */}
+        {/* Pending orders */}
         <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 text-sm">
-          <h3 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50">
-            Estado del Entorno Demo
+          <h3 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50 flex items-center gap-2">
+            <Clock className="size-5 text-brand-gold" />
+            <span>Pedidos Pendientes</span>
           </h3>
-          <ul className="mt-4 space-y-3 font-sans text-brand-neutral-600 dark:text-brand-neutral-400">
-            <li className="flex justify-between">
-              <span>Modo:</span>
-              <span className="font-semibold text-brand-neutral-900 dark:text-brand-neutral-200">En Memoria</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Persistencia:</span>
-              <span className="font-semibold text-brand-neutral-900 dark:text-brand-neutral-200">Activa (globalThis)</span>
-            </li>
-            <li className="flex justify-between">
-              <span>API Endpoints:</span>
-              <span className="font-semibold text-emerald-500">Conectados (Fase 2.5)</span>
-            </li>
-          </ul>
+          <div className="mt-4 flex items-baseline gap-3">
+            <span className="font-serif text-4xl font-bold text-brand-neutral-900 dark:text-brand-neutral-50">
+              {pendingOrders}
+            </span>
+            <span className="font-sans text-xs text-brand-neutral-400 dark:text-brand-neutral-500">
+              esperando confirmación por WhatsApp
+            </span>
+          </div>
         </div>
       </div>
     </div>

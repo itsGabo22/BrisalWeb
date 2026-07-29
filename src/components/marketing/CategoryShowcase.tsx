@@ -138,7 +138,7 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
           />
         </div>
 
-        <div className="-mx-6 flex snap-x gap-4 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-2 md:gap-8 md:overflow-visible md:px-0 md:pb-0">
+        <div className="momentum-scroll-x -mx-6 flex snap-x gap-4 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-2 md:gap-8 md:overflow-visible md:px-0 md:pb-0">
           {showcaseCategories.map((category, index) => (
             <CategoryCard key={category.id} category={category} index={index} />
           ))}

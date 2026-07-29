@@ -26,7 +26,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           type={type}
           className={cn(
-            'flex h-10 w-full rounded-md border border-brand-neutral-200 bg-brand-pearl px-3 py-2 text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
+            // text-base (16px) prevents iOS Safari's auto-zoom-on-focus for any input
+            // under 16px; sm:text-sm restores the original compact size on desktop,
+            // where that zoom behavior doesn't apply.
+            'flex h-10 w-full rounded-md border border-brand-neutral-200 bg-brand-pearl px-3 py-2 text-base sm:text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
             error && 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500',
             className
           )}

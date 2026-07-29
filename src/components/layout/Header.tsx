@@ -196,6 +196,7 @@ export function Header({ categories }: { categories: Category[] }) {
           scrolled &&
             'border-brand-neutral-200/50 border-b shadow-sm backdrop-blur-lg',
         )}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
         aria-label="Navegación principal"
       >
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -299,16 +300,20 @@ export function Header({ categories }: { categories: Category[] }) {
             <Link
               href="/carrito"
               aria-label={`Carrito (${cartItemCount} artículos)`}
-              className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold relative flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold active:scale-95 relative flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 focus-visible:ring-2 focus-visible:outline-none"
             >
               <ShoppingBag size={18} />
               {cartItemCount > 0 && (
-                <span
+                <motion.span
+                  key={cartItemCount}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 0.3 }}
                   className="bg-brand-gold text-brand-neutral-900 absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
                   aria-hidden="true"
                 >
                   {cartItemCount}
-                </span>
+                </motion.span>
               )}
             </Link>
           </div>
@@ -341,7 +346,7 @@ function HeaderIconButton({
       href={href}
       aria-label={label}
       className={cn(
-        'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none',
+        'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
         className,
       )}
     >

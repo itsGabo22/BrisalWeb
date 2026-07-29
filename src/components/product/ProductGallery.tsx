@@ -104,7 +104,7 @@ export function ProductGallery({
       {/* ── Thumbnails ──────────────────────────────────── */}
       {images.length > 1 && (
         <div
-          className="flex gap-2 overflow-x-auto pb-1"
+          className="momentum-scroll-x flex gap-2 overflow-x-auto pb-1"
           role="list"
           aria-label={`Imágenes de ${productName}`}
         >

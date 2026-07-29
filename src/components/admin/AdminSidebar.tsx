@@ -9,6 +9,9 @@ import {
   FolderTree,
   Percent,
   Users,
+  Images,
+  Settings,
+  ClipboardList,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -25,18 +28,43 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Productos', href: '/admin/productos', icon: ShoppingBag },
   { name: 'Categorías', href: '/admin/categorias', icon: FolderTree },
+  { name: 'Pedidos', href: '/admin/pedidos', icon: ClipboardList },
   { name: 'Descuentos', href: '/admin/descuentos', icon: Percent },
   { name: 'Mayoristas', href: '/admin/mayoristas', icon: Users },
+  { name: 'Imágenes', href: '/admin/imagenes', icon: Images },
+  { name: 'Configuración', href: '/admin/configuracion', icon: Settings },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = React.useState(0);
 
   React.useEffect(() => {
     queueMicrotask(() => setIsMobileOpen(false));
   }, [pathname]);
+
+  React.useEffect(() => {
+    async function loadPendingOrders() {
+      try {
+        const res = await fetch('/api/admin/notificaciones');
+        if (res.ok) {
+          const data = await res.json();
+          const pendingOrders = data.notifications.find(
+            (n: { id: string; count: number }) => n.id === 'pending-orders',
+          );
+          setPendingOrdersCount(pendingOrders?.count ?? 0);
+        }
+      } catch (error) {
+        console.error('Error loading pending orders count:', error);
+      }
+    }
+
+    void Promise.resolve().then(loadPendingOrders);
+    const timer = setInterval(loadPendingOrders, 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <>
@@ -115,17 +143,23 @@ export function AdminSidebar() {
                 />
                 <span
                   className={cn(
-                    'transition-all duration-300',
+                    'flex flex-1 items-center justify-between transition-all duration-300',
                     isCollapsed ? 'lg:opacity-0 lg:w-0 overflow-hidden' : 'opacity-100'
                   )}
                 >
                   {item.name}
+                  {item.href === '/admin/pedidos' && pendingOrdersCount > 0 && (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
+                    </span>
+                  )}
                 </span>
 
                 {/* Collapsed Tooltip */}
                 {isCollapsed && (
                   <span className="absolute left-14 z-50 scale-0 rounded bg-brand-neutral-900 px-2 py-1 text-xs text-brand-neutral-100 transition-all group-hover:scale-100 shadow-md">
                     {item.name}
+                    {item.href === '/admin/pedidos' && pendingOrdersCount > 0 && ` (${pendingOrdersCount})`}
                   </span>
                 )}
               </Link>
@@ -135,7 +169,7 @@ export function AdminSidebar() {
 
         {/* Footer info */}
         <div className="p-4 border-t border-brand-neutral-900 text-xs text-brand-neutral-500 font-sans">
-          {!isCollapsed && <p>Sesión: Demo</p>}
+          {!isCollapsed && <p>Brisal by Salvador</p>}
         </div>
       </aside>
     </>

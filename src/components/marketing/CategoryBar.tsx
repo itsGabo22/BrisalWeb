@@ -31,7 +31,7 @@ export function CategoryBar({ categories }: CategoryBarProps) {
       <div className="mx-auto max-w-7xl">
         <nav
           aria-label="Categorías principales"
-          className="scrollbar-none flex items-center gap-6 overflow-x-auto px-4 py-3.5 sm:gap-8 lg:justify-center lg:overflow-x-visible lg:px-8"
+          className="momentum-scroll-x scrollbar-none flex items-center gap-6 overflow-x-auto px-4 py-3.5 sm:gap-8 lg:justify-center lg:overflow-x-visible lg:px-8"
         >
           {categories.map((category) => {
             const fallbackEmoji = FALLBACK_ICONS[category.slug] || '✨';

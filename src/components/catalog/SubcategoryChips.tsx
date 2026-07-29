@@ -19,7 +19,7 @@ export function SubcategoryChips({
   return (
     <section className="border-b border-brand-neutral-200/70 bg-brand-pearl px-4 py-4 sm:px-6 lg:px-8">
       <nav
-        className="mx-auto flex max-w-7xl gap-2 overflow-x-auto"
+        className="momentum-scroll-x mx-auto flex max-w-7xl gap-2 overflow-x-auto"
         aria-label={'Subcategor\u00edas'}
       >
         {subcategories.map((subcategory) => {

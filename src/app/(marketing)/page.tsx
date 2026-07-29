@@ -9,6 +9,7 @@ import {
   WholesaleCallout,
 } from '@/components/marketing';
 import { categoryRepository, productRepository } from '@/lib/repositories';
+import { prisma } from '@/lib/prisma';
 
 const PAGE_TITLE = 'Brisal by Salvador | Accesorios Premium en Acero y Rodio';
 const PAGE_DESCRIPTION =
@@ -27,14 +28,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [rootCategories, featuredProducts] = await Promise.all([
+  const [rootCategories, featuredProducts, heroSlides] = await Promise.all([
     categoryRepository.getTree(),
     productRepository.getFeatured(),
+    prisma.heroSlide.findMany({ where: { active: true }, orderBy: { order: 'asc' } }),
   ]);
 
   return (
     <>
-      <HeroSection />
+      <HeroSection slides={heroSlides} />
       <TrustBar />
       <CategoryBar categories={rootCategories} />
       <BrandStatement />

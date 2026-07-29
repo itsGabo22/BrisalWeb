@@ -8,24 +8,9 @@ import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
+import { Input } from '@/components/ui/input';
 import { formatCOP } from '@/lib/utils/pricing';
 import { useCartStore } from '@/stores/cartStore';
-
-const WHATSAPP_UNCONFIGURED = 'WhatsApp no configurado';
-
-function buildWhatsAppMessage(
-  items: ReturnType<typeof useCartStore.getState>['items'],
-  total: number,
-) {
-  const itemLines = items
-    .map(
-      (item) =>
-        `- ${item.name} x ${item.quantity} = ${formatCOP(item.price * item.quantity)}`,
-    )
-    .join('\n');
-
-  return `Hola, quiero hacer el siguiente pedido:\n\n${itemLines}\n\nTotal: ${formatCOP(total)}\n\n¿Pueden confirmarme disponibilidad y envío?`;
-}
 
 export default function CartPage() {
   const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
@@ -34,18 +19,75 @@ export default function CartPage() {
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
   const total = useCartStore((state) => state.getTotal());
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
-  const whatsAppHref = React.useMemo(() => {
-    if (!whatsappNumber || items.length === 0) return null;
+  const [customerName, setCustomerName] = React.useState('');
+  const [customerPhone, setCustomerPhone] = React.useState('');
+  const [wholesaleUserId, setWholesaleUserId] = React.useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-    const message = buildWhatsAppMessage(items, total);
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-  }, [items, total, whatsappNumber]);
+  React.useEffect(() => {
+    void Promise.resolve().then(async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = (await res.json()) as { approved: boolean; userId: string | null };
+          if (data.approved) setWholesaleUserId(data.userId);
+        }
+      } catch {
+        // Not logged in as wholesaler — fine, order proceeds without wholesaleUserId.
+      }
+    });
+  }, []);
 
   const handleClearCart = () => {
     clearCart();
     setConfirmClearOpen(false);
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setSubmitError('Completa tu nombre y teléfono para continuar.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/ordenes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            imageUrl: item.imageUrl,
+          })),
+          total,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          wholesaleUserId,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}) as { error?: string });
+        throw new Error(body.error ?? 'No se pudo generar el pedido');
+      }
+
+      const data = (await res.json()) as { whatsappUrl: string };
+      clearCart();
+      window.location.href = data.whatsappUrl;
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Ocurrió un error inesperado');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isEmpty = items.length === 0;
@@ -214,30 +256,45 @@ export default function CartPage() {
                   directamente con el vendedor.
                 </p>
 
-                <div className="mt-6 space-y-3">
-                  <span
-                    className="block"
-                    title={!whatsAppHref ? WHATSAPP_UNCONFIGURED : undefined}
-                  >
+                <form onSubmit={handleSubmitOrder} className="mt-6 space-y-4" noValidate>
+                  <Input
+                    label="Nombre *"
+                    id="customer-name"
+                    autoComplete="name"
+                    placeholder="Tu nombre completo"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                  <Input
+                    label="Teléfono *"
+                    id="customer-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+57 300 000 0000"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                  />
+
+                  {submitError && (
+                    <p className="font-sans text-sm text-red-600" role="alert">
+                      {submitError}
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
                     <Button
+                      type="submit"
                       className="w-full"
-                      disabled={!whatsAppHref}
-                      onClick={() => {
-                        if (whatsAppHref)
-                          window.open(
-                            whatsAppHref,
-                            '_blank',
-                            'noopener,noreferrer',
-                          );
-                      }}
+                      disabled={isSubmitting}
+                      aria-busy={isSubmitting}
                     >
-                      Solicitar pedido por WhatsApp
+                      {isSubmitting ? 'Enviando…' : 'Solicitar pedido por WhatsApp'}
                     </Button>
-                  </span>
-                  <Button variant="ghost" className="w-full" asChild>
-                    <Link href="/catalogo">Seguir comprando</Link>
-                  </Button>
-                </div>
+                    <Button variant="ghost" className="w-full" asChild>
+                      <Link href="/catalogo">Seguir comprando</Link>
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>

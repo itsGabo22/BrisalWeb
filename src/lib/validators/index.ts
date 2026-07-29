@@ -118,3 +118,28 @@ export const discountAdminSchema = z.object({
 
 export type DiscountAdminFormData = z.infer<typeof discountAdminSchema>;
 
+// ─── Órdenes ──────────────────────────────────────────────────────────────────
+export const orderItemSchema = z.object({
+  productId: z.string().min(1),
+  name: z.string().min(1),
+  price: z.number().nonnegative(),
+  quantity: z.number().int().positive(),
+  imageUrl: z.string().optional().nullable(),
+});
+
+export const createOrderSchema = z.object({
+  items: z.array(orderItemSchema).min(1, 'El carrito está vacío'),
+  total: z.number().nonnegative(),
+  customerName: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(120, 'El nombre no puede superar 120 caracteres'),
+  customerPhone: z
+    .string()
+    .min(7, 'El teléfono debe tener al menos 7 dígitos')
+    .max(20, 'El teléfono no puede superar 20 caracteres'),
+  wholesaleUserId: z.string().optional().nullable(),
+});
+
+export type CreateOrderData = z.infer<typeof createOrderSchema>;
+

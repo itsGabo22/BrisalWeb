@@ -41,7 +41,7 @@ export function WhatsAppButton() {
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"
       className="
-        fixed bottom-6 right-6 z-40
+        fixed z-40
         flex items-center justify-center
         h-14 w-14 rounded-full shadow-lg
         text-white
@@ -49,7 +49,12 @@ export function WhatsAppButton() {
         motion-safe:animate-[whatsapp-pulse_2.5s_ease-in-out_infinite]
         transition-transform hover:scale-110 active:scale-95
       "
-      style={{ backgroundColor: '#25D366' }}
+      style={{
+        backgroundColor: '#25D366',
+        // Keep clear of the home indicator / rounded corners on notched iPhones.
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom))',
+        right: 'calc(1.5rem + env(safe-area-inset-right))',
+      }}
     >
       <WhatsAppIcon size={28} />
     </a>

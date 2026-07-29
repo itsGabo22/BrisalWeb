@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -27,6 +27,14 @@ const geistMono = Geist_Mono({
 // Nav categories, admin auth, and wholesale session all read live DB/auth state
 // on every request — nothing under this layout can be statically prerendered.
 export const dynamic = 'force-dynamic';
+
+// viewport-fit=cover is required for env(safe-area-inset-*) to resolve to
+// real values on notched/Dynamic-Island iPhones instead of 0.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: {

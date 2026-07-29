@@ -148,6 +148,10 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Removes the default gray flash Safari/iOS shows on tap for any clickable
+       element. Interactive components define their own deliberate :active
+       state (e.g. Button's active:scale-[0.98]) instead. */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -174,5 +178,78 @@
     50% {
       transform: translateY(6px);
     }
+  }
+
+  /* ── Hero viewport height — iOS Safari-safe ──────────────────────────
+     Declares min-height 3 times for the SAME property: unsupported
+     units/functions are skipped by the parser, so the last valid one
+     wins. 100vh is the old-browser fallback; 100svh/100dvh are
+     Safari-aware and avoid the jumpy resize when the address bar
+     shows/hides on scroll. max(600px, …) keeps a floor on very short
+     viewports without needing a second min-height rule to compete with. */
+  .hero-viewport-height {
+    min-height: max(600px, 100vh);
+    min-height: max(600px, 100svh);
+    min-height: max(600px, 100dvh);
+  }
+
+  /* ── Horizontal-scroll momentum on iOS ──────────────────────────────
+     Without this, horizontal overflow-x-auto strips (category chips,
+     product thumbnails) feel sluggish/robotic on Safari specifically. */
+  .momentum-scroll-x {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── BRISAL wordmark — one-time gold shimmer sweep on load ──────────
+     Gated behind prefers-reduced-motion so reduced-motion users just
+     see the solid pearl text with no gradient/animation at all. */
+  @media (prefers-reduced-motion: no-preference) {
+    .brisal-wordmark {
+      background: linear-gradient(100deg, #FAF8F5 30%, #E8D5B0 45%, #FAF8F5 60%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: brisalShimmerOnce 2.5s ease-out 0.6s 1 forwards;
+    }
+  }
+
+  @keyframes brisalShimmerOnce {
+    from { background-position: 200% center; }
+    to   { background-position: -50% center; }
+  }
+
+  /* ── Gold divider line under "by Salvador" — grows in after the wordmark ── */
+  @media (prefers-reduced-motion: no-preference) {
+    .brisal-divider-line {
+      width: 0;
+      animation: brisalLineGrow 0.8s ease-out 1.4s forwards;
+    }
+  }
+
+  @keyframes brisalLineGrow {
+    from { width: 0; }
+    to   { width: 64px; }
+  }
+
+  /* ── Gold sparkle particles around the hero wordmark ─────────────────
+     Pure CSS float loop, no JS animation frame loop. will-change is
+     scoped to this class only (and only while motion is allowed) so it
+     never sits as a permanent hint on elements that aren't animating. */
+  .brisal-sparkle {
+    background: radial-gradient(circle, #C9A96E 0%, transparent 70%);
+    opacity: 0.3;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .brisal-sparkle {
+      animation: brisalSparkleFloat ease-in-out infinite;
+      will-change: transform;
+    }
+  }
+
+  @keyframes brisalSparkleFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+    50% { transform: translateY(-14px) rotate(180deg); opacity: 0.6; }
   }
 }

@@ -91,6 +91,20 @@ export interface CartItem {
   variantId?: string | null;
 }
 
+// ─── HeroSlide ────────────────────────────────────────────────────────────────
+export interface HeroSlide {
+  id: string;
+  type: 'IMAGE' | 'VIDEO';
+  desktopUrl: string;
+  mobileUrl?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  ctaText?: string | null;
+  ctaHref?: string | null;
+  order: number;
+  active: boolean;
+}
+
 // ─── Wholesaler ───────────────────────────────────────────────────────────────
 export type WholesalerStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
 
