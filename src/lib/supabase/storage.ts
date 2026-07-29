@@ -45,16 +45,24 @@ export async function processAndUploadImage(
 
   const supabase = createAdminClient();
 
+  // Wrapped in a Blob rather than passed as a raw Buffer: undici (Node's
+  // built-in fetch, which supabase-js uses under the hood) has shown corruption
+  // on Node 24 when a Buffer is used directly as a fetch body — Blob/Uint8Array
+  // bodies take a different, unaffected serialization path.
+  const uploadBody = new Blob([processed], { type: 'image/webp' });
+
   console.log('[TRACE 4] pre-upload body check:', {
     path,
     isBuffer: Buffer.isBuffer(processed),
     length: processed.length,
     hash: traceHash(processed),
+    uploadBodyType: 'Blob',
+    uploadBodySize: uploadBody.size,
   });
 
   const { data: uploadData, error } = await supabase.storage
     .from(bucket)
-    .upload(path, processed, { contentType: 'image/webp', upsert });
+    .upload(path, uploadBody, { contentType: 'image/webp', upsert });
 
   console.log('[TRACE 5] upload result:', { path, uploadData, error });
 
