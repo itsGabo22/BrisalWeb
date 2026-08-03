@@ -135,14 +135,20 @@ export function Header({ categories, announcementText, announcementActive }: Hea
     () => toNavCategories(categories),
     [categories],
   );
-  const [scrolled, setScrolled] = React.useState(false);
+  const { scrollY } = usePageScroll();
+  // Lazily read the CURRENT scroll position instead of hardcoding `false`.
+  // Header remounts fresh every time SiteChrome swaps between a chrome-less
+  // auth route (e.g. /login) and a route with chrome — on back-navigation to
+  // an already-scrolled page, scrollY is restored instantly, but a fresh
+  // `useState(false)` would render the header transparent for ~300ms until
+  // the next scroll `change` event corrected it, producing a visible
+  // flash/seam of page content behind the sticky header.
+  const [scrolled, setScrolled] = React.useState(() => scrollY.get() > 20);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
-
-  const { scrollY } = usePageScroll();
 
   useMotionValueEvent(scrollY, 'change', (latest) => {
     setScrolled(latest > 20);
@@ -334,6 +340,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         onClose={() => setMobileNavOpen(false)}
         categories={NAV_CATEGORIES}
         cartItemCount={cartItemCount}
+        onSearchClick={() => setSearchOpen(true)}
       />
 
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />

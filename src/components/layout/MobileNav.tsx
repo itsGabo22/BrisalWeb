@@ -21,6 +21,7 @@ export interface MobileNavProps {
   onClose: () => void;
   categories: NavCategory[];
   cartItemCount: number;
+  onSearchClick: () => void;
 }
 
 // ─── Focus trap hook ──────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ export function MobileNav({
   onClose,
   categories,
   cartItemCount,
+  onSearchClick,
 }: MobileNavProps) {
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
@@ -244,12 +246,19 @@ export function MobileNav({
               </div>
 
               <div className="border-brand-neutral-200 space-y-0.5 border-t pt-4">
-                <MobileNavLink
-                  href="/buscar"
-                  label="Buscar"
-                  icon={<Search size={16} />}
-                  onClick={handleLinkClick}
-                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onSearchClick();
+                  }}
+                  className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <span aria-hidden="true">
+                    <Search size={16} />
+                  </span>
+                  Buscar
+                </button>
                 <WholesaleNavLink onClick={handleLinkClick} />
                 <MobileNavLink
                   href="/carrito"
