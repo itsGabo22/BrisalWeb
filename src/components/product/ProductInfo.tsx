@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
 import { cn } from '@/lib/utils';
-import { formatCOP, hasActiveSalePrice } from '@/lib/utils/pricing';
+import { formatCOP, hasActiveSalePrice, hasWholesalePrice, getDisplayPrice } from '@/lib/utils/pricing';
+import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
 
 interface ProductInfoProps {
@@ -40,6 +41,9 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const [added, setAdded] = React.useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const onSale = hasActiveSalePrice(product);
+  const wholesaleSession = useWholesaleSession();
+  const showWholesalePrice =
+    wholesaleSession === 'approved' && hasWholesalePrice(product);
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
   const addedTimeoutRef = React.useRef<number | null>(null);
 
@@ -60,7 +64,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       {
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: getDisplayPrice(product, showWholesalePrice),
         imageUrl: product.imageUrls[0] ?? '',
         slug: product.slug,
       },
@@ -119,7 +123,17 @@ export function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3" aria-label="Precio">
-        {onSale && product.comparePrice ? (
+        {showWholesalePrice ? (
+          <>
+            <span className="font-sans text-sm text-brand-neutral-400 line-through">
+              {formatCOP(product.price)}
+            </span>
+            <span className="font-sans text-2xl font-semibold text-brand-gold">
+              {formatCOP(product.wholesalePrice as number)}
+            </span>
+            <Badge variant="mayorista">Precio mayorista</Badge>
+          </>
+        ) : onSale && product.comparePrice ? (
           <>
             <span className="font-sans text-sm text-brand-neutral-400 line-through">
               {formatCOP(product.comparePrice)}

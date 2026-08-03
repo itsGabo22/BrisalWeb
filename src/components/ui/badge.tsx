@@ -12,6 +12,7 @@ const badgeVariants = cva(
         'mas-vendido': 'bg-badge-vendido-bg text-badge-vendido-fg border-brand-gold-light/10 shadow-sm',
         'en-oferta': 'bg-badge-oferta-bg text-badge-oferta-fg border-red-200/50 shadow-sm uppercase tracking-wider',
         tendencia: 'bg-badge-tendencia-bg text-badge-tendencia-fg border-purple-200/50 shadow-sm',
+        mayorista: 'bg-badge-mayorista-bg text-badge-mayorista-fg border-brand-gold/30 shadow-sm uppercase tracking-wider',
       },
     },
     defaultVariants: {

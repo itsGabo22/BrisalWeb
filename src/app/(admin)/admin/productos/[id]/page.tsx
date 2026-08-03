@@ -45,6 +45,7 @@ export default function AdminProductFormPage() {
   const [name, setName] = React.useState('');
   const [price, setPrice] = React.useState<number>(0);
   const [comparePrice, setComparePrice] = React.useState<number | null>(null);
+  const [wholesalePrice, setWholesalePrice] = React.useState<number | null>(null);
   const [categoryId, setCategoryId] = React.useState('');
   const [sku, setSku] = React.useState('');
   const [stock, setStock] = React.useState<number>(0);
@@ -86,6 +87,7 @@ export default function AdminProductFormPage() {
             setName(prod.name);
             setPrice(prod.price);
             setComparePrice(prod.comparePrice);
+            setWholesalePrice(prod.wholesalePrice ?? null);
             setCategoryId(prod.categoryId);
             setSku(prod.sku || '');
             setStock(prod.stock);
@@ -247,6 +249,7 @@ export default function AdminProductFormPage() {
       slug,
       price: Number(price),
       comparePrice: comparePrice ? Number(comparePrice) : null,
+      wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
       categoryId,
       sku: sku.trim() || null,
       stock: Number(stock),
@@ -380,6 +383,19 @@ export default function AdminProductFormPage() {
                 value={comparePrice || ''}
                 onChange={(e) => setComparePrice(e.target.value ? Number(e.target.value) : null)}
                 placeholder="Opcional"
+                className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Precio Mayorista (COP)
+              </label>
+              <input
+                type="number"
+                value={wholesalePrice || ''}
+                onChange={(e) => setWholesalePrice(e.target.value ? Number(e.target.value) : null)}
+                placeholder="Opcional — visible solo para mayoristas aprobados"
                 className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
             </div>

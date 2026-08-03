@@ -84,7 +84,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
+      className={`${inter.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
     >
       {/*
         Layout decision — MobileNav state lives inside Header via local useState.
@@ -94,7 +94,7 @@ export default async function RootLayout({
         This can be migrated to a uiStore in Phase 2 if other components need to
         read or set the drawer state (e.g., a "quick-add" from a product card).
       */}
-      <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-hidden">
+      <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-clip">
         <PageScrollProvider>
           <SiteChrome
             categories={categories}

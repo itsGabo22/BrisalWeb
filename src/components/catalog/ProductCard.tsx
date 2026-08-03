@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
-import { hasActiveSalePrice, formatCOP } from '@/lib/utils/pricing';
+import { hasActiveSalePrice, hasWholesalePrice, formatCOP } from '@/lib/utils/pricing';
 import {
   PRODUCT_IMAGE_PLACEHOLDER,
   resolveProductImageUrl,
 } from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
+import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
 
 // ─── Badge variant mapping ────────────────────────────────────────────────────
@@ -41,6 +42,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const [hovered, setHovered] = React.useState(false);
   const [imageError, setImageError] = React.useState(false);
   const onSale = hasActiveSalePrice(product);
+  const wholesaleSession = useWholesaleSession();
+  const showWholesalePrice =
+    wholesaleSession === 'approved' && hasWholesalePrice(product);
   const href = `/producto/${product.slug}`;
   const imageSrc = imageError
     ? PRODUCT_IMAGE_PLACEHOLDER
@@ -142,22 +146,38 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </Link>
 
         {/* Pricing */}
-        <div className="flex items-baseline gap-2">
-          <span
-            className={cn(
-              'font-sans text-sm font-bold',
-              onSale ? 'text-brand-gold' : 'text-brand-neutral-800',
-            )}
-          >
-            {formatCOP(product.price)}
-          </span>
-
-          {onSale && product.comparePrice && (
-            <span className="font-sans text-xs text-brand-neutral-400 line-through">
-              {formatCOP(product.comparePrice)}
+        {showWholesalePrice ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-sans text-sm font-bold text-brand-gold">
+                {formatCOP(product.wholesalePrice as number)}
+              </span>
+              <span className="font-sans text-xs text-brand-neutral-400 line-through">
+                {formatCOP(product.price)}
+              </span>
+            </div>
+            <Badge variant="mayorista" className="w-fit">
+              Precio mayorista
+            </Badge>
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-2">
+            <span
+              className={cn(
+                'font-sans text-sm font-bold',
+                onSale ? 'text-brand-gold' : 'text-brand-neutral-800',
+              )}
+            >
+              {formatCOP(product.price)}
             </span>
-          )}
-        </div>
+
+            {onSale && product.comparePrice && (
+              <span className="font-sans text-xs text-brand-neutral-400 line-through">
+                {formatCOP(product.comparePrice)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +20,8 @@ export function WholesaleForm() {
   const router = useRouter();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isDuplicateEmail, setIsDuplicateEmail] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -32,6 +35,7 @@ export function WholesaleForm() {
   const onSubmit = async (data: RegistroMayoristaFormData) => {
     setStatus('loading');
     setErrorMessage('');
+    setIsDuplicateEmail(false);
 
     try {
       const res = await fetch('/api/auth/registro-mayorista', {
@@ -42,6 +46,10 @@ export function WholesaleForm() {
 
       if (!res.ok) {
         const body = (await res.json()) as { error?: string };
+        if (res.status === 409) {
+          setIsDuplicateEmail(true);
+          setSubmittedEmail(data.email);
+        }
         throw new Error(body.error ?? 'Error al crear la cuenta');
       }
 
@@ -191,13 +199,22 @@ export function WholesaleForm() {
             <p className="font-sans text-sm font-medium text-red-800">
               {errorMessage}
             </p>
-            <button
-              type="button"
-              onClick={() => setStatus('idle')}
-              className="font-sans text-xs text-red-600 underline hover:text-red-800 text-left"
-            >
-              Intentar de nuevo
-            </button>
+            {isDuplicateEmail ? (
+              <Link
+                href={`/login${submittedEmail ? `?email=${encodeURIComponent(submittedEmail)}` : ''}`}
+                className="font-sans text-xs font-semibold text-red-600 underline hover:text-red-800 text-left"
+              >
+                Inicia sesión →
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStatus('idle')}
+                className="font-sans text-xs text-red-600 underline hover:text-red-800 text-left"
+              >
+                Intentar de nuevo
+              </button>
+            )}
           </div>
         </div>
       )}

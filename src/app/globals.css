@@ -31,6 +31,8 @@
   --color-badge-oferta-fg: #C13B3B;
   --color-badge-tendencia-bg: #EAE6F5;
   --color-badge-tendencia-fg: #6B4EAB;
+  --color-badge-mayorista-bg: #0F0E0D;
+  --color-badge-mayorista-fg: #C9A96E;
 
   /* ── shadcn/ui semantic colors ───────────────────── */
   --color-background: var(--background);

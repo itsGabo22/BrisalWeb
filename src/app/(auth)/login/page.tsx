@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
@@ -13,7 +13,17 @@ import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
 export default function MayoristaLoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <MayoristaLoginForm />
+    </React.Suspense>
+  );
+}
+
+function MayoristaLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledEmail = searchParams.get('email') ?? '';
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -24,6 +34,7 @@ export default function MayoristaLoginPage() {
     formState: { errors },
   } = useForm<MayoristaLoginFormData>({
     resolver: zodResolver(mayoristaLoginSchema),
+    defaultValues: { email: prefilledEmail },
   });
 
   const onSubmit = async ({ email, password }: MayoristaLoginFormData) => {

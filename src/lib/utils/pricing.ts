@@ -35,6 +35,27 @@ export function hasActiveSalePrice(product: Product): boolean {
 }
 
 /**
+ * Returns true when the product has a wholesale price configured by the
+ * admin. Products created before this field existed have `wholesalePrice`
+ * as null — this is expected, not a bug.
+ */
+export function hasWholesalePrice(product: Product): boolean {
+  return typeof product.wholesalePrice === 'number' && product.wholesalePrice > 0;
+}
+
+/**
+ * The price to charge/display for a given viewer. Wholesale pricing only
+ * applies to approved wholesalers, and only when the admin has set one —
+ * everyone else always sees `product.price`.
+ */
+export function getDisplayPrice(product: Product, isApprovedWholesaler: boolean): number {
+  if (isApprovedWholesaler && hasWholesalePrice(product)) {
+    return product.wholesalePrice as number;
+  }
+  return product.price;
+}
+
+/**
  * Formats a Colombian peso price for display.
  * Example: 89000 → "$89.000"
  */

@@ -83,6 +83,7 @@ export const productAdminSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   price: z.number().min(0, 'El precio no puede ser negativo'),
   comparePrice: z.number().min(0).optional().nullable(),
+  wholesalePrice: z.number().min(0).optional().nullable(),
   categoryId: z.string().min(1, 'Debes seleccionar una categoría'),
   sku: z.string().optional().nullable(),
   stock: z.number().min(0, 'El stock no puede ser negativo'),
