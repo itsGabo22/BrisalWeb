@@ -191,16 +191,20 @@
   }
 
   /* ── Hero viewport height — iOS Safari-safe ──────────────────────────
-     Declares min-height 3 times for the SAME property: unsupported
-     units/functions are skipped by the parser, so the last valid one
-     wins. 100vh is the old-browser fallback; 100svh/100dvh are
-     Safari-aware and avoid the jumpy resize when the address bar
-     shows/hides on scroll. max(600px, …) keeps a floor on very short
-     viewports without needing a second min-height rule to compete with. */
+     Declares min-height twice for the SAME property: unsupported units
+     are skipped by the parser, so the last valid one wins. 100vh is the
+     old-browser fallback; 100svh ("small" viewport height) is pinned to
+     the viewport size WITH the browser chrome visible and never changes
+     for the rest of the session — unlike 100dvh ("dynamic"), which by
+     spec recomputes live as the address bar shows/hides. Using dvh here
+     caused the hero to resize mid-gesture on a user's first scroll (the
+     exact moment the address bar auto-collapses), which read as a
+     sudden zoom/jump. svh has no such live-resize, so it doesn't jump.
+     max(600px, …) keeps a floor on very short viewports without needing
+     a second min-height rule to compete with. */
   .hero-viewport-height {
     min-height: max(600px, 100vh);
     min-height: max(600px, 100svh);
-    min-height: max(600px, 100dvh);
   }
 
   /* ── Horizontal-scroll momentum on iOS ──────────────────────────────
