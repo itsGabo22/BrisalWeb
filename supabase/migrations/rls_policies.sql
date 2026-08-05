@@ -17,6 +17,7 @@ ALTER TABLE "OrderItem"    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ImageBandeja" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "SiteConfig"   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "HeroSlide"    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "PromoPopup"   ENABLE ROW LEVEL SECURITY;
 
 -- PUBLIC CATALOG: readable, nothing else
 CREATE POLICY "Public can read active products"
@@ -39,6 +40,9 @@ CREATE POLICY "Public can read site config"
 
 CREATE POLICY "Public can read active hero slides"
   ON "HeroSlide" FOR SELECT USING (active = true);
+
+CREATE POLICY "Public can read active promo popup"
+  ON "PromoPopup" FOR SELECT USING (active = true);
 
 -- PRIVATE: User can only read their own row
 CREATE POLICY "User can read own record"
