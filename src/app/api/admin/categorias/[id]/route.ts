@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { categoryAdminSchema } from '@/lib/validators';
 import { toCategory } from '@/lib/repositories/mappers';
+import {
+  CATEGORY_IMAGE_BUCKET,
+  parseCategoryFormData,
+  revalidateCategorySurfaces,
+  uploadCategoryImage,
+} from '@/lib/admin/category-image';
+import { deleteFromStorageByUrl } from '@/lib/supabase/storage';
+
+export const runtime = 'nodejs';
 
 function slugify(text: string): string {
   return text
@@ -21,7 +30,22 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+
+    const isFormData = request.headers
+      .get('content-type')
+      ?.includes('multipart/form-data');
+
+    let body: unknown;
+    let imageFile: File | null = null;
+
+    if (isFormData) {
+      const parsed = parseCategoryFormData(await request.formData());
+      body = parsed.fields;
+      imageFile = parsed.imageFile;
+    } else {
+      body = await request.json();
+    }
+
     const result = categoryAdminSchema.partial().safeParse(body);
 
     if (!result.success) {
@@ -52,10 +76,33 @@ export async function PATCH(
       updateData.slug = slug;
     }
 
+    // Existing-image fallback. `parseCategoryFormData` only emits an `imageUrl`
+    // key when the form actually sent one, and `.partial()` keeps it absent
+    // otherwise — so renaming a category cannot blank its showcase image. The
+    // old file is only removed once its replacement has uploaded successfully.
+    if (imageFile) {
+      const uploaded = await uploadCategoryImage(
+        imageFile,
+        updateData.slug ?? existing.slug,
+      );
+      if ('error' in uploaded) {
+        return NextResponse.json({ error: uploaded.error }, { status: 400 });
+      }
+      updateData.imageUrl = uploaded.url;
+      if (existing.imageUrl) {
+        await deleteFromStorageByUrl(CATEGORY_IMAGE_BUCKET, existing.imageUrl);
+      }
+    } else if (updateData.imageUrl === null && existing.imageUrl) {
+      // Explicit removal from the admin UI.
+      await deleteFromStorageByUrl(CATEGORY_IMAGE_BUCKET, existing.imageUrl);
+    }
+
     const updated = await prisma.category.update({
       where: { id },
       data: updateData,
     });
+
+    revalidateCategorySurfaces();
 
     return NextResponse.json(toCategory(updated));
   } catch (err) {
@@ -100,7 +147,12 @@ export async function DELETE(
       );
     }
 
+    if (existing.imageUrl) {
+      await deleteFromStorageByUrl(CATEGORY_IMAGE_BUCKET, existing.imageUrl);
+    }
     await prisma.category.delete({ where: { id } });
+
+    revalidateCategorySurfaces();
 
     return NextResponse.json({ success: true });
   } catch (err) {

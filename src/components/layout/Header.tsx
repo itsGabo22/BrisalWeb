@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, useMotionValueEvent } from 'framer-motion';
 import { Search, ShoppingBag } from 'lucide-react';
 
@@ -9,122 +10,31 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { SearchOverlay } from '@/components/layout/SearchOverlay';
 import { WholesaleNavIndicator } from '@/components/layout/WholesaleNavIndicator';
 import { cn } from '@/lib/utils';
+import { NAV_SECTIONS, WHOLESALE_SECTION } from '@/lib/navigation';
 import type { Category } from '@/types';
 import { usePageScroll } from '@/hooks/usePageScroll';
 import { useCartStore } from '@/stores/cartStore';
 
-const WHOLESALE_LABEL = 'Mayorista';
+/**
+ * Marks a nav section active. Sections differ only by query string
+ * (/catalogo?sort=nuevo vs /catalogo?filter=descuento), so pathname alone
+ * can't tell them apart — the single param each link carries is compared too.
+ * "Inicio" is exact-match so it doesn't light up on every catalog page.
+ */
+function useIsSectionActive() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-type NavCategory = {
-  id: string;
-  name: string;
-  slug: string;
-  children: { id: string; name: string; slug: string }[];
-};
+  return React.useCallback(
+    (href: string) => {
+      const [hrefPath, hrefQuery] = href.split('?');
+      if (pathname !== hrefPath) return false;
+      if (!hrefQuery) return searchParams.toString() === '';
 
-function toNavCategories(categories: Category[]): NavCategory[] {
-  return categories.map((category) => ({
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    children:
-      category.children?.map((child) => ({
-        id: child.id,
-        name: child.name,
-        slug: child.slug,
-      })) ?? [],
-  }));
-}
-
-interface MegaMenuProps {
-  category: NavCategory;
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-}
-
-function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const hasChildren = category.children.length > 0;
-
-  React.useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    if (isOpen) window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, onClose]);
-
-  // Light weight + wide tracking is what gives the nav its airy, Cornalina-ish
-  // read. The type size drops to 12px to pay for that tracking: this nav
-  // carries eight Spanish category names plus the Mayorista pill, and at the
-  // previous 14px the tracked-out labels ran into the BRISAL logo at 1440px.
-  const linkClassName = cn(
-    'flex items-center gap-1.5 rounded-sm px-1 py-0.5 font-body text-xs font-light tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2',
-    'text-brand-text hover:text-brand-gold-deep',
-  );
-
-  return (
-    <div ref={menuRef} className="relative">
-      {hasChildren ? (
-        <button
-          onClick={onToggle}
-          aria-haspopup="true"
-          aria-expanded={isOpen}
-          className={linkClassName}
-        >
-          {category.name}
-          <motion.svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            animate={{ rotate: isOpen ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-            aria-hidden="true"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </motion.svg>
-        </button>
-      ) : (
-        <Link href={`/catalogo/${category.slug}`} className={linkClassName}>
-          {category.name}
-        </Link>
-      )}
-
-      {hasChildren ? (
-        <motion.div
-          initial={false}
-          animate={
-            isOpen
-              ? { opacity: 1, y: 0, pointerEvents: 'auto' }
-              : { opacity: 0, y: -8, pointerEvents: 'none' }
-          }
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="border-brand-line bg-brand-pearl/95 absolute top-full left-1/2 mt-3 w-48 -translate-x-1/2 rounded-xl border p-2 shadow-xl backdrop-blur-md"
-          role="menu"
-          aria-label={`Subcategorías de ${category.name}`}
-        >
-          {category.children.map((child) => (
-            <Link
-              key={child.id}
-              href={`/catalogo/${category.slug}/${child.slug}`}
-              role="menuitem"
-              onClick={onClose}
-              className="text-brand-text-soft hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold block rounded-lg px-4 py-2.5 font-body text-[13px] font-light tracking-[0.08em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
-            >
-              {child.name}
-            </Link>
-          ))}
-        </motion.div>
-      ) : null}
-    </div>
+      const [key, value] = hrefQuery.split('=');
+      return searchParams.get(key) === value;
+    },
+    [pathname, searchParams],
   );
 }
 
@@ -135,10 +45,7 @@ interface HeaderProps {
 }
 
 export function Header({ categories, announcementText, announcementActive }: HeaderProps) {
-  const NAV_CATEGORIES = React.useMemo(
-    () => toNavCategories(categories),
-    [categories],
-  );
+  const isSectionActive = useIsSectionActive();
   const { scrollY } = usePageScroll();
   // Lazily read the CURRENT scroll position instead of hardcoding `false`.
   // Header remounts fresh every time SiteChrome swaps between a chrome-less
@@ -148,7 +55,6 @@ export function Header({ categories, announcementText, announcementActive }: Hea
   // the next scroll `change` event corrected it, producing a visible
   // flash/seam of page content behind the sticky header.
   const [scrolled, setScrolled] = React.useState(() => scrollY.get() > 20);
-  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -167,24 +73,6 @@ export function Header({ categories, announcementText, announcementActive }: Hea
 
     return unsubscribe;
   }, []);
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        headerRef.current &&
-        !headerRef.current.contains(event.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const toggleMenu = (id: string) => {
-    setOpenMenuId((prev) => (prev === id ? null : id));
-  };
 
   const rawCartItemCount = useCartStore((state) => state.getItemCount());
   const cartItemCount = mounted ? rawCartItemCount : 0;
@@ -278,24 +166,37 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             </span>
           </Link>
 
+          {/* Four short intent links instead of eight category names is what
+              buys back the readable type size: 14px with 0.16em tracking now
+              fits comfortably alongside the logo and the icon cluster. */}
           <nav
-            className="hidden items-center gap-4 lg:flex"
+            className="hidden items-center gap-7 lg:flex xl:gap-9"
             aria-label="Menú principal"
           >
-            {NAV_CATEGORIES.map((category) => (
-              <MegaMenu
-                key={category.id}
-                category={category}
-                isOpen={openMenuId === category.id}
-                onToggle={() => toggleMenu(category.id)}
-                onClose={() => setOpenMenuId(null)}
-              />
-            ))}
+            {NAV_SECTIONS.map(({ label, href }) => {
+              const active = isSectionActive(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'focus-visible:ring-brand-gold relative rounded-sm py-1 font-body text-sm font-light whitespace-nowrap tracking-[0.16em] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+                    'after:bg-brand-gold after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-300 after:content-[""]',
+                    active
+                      ? 'text-brand-gold-deep after:scale-x-100'
+                      : 'text-brand-text hover:text-brand-gold-deep after:scale-x-0 hover:after:scale-x-100',
+                  )}
+                >
+                  {label}
+                </Link>
+              );
+            })}
             <Link
-              href="/mayoristas"
-              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-3.5 py-1.5 font-body text-[11px] font-normal tracking-[0.12em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              href={WHOLESALE_SECTION.href}
+              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-[13px] font-normal tracking-[0.14em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
-              {WHOLESALE_LABEL}
+              {WHOLESALE_SECTION.label}
             </Link>
           </nav>
 
@@ -341,7 +242,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
       <MobileNav
         isOpen={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
-        categories={NAV_CATEGORIES}
+        categories={categories}
         cartItemCount={cartItemCount}
         onSearchClick={() => setSearchOpen(true)}
       />

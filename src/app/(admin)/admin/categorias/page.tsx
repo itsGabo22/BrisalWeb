@@ -1,10 +1,56 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Edit, Trash2, Folder, ChevronDown, ChevronRight } from 'lucide-react';
+import NextImage from 'next/image';
+import { Plus, Edit, Trash2, Folder, ChevronDown, ChevronRight, ImageIcon, X } from 'lucide-react';
 import type { Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+
+/**
+ * Shows the pending upload if there is one, otherwise the stored image,
+ * otherwise a placeholder. The object URL for a pending file is revoked on
+ * change/unmount so repeatedly re-picking a file doesn't leak blobs.
+ */
+function CategoryImagePreview({
+  file,
+  storedUrl,
+}: {
+  file: File | null;
+  storedUrl: string | null;
+}) {
+  // Derived during render rather than pushed into state from an effect, so the
+  // preview is correct on the first paint after a pick. The effect exists only
+  // to revoke the previous URL once React has swapped it out.
+  const objectUrl = React.useMemo(
+    () => (file ? URL.createObjectURL(file) : null),
+    [file],
+  );
+
+  React.useEffect(() => {
+    if (!objectUrl) return;
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [objectUrl]);
+
+  const preview = objectUrl ?? storedUrl;
+
+  return (
+    <div className="relative h-32 w-24 shrink-0 overflow-hidden rounded-lg border border-brand-neutral-200 bg-brand-neutral-50 dark:border-brand-neutral-800 dark:bg-brand-neutral-900">
+      {preview ? (
+        // A plain <img> for the pending blob: URL.createObjectURL output is not
+        // something next/image can optimize, and the stored URL renders the
+        // same way here for consistency.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={preview} alt="Vista previa de la categoría" className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-brand-neutral-400">
+          <ImageIcon className="size-5" aria-hidden="true" />
+          <span className="text-[10px]">Sin imagen</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminCategoriasPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
@@ -18,7 +64,16 @@ export default function AdminCategoriasPage() {
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [parentId, setParentId] = React.useState('');
-  
+  // Showcase image. Three states matter and they are NOT the same thing:
+  //   imageFile set          → a new upload replaces whatever is stored
+  //   removeImage true       → explicitly clear the stored image
+  //   neither                → leave the stored image completely alone
+  // The third case is why the form omits `imageUrl` from the body entirely —
+  // see the existing-image fallback in the PATCH route.
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [removeImage, setRemoveImage] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   // UI states for tree expansion
   const [expandedIds, setExpandedIds] = React.useState<Record<string, boolean>>({});
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -54,6 +109,8 @@ export default function AdminCategoriasPage() {
     setName('');
     setDescription('');
     setParentId(parentCatId || '');
+    setImageFile(null);
+    setRemoveImage(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -63,6 +120,8 @@ export default function AdminCategoriasPage() {
     setName(cat.name);
     setDescription(cat.description || '');
     setParentId(cat.parentId || '');
+    setImageFile(null);
+    setRemoveImage(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -99,22 +158,25 @@ export default function AdminCategoriasPage() {
     setIsSubmitting(true);
     setFormError(null);
 
-    const payload = {
-      name,
-      description: description.trim() || null,
-      parentId: parentId || null,
-      imageUrl: null,
-    };
+    const formData = new FormData();
+    formData.set('name', name);
+    formData.set('description', description.trim());
+    formData.set('parentId', parentId);
+
+    if (imageFile) {
+      formData.set('imageFile', imageFile);
+    } else if (removeImage) {
+      // Empty string is the explicit "clear it" signal; omitting the key
+      // entirely is what preserves the stored image.
+      formData.set('imageUrl', '');
+    }
 
     try {
       const url = editingCategory ? `/api/admin/categorias/${editingCategory.id}` : '/api/admin/categorias';
       const method = editingCategory ? 'PATCH' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // No Content-Type header: the browser has to set the multipart boundary.
+      const res = await fetch(url, { method, body: formData });
 
       if (!res.ok) {
         const errData = await res.json();
@@ -158,8 +220,20 @@ export default function AdminCategoriasPage() {
               <div className="size-4" />
             )}
 
-            <Folder className="size-4 text-brand-gold flex-shrink-0" />
-            
+            {cat.imageUrl ? (
+              <span className="relative block h-9 w-7 shrink-0 overflow-hidden rounded border border-brand-neutral-200 dark:border-brand-neutral-800">
+                <NextImage
+                  src={cat.imageUrl}
+                  alt=""
+                  fill
+                  sizes="28px"
+                  className="object-cover"
+                />
+              </span>
+            ) : (
+              <Folder className="size-4 text-brand-gold flex-shrink-0" />
+            )}
+
             <div>
               <span className="font-semibold text-brand-neutral-800 dark:text-brand-neutral-200 text-sm">
                 {cat.name}
@@ -310,6 +384,76 @@ export default function AdminCategoriasPage() {
                 No puedes asignar un padre a una categoría que ya tiene subcategorías.
               </p>
             )}
+          </div>
+
+          {/* ── Showcase image ─────────────────────────────────────── */}
+          <div>
+            <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+              Imagen de la categoría
+            </label>
+            <p className="mb-2 text-xs text-brand-neutral-400">
+              Se muestra en la sección “Categorías” de la portada. Vertical (3:4) da mejor resultado.
+            </p>
+
+            <div className="flex items-start gap-4">
+              <CategoryImagePreview
+                file={imageFile}
+                storedUrl={removeImage ? null : editingCategory?.imageUrl ?? null}
+              />
+
+              <div className="flex-1 space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setImageFile(file);
+                    if (file) setRemoveImage(false);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {imageFile || (editingCategory?.imageUrl && !removeImage)
+                    ? 'Cambiar imagen'
+                    : 'Subir imagen'}
+                </Button>
+
+                {imageFile && (
+                  <p className="truncate text-xs text-brand-neutral-500">
+                    {imageFile.name}
+                  </p>
+                )}
+
+                {(imageFile || (editingCategory?.imageUrl && !removeImage)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                      // Only an already-STORED image needs the removal flag; a
+                      // not-yet-uploaded pick just gets dropped.
+                      setRemoveImage(Boolean(editingCategory?.imageUrl));
+                    }}
+                    className="flex items-center gap-1 text-xs text-brand-neutral-500 transition-colors hover:text-red-500"
+                  >
+                    <X className="size-3" aria-hidden="true" />
+                    Quitar imagen
+                  </button>
+                )}
+
+                {removeImage && (
+                  <p className="text-xs text-amber-600">
+                    Se eliminará la imagen actual al guardar.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
         </form>

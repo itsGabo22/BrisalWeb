@@ -4,6 +4,7 @@ import {
   HeroSection,
   TrustBar,
   CategoryBar,
+  CategoryShowcase,
   BrandStatement,
   ProductShowcaseSection,
   WholesaleCallout,
@@ -45,6 +46,11 @@ export default async function HomePage() {
       <TrustBar />
       <CategoryBar categories={rootCategories} />
       <BrandStatement />
+      {/* Categorías sits between the brand statement and the product rails:
+          the visitor is told what Brisal is, then given the shape of the
+          catalog, then shown individual pieces. It also replaces the
+          discovery path that categories lost when they left the top nav. */}
+      <CategoryShowcase categories={rootCategories} />
       <ProductShowcaseSection
         eyebrow="Recién llegado"
         title="Novedades"

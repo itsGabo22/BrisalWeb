@@ -5,5 +5,6 @@ export { ProductShowcaseSection } from './ProductShowcaseSection';
 export { WholesaleCallout } from './WholesaleCallout';
 export { CategoryIcon } from './CategoryIcon';
 export { CategoryBar } from './CategoryBar';
+export { CategoryShowcase } from './CategoryShowcase';
 export { PromoPopup } from './PromoPopup';
 
