@@ -73,16 +73,16 @@ function MayoristaLoginForm() {
       <div className="w-full max-w-md">
         <Link
           href="/"
-          className="mb-6 inline-block font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
+          className="mb-6 inline-block font-body text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
         >
           ← Volver al inicio
         </Link>
 
         <div className="rounded-2xl border border-brand-neutral-100 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
-          <h1 className="mb-2 font-serif text-2xl font-semibold text-brand-neutral-900">
+          <h1 className="mb-2 font-heading text-2xl font-normal text-brand-text">
             Acceso Mayorista
           </h1>
-          <p className="mb-8 font-sans text-sm text-brand-neutral-600">
+          <p className="mb-8 font-body text-sm text-brand-neutral-600">
             Ingresa con tu correo y contraseña.
           </p>
 
@@ -127,7 +127,7 @@ function MayoristaLoginForm() {
                 className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
-                <p className="font-sans text-sm font-medium text-red-800">{error}</p>
+                <p className="font-body text-sm font-medium text-red-800">{error}</p>
               </div>
             )}
 
@@ -151,11 +151,11 @@ function MayoristaLoginForm() {
           </form>
         </div>
 
-        <p className="mt-6 text-center font-sans text-sm text-brand-neutral-500">
+        <p className="mt-6 text-center font-body text-sm text-brand-neutral-500">
           ¿Aún no tienes cuenta?{' '}
           <Link
             href="/registro-mayorista"
-            className="font-semibold text-brand-gold hover:underline"
+            className="font-medium text-brand-gold hover:underline"
           >
             Registrarme
           </Link>
@@ -163,7 +163,7 @@ function MayoristaLoginForm() {
 
         <Link
           href="/"
-          className="mt-8 block text-center font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
+          className="mt-8 block text-center font-body text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
         >
           ← Volver al inicio
         </Link>

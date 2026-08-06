@@ -31,7 +31,7 @@ export function SubcategoryChips({
               href={`/catalogo/${parentSlug}/${subcategory.slug}`}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'whitespace-nowrap rounded-full border px-4 py-2 font-sans text-xs font-semibold transition-colors',
+                'whitespace-nowrap rounded-full border px-4 py-2 font-body text-xs font-medium transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2',
                 isActive
                   ? 'border-brand-gold bg-brand-gold text-brand-neutral-900'

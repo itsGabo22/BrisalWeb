@@ -33,10 +33,10 @@ export default function ContactoPage() {
           {/* ── Left column: contact info (40%) ─────────────────────── */}
           <aside className="flex flex-col gap-8 lg:w-2/5">
             <div>
-              <h2 className="font-serif text-2xl font-semibold text-brand-neutral-900">
+              <h2 className="font-heading text-2xl font-normal text-brand-text">
                 Información de contacto
               </h2>
-              <p className="mt-2 font-sans text-sm text-brand-neutral-600">
+              <p className="mt-2 font-body text-sm text-brand-neutral-600">
                 Puedes escribirnos directamente o usar el formulario. Te
                 responderemos a la brevedad.
               </p>
@@ -51,12 +51,12 @@ export default function ContactoPage() {
                   />
                 </span>
                 <div>
-                  <p className="font-sans text-xs font-semibold uppercase tracking-widest text-brand-neutral-500">
+                  <p className="font-body text-xs font-medium uppercase tracking-widest text-brand-neutral-500">
                     Email
                   </p>
                   <a
                     href={`mailto:${CONTACT_EMAIL}`}
-                    className="mt-0.5 font-sans text-sm text-brand-neutral-800 hover:text-brand-gold transition-colors break-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="mt-0.5 font-body text-sm text-brand-neutral-800 hover:text-brand-gold transition-colors break-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                   >
                     {CONTACT_EMAIL}
                   </a>
@@ -71,14 +71,14 @@ export default function ContactoPage() {
                   />
                 </span>
                 <div>
-                  <p className="font-sans text-xs font-semibold uppercase tracking-widest text-brand-neutral-500">
+                  <p className="font-body text-xs font-medium uppercase tracking-widest text-brand-neutral-500">
                     Teléfono / WhatsApp
                   </p>
                   <a
                     href={`https://wa.me/${CONTACT_PHONE.replace(/[^0-9]/g, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-0.5 font-sans text-sm text-brand-neutral-800 hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="mt-0.5 font-body text-sm text-brand-neutral-800 hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                   >
                     {CONTACT_PHONE}
                   </a>
@@ -93,17 +93,17 @@ export default function ContactoPage() {
                   />
                 </span>
                 <div>
-                  <p className="font-sans text-xs font-semibold uppercase tracking-widest text-brand-neutral-500">
+                  <p className="font-body text-xs font-medium uppercase tracking-widest text-brand-neutral-500">
                     Tiempo de respuesta
                   </p>
-                  <p className="mt-0.5 font-sans text-sm text-brand-neutral-800">
+                  <p className="mt-0.5 font-body text-sm text-brand-neutral-800">
                     Respondemos en menos de 24 horas
                   </p>
                 </div>
               </li>
             </ul>
 
-            <p className="rounded-lg border border-brand-gold/20 bg-brand-gold/5 px-4 py-3 font-sans text-sm text-brand-neutral-700">
+            <p className="rounded-lg border border-brand-gold/20 bg-brand-gold/5 px-4 py-3 font-body text-sm text-brand-neutral-700">
               También puedes escribirnos directamente por WhatsApp usando el
               botón flotante en la esquina inferior derecha.
             </p>
@@ -111,7 +111,7 @@ export default function ContactoPage() {
 
           {/* ── Right column: form (60%) ─────────────────────────────── */}
           <div className="lg:w-3/5">
-            <h2 className="font-serif text-2xl font-semibold text-brand-neutral-900 mb-6">
+            <h2 className="font-heading text-2xl font-normal text-brand-text mb-6">
               Envíanos un mensaje
             </h2>
             <ContactForm />

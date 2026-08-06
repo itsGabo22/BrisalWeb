@@ -30,7 +30,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
       />
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         {!query ? (
-          <p className="py-24 text-center font-sans text-sm text-brand-neutral-400">
+          <p className="py-24 text-center font-body text-sm text-brand-neutral-400">
             Escribe algo para buscar.
           </p>
         ) : (

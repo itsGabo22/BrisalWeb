@@ -56,9 +56,13 @@ function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
+  // Light weight + wide tracking is what gives the nav its airy, Cornalina-ish
+  // read. The type size drops to 12px to pay for that tracking: this nav
+  // carries eight Spanish category names plus the Mayorista pill, and at the
+  // previous 14px the tracked-out labels ran into the BRISAL logo at 1440px.
   const linkClassName = cn(
-    'flex items-center gap-1 rounded-sm px-1 py-0.5 font-sans text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2',
-    'text-brand-neutral-700 hover:text-brand-gold',
+    'flex items-center gap-1.5 rounded-sm px-1 py-0.5 font-body text-xs font-light tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2',
+    'text-brand-text hover:text-brand-gold-deep',
   );
 
   return (
@@ -103,7 +107,7 @@ function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
               : { opacity: 0, y: -8, pointerEvents: 'none' }
           }
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="border-brand-neutral-200/60 bg-brand-pearl/95 absolute top-full left-1/2 mt-3 w-48 -translate-x-1/2 rounded-xl border p-2 shadow-xl backdrop-blur-md"
+          className="border-brand-line bg-brand-pearl/95 absolute top-full left-1/2 mt-3 w-48 -translate-x-1/2 rounded-xl border p-2 shadow-xl backdrop-blur-md"
           role="menu"
           aria-label={`Subcategorías de ${category.name}`}
         >
@@ -113,7 +117,7 @@ function MegaMenu({ category, isOpen, onToggle, onClose }: MegaMenuProps) {
               href={`/catalogo/${category.slug}/${child.slug}`}
               role="menuitem"
               onClick={onClose}
-              className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold block rounded-lg px-4 py-2.5 font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="text-brand-text-soft hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold block rounded-lg px-4 py-2.5 font-body text-[13px] font-light tracking-[0.08em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               {child.name}
             </Link>
@@ -189,8 +193,8 @@ export function Header({ categories, announcementText, announcementActive }: Hea
     <>
       {announcementActive && announcementText && (
         <div
-          className="w-full px-4 py-2 text-center font-sans text-xs font-medium uppercase tracking-wider"
-          style={{ backgroundColor: '#C9A96E', color: '#1F1E1B' }}
+          className="w-full px-4 py-2 text-center font-body text-[11px] font-light uppercase tracking-[0.2em]"
+          style={{ backgroundColor: '#C9A96E', color: '#2A2521' }}
           role="banner"
           aria-label="Anuncio de la tienda"
         >
@@ -202,14 +206,13 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         ref={headerRef}
         animate={
           scrolled
-            ? { backgroundColor: 'rgba(250, 248, 245, 0.88)' }
-            : { backgroundColor: 'rgba(250, 248, 245, 0)' }
+            ? { backgroundColor: 'rgba(250, 247, 242, 0.9)' }
+            : { backgroundColor: 'rgba(250, 247, 242, 0)' }
         }
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={cn(
           'sticky top-0 z-30 w-full transition-shadow',
-          scrolled &&
-            'border-brand-neutral-200/50 border-b shadow-sm backdrop-blur-lg',
+          scrolled && 'border-brand-line border-b shadow-sm backdrop-blur-lg',
         )}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
         aria-label="Navegación principal"
@@ -217,7 +220,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Mobile: hamburger left */}
           <button
-            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
+            className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Abrir menú"
             aria-expanded={mobileNavOpen}
@@ -248,12 +251,12 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-neutral-900 font-serif text-lg font-bold tracking-widest"
+              className="text-brand-text font-heading text-lg font-normal tracking-widest"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold font-sans text-[9px] font-semibold tracking-[0.35em] uppercase">
+            <span className="text-brand-gold-deep font-body text-[9px] font-normal tracking-[0.35em] uppercase">
               BY SALVADOR
             </span>
           </Link>
@@ -265,12 +268,12 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-neutral-900 font-serif text-lg font-bold tracking-widest"
+              className="text-brand-text font-heading text-lg font-normal tracking-widest"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold font-sans text-[9px] font-semibold tracking-[0.35em] uppercase">
+            <span className="text-brand-gold-deep font-body text-[9px] font-normal tracking-[0.35em] uppercase">
               BY SALVADOR
             </span>
           </Link>
@@ -290,7 +293,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             ))}
             <Link
               href="/mayoristas"
-              className="border-brand-gold/40 text-brand-gold hover:bg-brand-gold hover:text-brand-neutral-900 focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-sans text-sm font-semibold tracking-wide transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-3.5 py-1.5 font-body text-[11px] font-normal tracking-[0.12em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               {WHOLESALE_LABEL}
             </Link>
@@ -315,7 +318,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             <Link
               href="/carrito"
               aria-label={`Carrito (${cartItemCount} artículos)`}
-              className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold active:scale-95 relative flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 focus-visible:ring-2 focus-visible:outline-none"
+              className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold active:scale-95 relative flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 focus-visible:ring-2 focus-visible:outline-none"
             >
               <ShoppingBag size={18} />
               {cartItemCount > 0 && (
@@ -324,7 +327,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
                   initial={{ scale: 1 }}
                   animate={{ scale: [1, 1.3, 1] }}
                   transition={{ duration: 0.3 }}
-                  className="bg-brand-gold text-brand-neutral-900 absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
+                  className="bg-brand-gold text-brand-text absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-medium"
                   aria-hidden="true"
                 >
                   {cartItemCount}
@@ -362,7 +365,7 @@ function HeaderIconButton({
   className?: string;
 }) {
   const sharedClassName = cn(
-    'text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
+    'text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
     className,
   );
 

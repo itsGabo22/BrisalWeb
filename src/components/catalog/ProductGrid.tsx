@@ -73,7 +73,7 @@ export function ProductGrid({
           <line x1="11" y1="8" x2="11" y2="14" />
           <line x1="8" y1="11" x2="14" y2="11" />
         </svg>
-        <p className="font-sans text-sm text-brand-neutral-400">{emptyMessage}</p>
+        <p className="font-body text-sm text-brand-neutral-400">{emptyMessage}</p>
       </div>
     );
   }

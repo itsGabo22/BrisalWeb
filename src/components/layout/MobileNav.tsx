@@ -127,7 +127,7 @@ export function MobileNav({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-brand-text/35 backdrop-blur-sm lg:hidden"
             aria-hidden="true"
             onClick={onClose}
           />
@@ -148,21 +148,21 @@ export function MobileNav({
           >
             {/* ── Header strip ──────────────────────────── */}
             <div
-              className="border-brand-neutral-200 flex items-center justify-between border-b px-6 py-4"
+              className="border-brand-line flex items-center justify-between border-b px-6 py-4"
               style={{ backgroundColor: '#C9A96E' }}
             >
               <div className="flex flex-col leading-none">
-                <span className="text-brand-neutral-900 font-serif text-base font-bold tracking-widest">
+                <span className="text-brand-text font-heading text-base font-normal tracking-widest">
                   BRISAL
                 </span>
-                <span className="text-brand-neutral-800 font-sans text-[8px] font-semibold tracking-[0.35em] uppercase">
+                <span className="text-brand-text font-body text-[8px] font-normal tracking-[0.35em] uppercase">
                   BY SALVADOR
                 </span>
               </div>
               <button
                 onClick={onClose}
                 aria-label="Cerrar menú"
-                className="text-brand-neutral-800 hover:bg-brand-neutral-900/10 focus-visible:ring-brand-neutral-900 flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                className="text-brand-text hover:bg-brand-text/10 focus-visible:ring-brand-text flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>
@@ -179,7 +179,7 @@ export function MobileNav({
                     <Link
                       href={`/catalogo/${cat.slug}`}
                       onClick={handleLinkClick}
-                      className="text-brand-neutral-800 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex w-full items-center rounded-lg px-4 py-3 font-sans text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                      className="text-brand-text hover:bg-brand-cream hover:text-brand-gold-deep focus-visible:ring-brand-gold flex w-full items-center rounded-lg px-4 py-3 font-body text-sm font-light tracking-[0.1em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
                     >
                       {cat.name}
                     </Link>
@@ -192,10 +192,10 @@ export function MobileNav({
                       }
                       aria-expanded={expandedId === cat.id}
                       className={cn(
-                        'focus-visible:ring-brand-gold flex w-full items-center justify-between rounded-lg px-4 py-3 font-sans text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none',
+                        'focus-visible:ring-brand-gold flex w-full items-center justify-between rounded-lg px-4 py-3 font-body text-sm font-light tracking-[0.1em] transition-colors focus-visible:ring-2 focus-visible:outline-none',
                         expandedId === cat.id
-                          ? 'bg-brand-gold/10 text-brand-gold'
-                          : 'text-brand-neutral-800 hover:bg-brand-neutral-100 hover:text-brand-gold',
+                          ? 'bg-brand-gold/10 text-brand-gold-deep'
+                          : 'text-brand-text hover:bg-brand-cream hover:text-brand-gold-deep',
                       )}
                     >
                       {cat.name}
@@ -223,7 +223,7 @@ export function MobileNav({
                               key={child.id}
                               href={`/catalogo/${cat.slug}/${child.slug}`}
                               onClick={handleLinkClick}
-                              className="text-brand-neutral-600 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold block rounded-md px-3 py-2.5 font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                              className="text-brand-text-soft hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold block rounded-md px-3 py-2.5 font-body text-sm font-light tracking-[0.06em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
                             >
                               {child.name}
                             </Link>
@@ -239,20 +239,20 @@ export function MobileNav({
                 <Link
                   href="/mayoristas"
                   onClick={handleLinkClick}
-                  className="text-brand-gold border-brand-gold/40 hover:bg-brand-gold hover:text-brand-neutral-900 focus-visible:ring-brand-gold flex w-full items-center rounded-lg border px-4 py-3 font-sans text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  className="text-brand-gold-deep border-brand-gold/50 hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold flex w-full items-center rounded-lg border px-4 py-3 font-body text-sm font-normal tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
                   Mayorista
                 </Link>
               </div>
 
-              <div className="border-brand-neutral-200 space-y-0.5 border-t pt-4">
+              <div className="border-brand-line space-y-0.5 border-t pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onSearchClick();
                   }}
-                  className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  className="text-brand-text hover:bg-brand-cream hover:text-brand-gold-deep focus-visible:ring-brand-gold flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left font-body text-sm font-light tracking-[0.06em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <span aria-hidden="true">
                     <Search size={16} />
@@ -291,7 +291,7 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex items-center gap-3 rounded-lg px-4 py-3 font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className="text-brand-text hover:bg-brand-cream hover:text-brand-gold-deep focus-visible:ring-brand-gold flex items-center gap-3 rounded-lg px-4 py-3 font-body text-sm font-light tracking-[0.06em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
     >
       <span aria-hidden="true">{icon}</span>
       {label}

@@ -33,10 +33,10 @@ export default function MayoristaPendientePage() {
           <Clock className="size-6" aria-hidden="true" />
         </div>
 
-        <h1 className="mb-2 font-serif text-2xl font-semibold text-brand-neutral-900">
+        <h1 className="mb-2 font-heading text-2xl font-normal text-brand-text">
           Solicitud en revisión
         </h1>
-        <p className="mb-8 font-sans text-sm text-brand-neutral-600">
+        <p className="mb-8 font-body text-sm text-brand-neutral-600">
           Tu solicitud está siendo revisada por nuestro equipo. Te
           notificaremos por correo cuando tu cuenta mayorista sea aprobada.
         </p>
@@ -46,7 +46,7 @@ export default function MayoristaPendientePage() {
             href={`https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-3 font-sans text-sm font-semibold text-white transition-colors hover:bg-[#1ebe57]"
+            className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-3 font-body text-sm font-medium text-white transition-colors hover:bg-[#1ebe57]"
           >
             <MessageCircle className="size-4" aria-hidden="true" />
             Consultar por WhatsApp
@@ -67,7 +67,7 @@ export default function MayoristaPendientePage() {
 
       <Link
         href="/"
-        className="mt-8 font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
+        className="mt-8 font-body text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
       >
         ← Volver al inicio
       </Link>

@@ -55,7 +55,7 @@ export default async function MayoristasPage() {
     <main>
       {/* ── Hero corto ──────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden bg-brand-neutral-900 px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+        className="relative overflow-hidden bg-brand-sand px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8 lg:py-24"
         aria-labelledby="mayoristas-hero-heading"
       >
         {/* Subtle decorative gradient */}
@@ -64,21 +64,21 @@ export default async function MayoristasPage() {
           aria-hidden="true"
           style={{
             background:
-              'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(204,164,45,0.18) 0%, transparent 70%)',
+              'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,169,110,0.22) 0%, transparent 70%)',
           }}
         />
 
         <div className="relative mx-auto max-w-3xl">
-          <p className="mb-3 font-sans text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold">
+          <p className="mb-3 font-body text-xs font-medium uppercase tracking-[0.25em] text-brand-gold-deep">
             Programa exclusivo
           </p>
           <h1
             id="mayoristas-hero-heading"
-            className="font-serif text-4xl font-bold leading-tight text-brand-pearl sm:text-5xl"
+            className="font-heading text-4xl font-normal leading-tight text-brand-text sm:text-5xl"
           >
             Programa para Mayoristas
           </h1>
-          <p className="mt-4 font-sans text-base leading-relaxed text-brand-neutral-300 sm:text-lg">
+          <p className="mt-4 font-body text-base leading-relaxed text-brand-text-soft sm:text-lg">
             Accede a precios exclusivos y condiciones especiales para tu
             negocio.
           </p>
@@ -92,7 +92,7 @@ export default async function MayoristasPage() {
       >
         <h2
           id="mayoristas-benefits-heading"
-          className="mb-10 text-center font-serif text-3xl font-semibold text-brand-neutral-900"
+          className="mb-10 text-center font-heading text-3xl font-normal text-brand-text"
         >
           ¿Por qué ser mayorista Brisal?
         </h2>
@@ -101,15 +101,15 @@ export default async function MayoristasPage() {
           {BENEFITS.map(({ icon: Icon, title, description }) => (
             <article
               key={title}
-              className="flex flex-col items-center gap-4 rounded-xl border border-brand-neutral-100 bg-white p-8 text-center shadow-sm"
+              className="flex flex-col items-center gap-4 rounded-xl border border-brand-line bg-brand-pearl p-8 text-center shadow-sm"
             >
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
-                <Icon className="h-7 w-7 text-brand-gold" aria-hidden="true" />
+                <Icon className="h-7 w-7 text-brand-gold-deep" aria-hidden="true" />
               </span>
-              <h3 className="font-serif text-xl font-semibold text-brand-neutral-900">
+              <h3 className="font-heading text-xl font-normal text-brand-text">
                 {title}
               </h3>
-              <p className="font-sans text-sm leading-relaxed text-brand-neutral-600">
+              <p className="font-body text-sm leading-relaxed text-brand-text-soft">
                 {description}
               </p>
             </article>
@@ -119,18 +119,18 @@ export default async function MayoristasPage() {
 
       {/* ── Categorías que ofrecemos ───────────────────────────────── */}
       <section
-        className="border-y border-brand-neutral-100 bg-brand-neutral-50/50 py-14 lg:py-20"
+        className="border-y border-brand-line bg-brand-sand/60 py-14 lg:py-20"
         aria-labelledby="mayoristas-categories-heading"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
             <h2
               id="mayoristas-categories-heading"
-              className="font-serif text-3xl font-semibold text-brand-neutral-900"
+              className="font-heading text-3xl font-normal text-brand-text"
             >
               Nuestras categorías de productos
             </h2>
-            <p className="mt-3 font-sans text-sm text-brand-neutral-600">
+            <p className="mt-3 font-body text-sm text-brand-text-soft">
               Contamos con una amplia variedad de accesorios premium disponibles para distribución.
             </p>
           </div>
@@ -143,9 +143,9 @@ export default async function MayoristasPage() {
                 <Link
                   key={category.id}
                   href={`/catalogo/${category.slug}`}
-                  className="group flex items-center gap-4 rounded-xl border border-brand-neutral-100 bg-white p-5 shadow-xs transition-all hover:border-brand-gold hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                  className="group flex items-center gap-4 rounded-xl border border-brand-line bg-brand-pearl p-5 shadow-xs transition-all hover:border-brand-gold hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                 >
-                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-neutral-50 transition-colors group-hover:bg-brand-gold/10">
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-cream transition-colors group-hover:bg-brand-gold/10">
                     {/* 
                       Note for Gabriel (USER): Please upload the PNG icons to 'public/icons/categories/cat-[slug].png'
                       Example: 'public/icons/categories/cat-aretes.png'
@@ -160,10 +160,10 @@ export default async function MayoristasPage() {
                   </div>
 
                   <div>
-                    <h3 className="font-serif text-base font-semibold text-brand-neutral-900 group-hover:text-brand-gold transition-colors">
+                    <h3 className="font-heading text-base font-normal text-brand-text group-hover:text-brand-gold-deep transition-colors">
                       {category.name}
                     </h3>
-                    <span className="font-sans text-[11px] text-brand-neutral-500 group-hover:text-brand-neutral-700 transition-colors">
+                    <span className="font-body text-[11px] text-brand-text-soft group-hover:text-brand-text transition-colors">
                       Ver catálogo &rarr;
                     </span>
                   </div>
@@ -180,14 +180,14 @@ export default async function MayoristasPage() {
         aria-labelledby="mayoristas-form-heading"
       >
         {/* White/pearl card for maximum form legibility — no glassmorphism per spec */}
-        <div className="rounded-2xl border border-brand-neutral-100 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
+        <div className="rounded-2xl border border-brand-line bg-brand-pearl px-6 py-8 shadow-sm sm:px-10 sm:py-10">
           <h2
             id="mayoristas-form-heading"
-            className="mb-2 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-2 font-heading text-2xl font-normal text-brand-text"
           >
             Solicita tu registro
           </h2>
-          <p className="mb-8 font-sans text-sm text-brand-neutral-600">
+          <p className="mb-8 font-body text-sm text-brand-text-soft">
             Crea tu cuenta mayorista. Nuestro equipo comercial revisará tu
             solicitud y habilitará tu acceso en un plazo máximo de 48 horas
             hábiles.

@@ -17,7 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="font-sans text-sm font-semibold text-brand-neutral-700 dark:text-brand-neutral-300"
+            className="font-body text-sm font-normal tracking-[0.04em] text-brand-text dark:text-brand-neutral-300"
           >
             {label}
           </label>
@@ -29,7 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             // text-base (16px) prevents iOS Safari's auto-zoom-on-focus for any input
             // under 16px; sm:text-sm restores the original compact size on desktop,
             // where that zoom behavior doesn't apply.
-            'flex h-10 w-full rounded-md border border-brand-neutral-200 bg-brand-pearl px-3 py-2 text-base sm:text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
+            'flex h-10 w-full rounded-md border border-brand-line bg-brand-pearl px-3 py-2 text-base sm:text-sm text-brand-text placeholder:text-brand-text-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
             error && 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500',
             className
           )}
@@ -37,7 +37,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {error && (
-          <p className="font-sans text-xs text-red-500 mt-0.5" id={`${inputId}-error`}>
+          <p className="font-body text-xs text-red-500 mt-0.5" id={`${inputId}-error`}>
             {error}
           </p>
         )}

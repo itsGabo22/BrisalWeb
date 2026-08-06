@@ -90,7 +90,7 @@ export function WholesaleNavIndicator() {
             href="/catalogo"
             role="menuitem"
             onClick={() => setMenuOpen(false)}
-            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold block rounded-lg px-4 py-2.5 font-sans text-sm transition-colors"
+            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold block rounded-lg px-4 py-2.5 font-body text-sm transition-colors"
           >
             Cuenta mayorista
           </Link>
@@ -101,7 +101,7 @@ export function WholesaleNavIndicator() {
               setMenuOpen(false);
               void logoutWholesaler(router);
             }}
-            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left font-sans text-sm transition-colors"
+            className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left font-body text-sm transition-colors"
           >
             <LogOut size={14} aria-hidden="true" />
             Cerrar sesión
@@ -124,7 +124,7 @@ export function WholesaleNavLink({ onClick }: { onClick: () => void }) {
       <Link
         href={href}
         onClick={onClick}
-        className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex items-center gap-3 rounded-lg px-4 py-3 font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex items-center gap-3 rounded-lg px-4 py-3 font-body text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
       >
         <span aria-hidden="true">
           <Icon size={16} />
@@ -139,7 +139,7 @@ export function WholesaleNavLink({ onClick }: { onClick: () => void }) {
             onClick();
             void logoutWholesaler(router);
           }}
-          className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left font-sans text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className="text-brand-neutral-700 hover:bg-brand-neutral-100 hover:text-brand-gold focus-visible:ring-brand-gold flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left font-body text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
           <span aria-hidden="true">
             <LogOut size={16} />

@@ -57,7 +57,7 @@ export function PromoPopup({ popup }: PromoPopupProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-text/35 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={popup.title ?? 'Oferta especial'}
@@ -75,7 +75,7 @@ export function PromoPopup({ popup }: PromoPopupProps) {
               type="button"
               onClick={handleClose}
               aria-label="Cerrar"
-              className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-white/90 text-brand-neutral-700 shadow-sm transition-colors hover:bg-white hover:text-brand-neutral-900 active:scale-95"
+              className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-brand-pearl/90 text-brand-text-soft shadow-sm transition-colors hover:bg-brand-pearl hover:text-brand-text active:scale-95"
             >
               <X className="size-4" />
             </button>
@@ -88,12 +88,12 @@ export function PromoPopup({ popup }: PromoPopupProps) {
 
             <div className="p-6 text-center">
               {popup.title && (
-                <h2 className="font-serif text-2xl font-semibold text-brand-neutral-900">
+                <h2 className="font-heading text-2xl font-normal text-brand-text">
                   {popup.title}
                 </h2>
               )}
               {popup.subtitle && (
-                <p className="mt-2 font-sans text-sm text-brand-neutral-600">{popup.subtitle}</p>
+                <p className="mt-2 font-body text-sm text-brand-text-soft">{popup.subtitle}</p>
               )}
               {popup.ctaHref && (
                 <Button asChild className="mt-6 w-full" onClick={handleClose}>

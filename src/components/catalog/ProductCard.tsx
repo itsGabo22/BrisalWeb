@@ -75,7 +75,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           />
         ) : (
           // Placeholder when no image is available
-          <div className="absolute inset-0 flex items-center justify-center bg-brand-neutral-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-brand-sand">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="40"
@@ -86,7 +86,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-brand-neutral-400"
+              className="text-brand-text-soft/60"
               aria-hidden="true"
             >
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -100,7 +100,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         <motion.div
           animate={{ opacity: hovered ? 1 : 0 }}
           transition={{ duration: 0.25 }}
-          className="absolute inset-0 bg-brand-neutral-900/20 pointer-events-none"
+          className="absolute inset-0 bg-brand-cream/25 pointer-events-none"
           aria-hidden="true"
         />
 
@@ -111,7 +111,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           className="absolute bottom-0 inset-x-0 flex justify-center pb-4 pointer-events-none"
           aria-hidden="true"
         >
-          <span className="pointer-events-none rounded-full bg-brand-pearl/90 backdrop-blur-sm px-5 py-2 font-sans text-xs font-semibold text-brand-neutral-900 shadow-md">
+          <span className="pointer-events-none rounded-full bg-brand-pearl/90 backdrop-blur-sm px-5 py-2 font-body text-xs font-medium tracking-wide text-brand-text shadow-md">
             Ver producto
           </span>
         </motion.div>
@@ -140,7 +140,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           aria-hidden="true"
           className="focus-visible:outline-none"
         >
-          <h3 className="font-serif text-sm font-semibold leading-snug text-brand-neutral-900 line-clamp-2">
+          <h3 className="font-heading text-sm font-normal leading-snug text-brand-text line-clamp-2">
             {product.name}
           </h3>
         </Link>
@@ -149,10 +149,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {showWholesalePrice ? (
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-2">
-              <span className="font-sans text-sm font-bold text-brand-gold">
+              <span className="font-body text-sm font-medium text-brand-gold-deep">
                 {formatCOP(product.wholesalePrice as number)}
               </span>
-              <span className="font-sans text-xs text-brand-neutral-400 line-through">
+              <span className="font-body text-xs text-brand-text-soft/70 line-through">
                 {formatCOP(product.price)}
               </span>
             </div>
@@ -164,15 +164,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <div className="flex items-baseline gap-2">
             <span
               className={cn(
-                'font-sans text-sm font-bold',
-                onSale ? 'text-brand-gold' : 'text-brand-neutral-800',
+                'font-body text-sm font-medium',
+                onSale ? 'text-brand-gold-deep' : 'text-brand-text',
               )}
             >
               {formatCOP(product.price)}
             </span>
 
             {onSale && product.comparePrice && (
-              <span className="font-sans text-xs text-brand-neutral-400 line-through">
+              <span className="font-body text-xs text-brand-text-soft/70 line-through">
                 {formatCOP(product.comparePrice)}
               </span>
             )}

@@ -12,7 +12,7 @@ export function BrandStatement() {
     <section
       ref={ref}
       aria-label="Declaración de marca"
-      className="bg-brand-pearl px-6 py-20 md:py-28"
+      className="bg-brand-cream px-6 py-20 md:py-28"
     >
       <motion.div
         initial={{ opacity: reducedMotion ? 1 : 0 }}
@@ -20,10 +20,10 @@ export function BrandStatement() {
         transition={{ duration: reducedMotion ? 0 : 1.5, ease: 'easeOut' }}
         className="mx-auto max-w-3xl text-center"
       >
-        <p className="font-serif text-[clamp(2rem,5vw,4rem)] leading-tight font-medium text-brand-neutral-900">
+        <p className="font-heading text-[clamp(2rem,5vw,4rem)] leading-tight font-normal text-brand-text">
           Cada pieza, una historia.
         </p>
-        <p className="mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-brand-neutral-600 md:text-lg">
+        <p className="mx-auto mt-6 max-w-xl font-body text-base leading-relaxed text-brand-text-soft md:text-lg">
           Accesorios en acero y rodio diseñados para acompañar cada momento
           especial.
         </p>

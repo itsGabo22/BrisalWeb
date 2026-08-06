@@ -42,7 +42,7 @@ export function ScrollToTopButton() {
       exit={{ opacity: 0, scale: 0.8 }}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.95 }}
-      className="fixed z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#1a1610] shadow-[0_4px_20px_rgba(201,169,110,0.4)] [-webkit-tap-highlight-color:transparent]"
+      className="fixed z-40 flex h-12 w-12 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-pearl shadow-[0_4px_18px_rgba(42,37,33,0.12)] [-webkit-tap-highlight-color:transparent]"
       aria-label="Volver arriba"
       style={{
         bottom: 'calc(6rem + env(safe-area-inset-bottom))',
@@ -51,7 +51,9 @@ export function ScrollToTopButton() {
     >
       {/* Gold fill ring — fills clockwise based on scroll progress */}
       <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r={RADIUS} fill="none" stroke="rgba(201,169,110,0.2)" strokeWidth="2" />
+        {/* Track sits on a white face now, so it uses the palette's line
+            colour rather than a translucent gold that would disappear. */}
+        <circle cx="24" cy="24" r={RADIUS} fill="none" stroke="#E5DDD2" strokeWidth="2" />
         <circle
           cx="24"
           cy="24"
@@ -72,14 +74,14 @@ export function ScrollToTopButton() {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(120deg, transparent 30%, rgba(232,213,176,0.4) 50%, transparent 70%)',
+              'linear-gradient(120deg, transparent 30%, rgba(201,169,110,0.28) 50%, transparent 70%)',
             backgroundSize: '200% 200%',
             animation: prefersReduced ? 'none' : 'brisalGoldSweep 3s ease-in-out infinite',
           }}
         />
       </span>
 
-      <ChevronUp className="relative z-10 h-5 w-5 text-[#E8D5B0]" />
+      <ChevronUp className="relative z-10 h-5 w-5 text-brand-gold-deep" />
     </motion.button>
   );
 }

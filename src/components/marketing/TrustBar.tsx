@@ -19,7 +19,7 @@ export function TrustBar() {
     <section
       ref={ref}
       aria-label="Beneficios de compra"
-      className="w-full bg-brand-gold py-5 text-brand-neutral-900"
+      className="w-full bg-brand-gold py-5 text-brand-text"
     >
       <motion.div
         initial={{ opacity: reducedMotion ? 1 : 0 }}
@@ -73,10 +73,10 @@ function TrustItem({
       className="flex min-w-[260px] shrink-0 items-center justify-center gap-2.5 md:min-w-0"
       aria-hidden={ariaHidden}
     >
-      <span className="font-serif text-sm text-brand-neutral-800" aria-hidden="true">
+      <span className="font-heading text-sm text-brand-text" aria-hidden="true">
         {'\u2726'}
       </span>
-      <p className="whitespace-nowrap font-sans text-sm font-medium uppercase tracking-wider md:whitespace-normal md:text-center">
+      <p className="whitespace-nowrap font-body text-[11px] font-light uppercase tracking-[0.18em] md:whitespace-normal md:text-center">
         {label}
       </p>
     </div>

@@ -8,19 +8,18 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
 
+// Placeholder washes shown when a category has no uploaded image. Each one is
+// a light tint of the palette rather than the near-black gradients these
+// replaced, so a category without artwork still reads as a light surface.
 const GRADIENT_BY_SLUG: Record<string, string> = {
-  aretes:
-    'bg-gradient-to-br from-brand-neutral-800 via-rose-900/80 to-brand-neutral-900',
-  collares:
-    'bg-gradient-to-br from-brand-neutral-800 via-brand-gold/40 to-brand-neutral-900',
+  aretes: 'bg-gradient-to-br from-brand-cream via-rose-100/70 to-brand-sand',
+  collares: 'bg-gradient-to-br from-brand-cream via-brand-gold/25 to-brand-sand',
   brazaletes:
-    'bg-gradient-to-br from-brand-neutral-800 via-emerald-950/70 to-brand-neutral-900',
-  belleza:
-    'bg-gradient-to-br from-brand-neutral-800 via-stone-700 to-brand-neutral-900',
+    'bg-gradient-to-br from-brand-cream via-emerald-100/60 to-brand-sand',
+  belleza: 'bg-gradient-to-br from-brand-cream via-stone-200/70 to-brand-sand',
 };
 
-const DEFAULT_GRADIENT =
-  'bg-gradient-to-br from-brand-neutral-800 to-brand-neutral-900';
+const DEFAULT_GRADIENT = 'bg-gradient-to-br from-brand-cream to-brand-sand';
 const SHOWCASE_SLUGS = ['aretes', 'collares', 'brazaletes', 'belleza'];
 
 export interface CategoryShowcaseProps {
@@ -71,17 +70,21 @@ function CategoryCard({ category, index }: CategoryCardProps) {
         }
         aria-hidden="true"
       />
+      {/* Replaces a flat black/50 wash. The copy sits at the bottom of the
+          card (justify-end), so a cream gradient anchored to the bottom edge
+          gives the text an opaque light backing while leaving the top ~55% of
+          the photograph completely unveiled. */}
       <div
-        className="absolute inset-0 bg-black/50 transition-colors duration-[400ms] group-hover:bg-black/40"
+        className="absolute inset-0 bg-gradient-to-t from-brand-cream via-brand-cream/80 via-45% to-transparent transition-opacity duration-[400ms] group-hover:opacity-90"
         aria-hidden="true"
       />
 
       <div className="relative flex h-full min-h-[320px] flex-col justify-end p-8 sm:min-h-[380px] sm:p-10">
-        <h3 className="font-serif text-3xl font-medium text-white sm:text-4xl">
+        <h3 className="font-heading text-3xl font-normal text-brand-text sm:text-4xl">
           {category.name}
         </h3>
         {category.description ? (
-          <p className="text-brand-neutral-200/90 mt-2 max-w-sm font-sans text-sm leading-relaxed sm:text-base">
+          <p className="text-brand-text-soft mt-2 max-w-sm font-body text-sm leading-relaxed sm:text-base">
             {category.description}
           </p>
         ) : null}
@@ -90,7 +93,7 @@ function CategoryCard({ category, index }: CategoryCardProps) {
             variant="ghost"
             size="md"
             asChild
-            className="hover:text-brand-gold-light border border-white/25 text-white hover:bg-white/10"
+            className="border border-brand-gold/40 bg-brand-pearl/70 text-brand-gold-deep hover:bg-brand-gold/15 hover:text-brand-gold-deep"
           >
             <Link href={`/catalogo/${category.slug}`}>Ver colección</Link>
           </Button>
@@ -114,7 +117,7 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
     <section
       ref={sectionRef}
       aria-labelledby="collections-heading"
-      className="bg-brand-pearl px-6 py-16 md:py-24"
+      className="bg-brand-cream px-6 py-16 md:py-24"
     >
       <motion.div
         initial={{ opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 16 }}
@@ -128,7 +131,7 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
         <div className="mb-12 text-center">
           <h2
             id="collections-heading"
-            className="text-brand-neutral-900 font-serif text-3xl font-medium md:text-4xl"
+            className="text-brand-text font-heading text-3xl font-normal md:text-4xl"
           >
             Nuestras Colecciones
           </h2>

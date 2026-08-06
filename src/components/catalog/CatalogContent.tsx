@@ -43,7 +43,7 @@ export function CatalogContent({
 
         <div className="min-w-0">
           <div className="mb-5 flex items-center justify-between gap-4">
-            <p className="font-sans text-xs text-brand-neutral-500" aria-live="polite">
+            <p className="font-body text-xs text-brand-neutral-500" aria-live="polite">
               {products.length} productos encontrados
             </p>
             <Button
@@ -113,7 +113,7 @@ function CatalogSidebar({
       <section aria-labelledby="catalog-filter-heading" className="space-y-4">
         <h2
           id="catalog-filter-heading"
-          className="font-serif text-base font-semibold text-brand-neutral-900"
+          className="font-heading text-base font-normal text-brand-text"
         >
           Filtrar por
         </h2>
@@ -123,7 +123,7 @@ function CatalogSidebar({
       <section aria-labelledby="catalog-category-heading" className="space-y-4">
         <h2
           id="catalog-category-heading"
-          className="font-serif text-base font-semibold text-brand-neutral-900"
+          className="font-heading text-base font-normal text-brand-text"
         >
           {'Ver todas las categor\u00edas'}
         </h2>
@@ -147,7 +147,7 @@ function CategoryTree({ categories, onNavigate }: CategoryTreeProps) {
             <Link
               href={`/catalogo/${category.slug}`}
               onClick={onNavigate}
-              className="block rounded-sm font-sans text-sm font-semibold text-brand-neutral-800 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+              className="block rounded-sm font-body text-sm font-medium text-brand-neutral-800 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
             >
               {category.name}
             </Link>
@@ -158,7 +158,7 @@ function CategoryTree({ categories, onNavigate }: CategoryTreeProps) {
                     <Link
                       href={`/catalogo/${category.slug}/${child.slug}`}
                       onClick={onNavigate}
-                      className="block rounded-sm py-1 font-sans text-sm text-brand-neutral-600 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                      className="block rounded-sm py-1 font-body text-sm text-brand-neutral-600 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                     >
                       {child.name}
                     </Link>
@@ -186,7 +186,7 @@ function EmptyCatalogState({ resetHref }: { resetHref: string }) {
       <div className="mb-5 flex size-14 items-center justify-center rounded-full border border-brand-gold/25 bg-brand-gold/10 text-brand-gold">
         <SearchX className="size-6" aria-hidden="true" />
       </div>
-      <h2 className="font-serif text-xl font-semibold text-brand-neutral-900">
+      <h2 className="font-heading text-xl font-normal text-brand-text">
         No encontramos productos con ese filtro
       </h2>
       <Button asChild className="mt-6" variant="primary">

@@ -74,7 +74,7 @@ export function WholesaleForm() {
           className="h-10 w-10 text-emerald-500"
           aria-hidden="true"
         />
-        <p className="font-sans text-base font-semibold text-emerald-800">
+        <p className="font-body text-base font-medium text-emerald-800">
           ✓ Tu cuenta fue creada. Nuestro equipo revisará tu solicitud antes
           de habilitar el acceso mayorista.
         </p>
@@ -196,13 +196,13 @@ export function WholesaleForm() {
             aria-hidden="true"
           />
           <div className="flex flex-col gap-1">
-            <p className="font-sans text-sm font-medium text-red-800">
+            <p className="font-body text-sm font-medium text-red-800">
               {errorMessage}
             </p>
             {isDuplicateEmail ? (
               <Link
                 href={`/login${submittedEmail ? `?email=${encodeURIComponent(submittedEmail)}` : ''}`}
-                className="font-sans text-xs font-semibold text-red-600 underline hover:text-red-800 text-left"
+                className="font-body text-xs font-medium text-red-600 underline hover:text-red-800 text-left"
               >
                 Inicia sesión →
               </Link>
@@ -210,7 +210,7 @@ export function WholesaleForm() {
               <button
                 type="button"
                 onClick={() => setStatus('idle')}
-                className="font-sans text-xs text-red-600 underline hover:text-red-800 text-left"
+                className="font-body text-xs text-red-600 underline hover:text-red-800 text-left"
               >
                 Intentar de nuevo
               </button>

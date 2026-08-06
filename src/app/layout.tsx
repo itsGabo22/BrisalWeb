@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Poppins, Playfair_Display } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -8,14 +8,23 @@ import { PageScrollProvider } from '@/hooks/usePageScroll';
 import { getCategoryNavigationTree } from '@/lib/repositories';
 import { prisma } from '@/lib/prisma';
 
-const inter = Inter({
-  variable: '--font-sans',
+// Body / nav / banner typeface. Poppins is a geometric sans built on true
+// circles, so it reads noticeably rounder and airier than the Inter it
+// replaces. It is NOT a variable font on Google Fonts, so the weights have to
+// be enumerated; 300/400 carry the "thin" default the design calls for and
+// 500/600 exist only for the few places hierarchy genuinely needs weight.
+// globals.css maps this to --font-body (and the --font-sans alias).
+const poppins = Poppins({
+  variable: '--font-poppins',
   subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
   display: 'swap',
 });
 
+// Section headings AND the hero "BRISAL" wordmark. Left on Playfair Display
+// on purpose — the wordmark treatment is signed off and must not move.
 const playfair = Playfair_Display({
-  variable: '--font-serif',
+  variable: '--font-playfair',
   subsets: ['latin'],
   display: 'swap',
 });
@@ -84,7 +93,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
+      className={`${poppins.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
     >
       {/*
         Layout decision — MobileNav state lives inside Header via local useState.
@@ -94,7 +103,7 @@ export default async function RootLayout({
         This can be migrated to a uiStore in Phase 2 if other components need to
         read or set the drawer state (e.g., a "quick-add" from a product card).
       */}
-      <body className="flex min-h-full flex-col bg-brand-pearl text-foreground overflow-x-clip">
+      <body className="flex min-h-full flex-col bg-brand-cream text-brand-text overflow-x-clip">
         <PageScrollProvider>
           <SiteChrome
             categories={categories}

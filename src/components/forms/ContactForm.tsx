@@ -61,10 +61,10 @@ export function ContactForm() {
           className="h-10 w-10 text-emerald-500"
           aria-hidden="true"
         />
-        <p className="font-sans text-base font-semibold text-emerald-800">
+        <p className="font-body text-base font-medium text-emerald-800">
           ✓ Tu mensaje fue enviado. Te responderemos pronto.
         </p>
-        <p className="font-sans text-sm text-emerald-700">
+        <p className="font-body text-sm text-emerald-700">
           Revisaremos tu mensaje y nos pondremos en contacto dentro de las
           próximas 24 horas.
         </p>
@@ -121,7 +121,7 @@ export function ContactForm() {
       <div className="flex w-full flex-col gap-1.5">
         <label
           htmlFor="contact-mensaje"
-          className="font-sans text-sm font-semibold text-brand-neutral-700"
+          className="font-body text-sm font-medium text-brand-neutral-700"
         >
           Mensaje *
         </label>
@@ -133,7 +133,7 @@ export function ContactForm() {
             errors.mensaje ? 'contact-mensaje-error' : undefined
           }
           className={[
-            'flex w-full resize-y rounded-md border bg-brand-pearl px-3 py-2 font-sans text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400',
+            'flex w-full resize-y rounded-md border bg-brand-pearl px-3 py-2 font-body text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold',
             'disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
             errors.mensaje
@@ -145,7 +145,7 @@ export function ContactForm() {
         {errors.mensaje && (
           <p
             id="contact-mensaje-error"
-            className="font-sans text-xs text-red-500"
+            className="font-body text-xs text-red-500"
           >
             {errors.mensaje.message}
           </p>
@@ -162,13 +162,13 @@ export function ContactForm() {
             aria-hidden="true"
           />
           <div className="flex flex-col gap-1">
-            <p className="font-sans text-sm font-medium text-red-800">
+            <p className="font-body text-sm font-medium text-red-800">
               {errorMessage}
             </p>
             <button
               type="button"
               onClick={() => setStatus('idle')}
-              className="font-sans text-xs text-red-600 underline hover:text-red-800 text-left"
+              className="font-body text-xs text-red-600 underline hover:text-red-800 text-left"
             >
               Intentar de nuevo
             </button>

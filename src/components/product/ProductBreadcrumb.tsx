@@ -42,7 +42,7 @@ export async function ProductBreadcrumb({ product }: ProductBreadcrumbProps) {
   return (
     <header className="border-b border-brand-gold/30 bg-brand-pearl">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-        <nav className="font-sans text-xs" aria-label="Breadcrumb">
+        <nav className="font-body text-xs" aria-label="Breadcrumb">
           <ol className="flex flex-wrap items-center gap-2 text-brand-neutral-500">
             {breadcrumbs.map((item, index) => {
               const isLast = index === breadcrumbs.length - 1;

@@ -63,11 +63,11 @@ const SOCIAL_LINKS = [
 export function Footer() {
   return (
     <footer
-      className="bg-brand-neutral-900 text-brand-neutral-300"
+      className="bg-brand-sand text-brand-text-soft"
       aria-label="Pie de página"
     >
       {/* ── Top divider line ────────────────────────────── */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-brand-gold/60 to-transparent" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
@@ -76,16 +76,16 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex flex-col leading-none">
               <span
-                className="font-serif text-xl font-bold tracking-widest text-brand-pearl"
+                className="font-heading text-xl font-normal tracking-widest text-brand-text"
                 style={{ letterSpacing: '0.2em' }}
               >
                 BRISAL
               </span>
-              <span className="font-sans text-[9px] font-semibold tracking-[0.35em] text-brand-gold uppercase mt-0.5">
+              <span className="font-body text-[9px] font-normal tracking-[0.35em] text-brand-gold-deep uppercase mt-0.5">
                 BY SALVADOR
               </span>
             </div>
-            <p className="font-sans text-sm text-brand-neutral-400 leading-relaxed max-w-xs">
+            <p className="font-body text-sm text-brand-text-soft leading-relaxed max-w-xs">
               Accesorios premium en acero y rodio. Elegancia atemporal para quienes aprecian los detalles.
             </p>
             {/* Social icons */}
@@ -95,7 +95,7 @@ export function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="flex items-center justify-center h-8 w-8 rounded-full border border-brand-neutral-700 text-brand-neutral-400 hover:border-brand-gold hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                  className="flex items-center justify-center h-8 w-8 rounded-full border border-brand-line bg-brand-pearl text-brand-text-soft hover:border-brand-gold hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                 >
                   {icon}
                 </a>
@@ -105,7 +105,7 @@ export function Footer() {
 
           {/* ── Col 2: Navegar ────────────────────────────── */}
           <div className="space-y-4">
-            <h3 className="font-sans text-xs font-bold tracking-[0.2em] text-brand-gold uppercase">
+            <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Navegar
             </h3>
             <ul className="space-y-2.5" role="list">
@@ -113,7 +113,7 @@ export function Footer() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="font-sans text-sm text-brand-neutral-400 hover:text-brand-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="font-body text-sm text-brand-text hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                   >
                     {label}
                   </Link>
@@ -124,7 +124,7 @@ export function Footer() {
 
           {/* ── Col 3: Legal ──────────────────────────────── */}
           <div className="space-y-4">
-            <h3 className="font-sans text-xs font-bold tracking-[0.2em] text-brand-gold uppercase">
+            <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Legal
             </h3>
             <ul className="space-y-2.5" role="list">
@@ -132,7 +132,7 @@ export function Footer() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="font-sans text-sm text-brand-neutral-400 hover:text-brand-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="font-body text-sm text-brand-text hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                   >
                     {label}
                   </Link>
@@ -143,14 +143,14 @@ export function Footer() {
 
           {/* ── Col 4: Contacto ───────────────────────────── */}
           <div className="space-y-4">
-            <h3 className="font-sans text-xs font-bold tracking-[0.2em] text-brand-gold uppercase">
+            <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Contacto
             </h3>
-            <ul className="space-y-2.5 font-sans text-sm text-brand-neutral-400" role="list">
+            <ul className="space-y-2.5 font-body text-sm text-brand-text" role="list">
               <li>
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="hover:text-brand-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm break-all"
+                  className="hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm break-all"
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -158,7 +158,7 @@ export function Footer() {
               <li>
                 <a
                   href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}
-                  className="hover:text-brand-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                  className="hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                 >
                   {CONTACT_PHONE}
                 </a>
@@ -168,11 +168,11 @@ export function Footer() {
         </div>
 
         {/* ── Bottom bar ──────────────────────────────────── */}
-        <div className="mt-12 border-t border-brand-neutral-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="font-sans text-xs text-brand-neutral-500">
+        <div className="mt-12 border-t border-brand-line pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="font-body text-xs text-brand-text-soft">
             © {COPYRIGHT_YEAR} Brisal by Salvador. Todos los derechos reservados.
           </p>
-          <p className="font-sans text-xs text-brand-neutral-600">
+          <p className="font-body text-xs text-brand-text-soft">
             Diseñado con elegancia
           </p>
         </div>

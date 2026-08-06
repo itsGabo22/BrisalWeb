@@ -16,14 +16,14 @@ export function WholesaleCallout() {
     <section
       ref={ref}
       aria-labelledby="wholesale-heading"
-      className="relative overflow-hidden bg-brand-neutral-900 px-6 py-20 md:py-28"
+      className="relative overflow-hidden bg-brand-sand px-6 py-20 md:py-28"
     >
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-neutral-900 via-[#0F0E0C] to-brand-neutral-800"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-cream via-brand-sand to-brand-sand"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,rgba(204,164,45,0.1),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,rgba(201,169,110,0.18),transparent)]"
         aria-hidden="true"
       />
 
@@ -38,15 +38,15 @@ export function WholesaleCallout() {
       >
         <Card
           glass
-          className="border-white/10 bg-white/5 px-8 py-12 text-center md:px-12 md:py-14"
+          className="border-brand-gold/25 bg-brand-pearl/80 px-8 py-12 text-center md:px-12 md:py-14"
         >
           <h2
             id="wholesale-heading"
-            className="font-serif text-3xl font-medium text-brand-neutral-50 md:text-4xl"
+            className="font-heading text-3xl font-normal text-brand-text md:text-4xl"
           >
             ¿Tienes un negocio?
           </h2>
-          <p className="mx-auto mt-4 max-w-md font-sans text-base leading-relaxed text-brand-neutral-300 md:text-lg">
+          <p className="mx-auto mt-4 max-w-md font-body text-base leading-relaxed text-brand-text-soft md:text-lg">
             Conoce nuestro programa para mayoristas y accede a precios
             exclusivos.
           </p>
@@ -58,7 +58,7 @@ export function WholesaleCallout() {
               variant="ghost"
               size="lg"
               asChild
-              className="border border-white/20 text-brand-neutral-100 hover:bg-white/10 hover:text-brand-gold-light"
+              className="border border-brand-gold/40 text-brand-gold-deep hover:bg-brand-gold/10 hover:text-brand-gold-deep"
             >
               <Link href="/mayoristas">Más información</Link>
             </Button>

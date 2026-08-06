@@ -5,10 +5,27 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* ── Brand tokens ────────────────────────────────── */
-  --color-brand-gold: #C9A96E;
+  /* ── Brand tokens — LIGHT palette ─────────────────
+     Nothing in this palette is a dark SURFACE. The only dark values
+     are the two text tokens (`brand-text` / `brand-text-soft`) and the
+     hero's photo overlay, which lives in HeroSection and is deliberately
+     excluded from this palette because it exists to keep the BRISAL
+     wordmark readable over client-uploaded jewelry photography. */
+  --color-brand-cream: #FAF7F2;      /* page background — warm off-white */
+  --color-brand-pearl: #FFFFFF;      /* cards / elevated surfaces */
+  --color-brand-sand: #F0E9E0;       /* subtle section alternation */
+  --color-brand-gold: #C9A96E;       /* accent — champagne gold, unchanged */
+  --color-brand-gold-soft: #D9C3A0;  /* lighter gold for hairlines/washes */
+  /* Champagne gold at 1.96:1 against cream is unreadable as text, so gold
+     TEXT on light surfaces uses this deeper draw of the same hue (~4.4:1)
+     while --color-brand-gold stays reserved for rules, borders and fills. */
+  --color-brand-gold-deep: #8A6A2F;
+  --color-brand-text: #2A2521;       /* TEXT ONLY — never a background */
+  --color-brand-text-soft: #6B6259;  /* secondary text / captions */
+  --color-brand-line: #E5DDD2;       /* borders / dividers */
+
+  /* Retained for the hero wordmark shimmer, which reads over dark photos. */
   --color-brand-gold-light: #E8D5B0;
-  --color-brand-pearl: #FAF8F5;
 
   /* ── Brand Neutrals Scale ────────────────────────── */
   --color-brand-neutral-50: #FAF9F6;
@@ -22,24 +39,43 @@
   --color-brand-neutral-800: #1F1E1B;
   --color-brand-neutral-900: #0F0E0D;
 
-  /* ── Semantic Badge Colors ───────────────────────── */
-  --color-badge-nuevo-bg: #FAF9F6;
-  --color-badge-nuevo-fg: #C9A96E;
-  --color-badge-vendido-bg: #0F0E0D;
-  --color-badge-vendido-fg: #E8D5B0;
+  /* ── Semantic Badge Colors ─────────────────────────
+     "vendido" and "mayorista" were near-black chips (#0F0E0D). They sat on
+     product photography as the only dark surfaces in the grid, so both are
+     now light chips that carry their meaning through hue and a deeper
+     foreground instead of through a dark fill. */
+  --color-badge-nuevo-bg: #FFFFFF;
+  --color-badge-nuevo-fg: #8A6A2F;
+  --color-badge-vendido-bg: #F0E9E0;
+  --color-badge-vendido-fg: #6E5423;
   --color-badge-oferta-bg: #F5E6E6;
   --color-badge-oferta-fg: #C13B3B;
   --color-badge-tendencia-bg: #EAE6F5;
   --color-badge-tendencia-fg: #6B4EAB;
-  --color-badge-mayorista-bg: #0F0E0D;
-  --color-badge-mayorista-fg: #C9A96E;
+  --color-badge-mayorista-bg: #F7EFE0;
+  --color-badge-mayorista-fg: #8A6A2F;
 
   /* ── shadcn/ui semantic colors ───────────────────── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+
+  /* ── Typography tokens ────────────────────────────
+     next/font declares three uniquely-named variables on <html>
+     (--font-poppins / --font-playfair / --font-geist-mono). Everything
+     below is a semantic alias onto those, so components only ever name a
+     ROLE (font-body, font-heading, font-wordmark) and never a typeface.
+     --font-sans / --font-serif are kept as aliases because the existing
+     components address them by those names.
+
+     --font-wordmark is deliberately pinned to Playfair Display: it is the
+     hero "BRISAL / by Salvador" lockup, which the client signed off on and
+     which must not move when the body typeface changes. */
+  --font-body: var(--font-poppins);
+  --font-heading: var(--font-playfair);
+  --font-wordmark: var(--font-playfair);
+  --font-sans: var(--font-poppins);
+  --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-serif);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -79,24 +115,27 @@
 }
 
 :root {
-  --background: oklch(0.98 0.003 80);
-  --foreground: oklch(0.175 0.01 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Bound to the light brand palette so the shadcn primitives inherit the
+     same cream/pearl/line values the brand tokens use, instead of drifting
+     to a separate neutral grey. */
+  --background: #FAF7F2;
+  --foreground: #2A2521;
+  --card: #FFFFFF;
+  --card-foreground: #2A2521;
+  --popover: #FFFFFF;
+  --popover-foreground: #2A2521;
+  --primary: #C9A96E;
+  --primary-foreground: #2A2521;
+  --secondary: #F0E9E0;
+  --secondary-foreground: #2A2521;
+  --muted: #F0E9E0;
+  --muted-foreground: #6B6259;
+  --accent: #F0E9E0;
+  --accent-foreground: #2A2521;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #E5DDD2;
+  --input: #E5DDD2;
+  --ring: #C9A96E;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -158,8 +197,11 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Poppins Light (300) is the site-wide default so the page reads thin and
+     airy by default and weight becomes something a component opts INTO for
+     hierarchy, rather than something it has to opt out of. */
   html {
-    @apply font-sans;
+    @apply font-body font-light;
   }
 
   /* WhatsApp button pulse — respects prefers-reduced-motion via motion-safe: class */

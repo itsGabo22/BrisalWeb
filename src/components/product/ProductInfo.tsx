@@ -111,12 +111,12 @@ export function ProductInfo({ product }: ProductInfoProps) {
       )}
 
       <div className="space-y-3">
-        <h1 className="font-serif text-3xl font-semibold leading-tight text-brand-neutral-900 sm:text-4xl">
+        <h1 className="font-heading text-3xl font-normal leading-tight text-brand-text sm:text-4xl">
           {product.name}
         </h1>
 
         {product.material && (
-          <p className="font-sans text-sm text-brand-neutral-500">
+          <p className="font-body text-sm text-brand-neutral-500">
             Material: {product.material}
           </p>
         )}
@@ -125,26 +125,26 @@ export function ProductInfo({ product }: ProductInfoProps) {
       <div className="flex flex-wrap items-center gap-3" aria-label="Precio">
         {showWholesalePrice ? (
           <>
-            <span className="font-sans text-sm text-brand-neutral-400 line-through">
+            <span className="font-body text-sm text-brand-neutral-400 line-through">
               {formatCOP(product.price)}
             </span>
-            <span className="font-sans text-2xl font-semibold text-brand-gold">
+            <span className="font-body text-2xl font-medium text-brand-gold">
               {formatCOP(product.wholesalePrice as number)}
             </span>
             <Badge variant="mayorista">Precio mayorista</Badge>
           </>
         ) : onSale && product.comparePrice ? (
           <>
-            <span className="font-sans text-sm text-brand-neutral-400 line-through">
+            <span className="font-body text-sm text-brand-neutral-400 line-through">
               {formatCOP(product.comparePrice)}
             </span>
-            <span className="font-sans text-2xl font-semibold text-brand-gold">
+            <span className="font-body text-2xl font-medium text-brand-gold">
               {formatCOP(product.price)}
             </span>
             <Badge variant="en-oferta">En oferta</Badge>
           </>
         ) : (
-          <span className="font-sans text-2xl font-semibold text-brand-neutral-900">
+          <span className="font-body text-2xl font-medium text-brand-neutral-900">
             {formatCOP(product.price)}
           </span>
         )}
@@ -153,7 +153,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
 
       {product.description && (
-        <p className="font-sans text-base leading-7 text-brand-neutral-600">
+        <p className="font-body text-base leading-7 text-brand-neutral-600">
           {product.description}
         </p>
       )}
@@ -161,7 +161,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       <div className="space-y-3">
         <label
           htmlFor="product-quantity"
-          className="font-sans text-sm font-medium text-brand-neutral-800"
+          className="font-body text-sm font-medium text-brand-neutral-800"
         >
           Cantidad
         </label>
@@ -181,7 +181,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
             inputMode="numeric"
             value={quantity}
             onChange={handleQuantityChange}
-            className="h-10 w-14 border-x border-brand-gold/40 bg-transparent text-center font-sans text-sm font-semibold text-brand-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            className="h-10 w-14 border-x border-brand-gold/40 bg-transparent text-center font-body text-sm font-medium text-brand-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
             aria-label="Cantidad"
           />
           <button
@@ -233,7 +233,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       {product.sku && (
-        <p className="font-sans text-xs text-brand-neutral-400">
+        <p className="font-body text-xs text-brand-neutral-400">
           Ref: {product.sku}
         </p>
       )}

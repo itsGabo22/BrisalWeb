@@ -14,32 +14,32 @@ export default function RegistroMayoristaPage() {
       <div className="w-full max-w-2xl">
         <Link
           href="/"
-          className="mb-6 inline-block font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
+          className="mb-6 inline-block font-body text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
         >
           ← Volver al inicio
         </Link>
 
         <div className="rounded-2xl border border-brand-neutral-100 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
-          <h1 className="mb-2 font-serif text-2xl font-semibold text-brand-neutral-900">
+          <h1 className="mb-2 font-heading text-2xl font-normal text-brand-text">
             Registro Mayorista
           </h1>
-          <p className="mb-8 font-sans text-sm text-brand-neutral-600">
+          <p className="mb-8 font-body text-sm text-brand-neutral-600">
             Crea tu cuenta para solicitar acceso mayorista. Nuestro equipo
             revisará tu solicitud antes de habilitar el acceso.
           </p>
           <WholesaleForm />
         </div>
 
-        <p className="mt-6 text-center font-sans text-sm text-brand-neutral-500">
+        <p className="mt-6 text-center font-body text-sm text-brand-neutral-500">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-semibold text-brand-gold hover:underline">
+          <Link href="/login" className="font-medium text-brand-gold hover:underline">
             Inicia sesión
           </Link>
         </p>
 
         <Link
           href="/"
-          className="mt-8 block text-center font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
+          className="mt-8 block text-center font-body text-sm text-brand-neutral-500 transition-colors hover:text-brand-gold"
         >
           ← Volver al inicio
         </Link>

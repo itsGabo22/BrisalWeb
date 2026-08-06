@@ -17,7 +17,7 @@ export default function TerminosPage() {
         className="mb-8 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
       >
         <span className="mt-0.5 text-xl leading-none" aria-hidden="true">⚠️</span>
-        <p className="font-sans text-sm text-amber-800">
+        <p className="font-body text-sm text-amber-800">
           <strong>Borrador de referencia.</strong> Este documento debe ser
           revisado y aprobado por un profesional legal antes de publicarse
           oficialmente.
@@ -25,19 +25,19 @@ export default function TerminosPage() {
       </div>
 
       <header className="mb-10">
-        <h1 className="font-serif text-4xl font-bold text-brand-neutral-900">
+        <h1 className="font-heading text-4xl font-normal text-brand-text">
           Términos y Condiciones
         </h1>
-        <p className="mt-3 font-sans text-sm text-brand-neutral-500">
+        <p className="mt-3 font-body text-sm text-brand-neutral-500">
           Última actualización: Junio 2025
         </p>
       </header>
 
-      <div className="space-y-10 font-sans text-brand-neutral-700">
+      <div className="space-y-10 font-body text-brand-neutral-700">
         <section aria-labelledby="terms-s1">
           <h2
             id="terms-s1"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             1. Aceptación de los términos
           </h2>
@@ -54,7 +54,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s2">
           <h2
             id="terms-s2"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             2. Uso del catálogo
           </h2>
@@ -73,7 +73,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s3">
           <h2
             id="terms-s3"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             3. Propiedad intelectual
           </h2>
@@ -91,7 +91,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s4">
           <h2
             id="terms-s4"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             4. Limitación de responsabilidad
           </h2>
@@ -108,7 +108,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s5">
           <h2
             id="terms-s5"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             5. Modificaciones
           </h2>
@@ -124,7 +124,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s6">
           <h2
             id="terms-s6"
-            className="mb-3 font-serif text-2xl font-semibold text-brand-neutral-900"
+            className="mb-3 font-heading text-2xl font-normal text-brand-text"
           >
             6. Ley aplicable y jurisdicción
           </h2>

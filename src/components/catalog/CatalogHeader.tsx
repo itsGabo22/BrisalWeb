@@ -28,7 +28,7 @@ export function CatalogHeader({
       )}
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-        <nav className="font-sans text-xs" aria-label="Breadcrumb">
+        <nav className="font-body text-xs" aria-label="Breadcrumb">
           <ol className="flex flex-wrap items-center gap-2 text-brand-neutral-500">
             {breadcrumbs.map((item, index) => {
               const isLast = index === breadcrumbs.length - 1;
@@ -64,11 +64,11 @@ export function CatalogHeader({
         </nav>
 
         <div className="max-w-3xl">
-          <h1 className="font-serif text-3xl font-semibold uppercase tracking-wider leading-tight text-brand-neutral-900 sm:text-4xl">
+          <h1 className="font-heading text-3xl font-normal uppercase tracking-wider leading-tight text-brand-text sm:text-4xl">
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-2 font-sans text-sm leading-6 text-brand-neutral-600 sm:text-base">
+            <p className="mt-2 font-body text-sm leading-6 text-brand-neutral-600 sm:text-base">
               {subtitle}
             </p>
           )}

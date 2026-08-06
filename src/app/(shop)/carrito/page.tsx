@@ -97,7 +97,7 @@ export default function CartPage() {
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <nav
           aria-label="Breadcrumb"
-          className="text-brand-neutral-500 mb-4 flex items-center gap-2 font-sans text-sm"
+          className="text-brand-neutral-500 mb-4 flex items-center gap-2 font-body text-sm"
         >
           <Link href="/" className="hover:text-brand-gold transition-colors">
             Inicio
@@ -107,7 +107,7 @@ export default function CartPage() {
         </nav>
 
         <div className="mb-10">
-          <h1 className="text-brand-neutral-900 font-serif text-4xl font-medium md:text-5xl">
+          <h1 className="text-brand-text font-heading text-4xl font-normal md:text-5xl">
             Tu carrito
           </h1>
         </div>
@@ -118,7 +118,7 @@ export default function CartPage() {
               <div className="border-brand-gold/30 bg-brand-gold/10 text-brand-gold mb-5 flex size-16 items-center justify-center rounded-full border">
                 <ShoppingBag size={30} aria-hidden="true" />
               </div>
-              <h2 className="text-brand-neutral-900 font-serif text-2xl font-medium">
+              <h2 className="text-brand-text font-heading text-2xl font-normal">
                 Tu carrito está vacío
               </h2>
               <div className="mt-6">
@@ -145,11 +145,11 @@ export default function CartPage() {
                     <div className="min-w-0">
                       <Link
                         href={`/producto/${item.slug}`}
-                        className="text-brand-neutral-900 hover:text-brand-gold font-sans text-base font-semibold transition-colors"
+                        className="text-brand-neutral-900 hover:text-brand-gold font-body text-base font-medium transition-colors"
                       >
                         {item.name}
                       </Link>
-                      <p className="text-brand-neutral-600 mt-1 font-sans text-sm">
+                      <p className="text-brand-neutral-600 mt-1 font-body text-sm">
                         {formatCOP(item.price)} unidad
                       </p>
 
@@ -169,7 +169,7 @@ export default function CartPage() {
                           >
                             <Minus size={15} aria-hidden="true" />
                           </button>
-                          <span className="text-brand-neutral-900 w-9 text-center font-sans text-sm font-medium">
+                          <span className="text-brand-neutral-900 w-9 text-center font-body text-sm font-medium">
                             {item.quantity}
                           </span>
                           <button
@@ -196,10 +196,10 @@ export default function CartPage() {
                     </div>
 
                     <div className="col-span-2 text-right sm:col-span-1">
-                      <p className="text-brand-neutral-500 font-sans text-sm">
+                      <p className="text-brand-neutral-500 font-body text-sm">
                         Subtotal
                       </p>
-                      <p className="text-brand-neutral-900 font-sans text-lg font-semibold">
+                      <p className="text-brand-neutral-900 font-body text-lg font-medium">
                         {formatCOP(item.price * item.quantity)}
                       </p>
                     </div>
@@ -210,7 +210,7 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={() => setConfirmClearOpen(true)}
-                className="font-sans text-sm font-medium text-red-600 transition-colors hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
+                className="font-body text-sm font-medium text-red-600 transition-colors hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
               >
                 Vaciar carrito
               </button>
@@ -225,7 +225,7 @@ export default function CartPage() {
                   {items.map((item) => (
                     <li
                       key={item.productId}
-                      className="flex items-start justify-between gap-4 font-sans text-sm"
+                      className="flex items-start justify-between gap-4 font-body text-sm"
                     >
                       <span className="text-brand-neutral-700">
                         {item.name} x {item.quantity}
@@ -243,15 +243,15 @@ export default function CartPage() {
                 />
 
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-brand-neutral-900 font-sans text-base font-semibold">
+                  <span className="text-brand-neutral-900 font-body text-base font-medium">
                     Total
                   </span>
-                  <span className="text-brand-gold font-sans text-2xl font-bold">
+                  <span className="text-brand-gold font-body text-2xl font-medium">
                     {formatCOP(total)}
                   </span>
                 </div>
 
-                <p className="text-brand-neutral-500 mt-4 font-sans text-xs leading-relaxed">
+                <p className="text-brand-neutral-500 mt-4 font-body text-xs leading-relaxed">
                   Los precios no incluyen envío. El envío se coordina
                   directamente con el vendedor.
                 </p>
@@ -276,7 +276,7 @@ export default function CartPage() {
                   />
 
                   {submitError && (
-                    <p className="font-sans text-sm text-red-600" role="alert">
+                    <p className="font-body text-sm text-red-600" role="alert">
                       {submitError}
                     </p>
                   )}

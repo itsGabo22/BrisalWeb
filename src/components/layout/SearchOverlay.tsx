@@ -114,7 +114,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top))' }}
           >
             <div className="flex items-center justify-between">
-              <span className="font-serif text-lg font-semibold text-brand-neutral-900">
+              <span className="font-heading text-lg font-normal text-brand-text">
                 Buscar
               </span>
               <button
@@ -140,14 +140,14 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar accesorios, categorías…"
                   aria-label="Buscar accesorios, categorías"
-                  className="w-full rounded-full border border-brand-neutral-200 bg-white py-4 pl-12 pr-4 font-sans text-base text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                  className="w-full rounded-full border border-brand-neutral-200 bg-white py-4 pl-12 pr-4 font-body text-base text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                 />
               </div>
             </form>
 
             <div className="mt-6 flex-1 overflow-y-auto">
               {!query.trim() ? (
-                <p className="py-12 text-center font-sans text-sm text-brand-neutral-400">
+                <p className="py-12 text-center font-body text-sm text-brand-neutral-400">
                   Escribe algo para buscar.
                 </p>
               ) : isLoading ? (
@@ -155,7 +155,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   <div className="size-6 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
                 </div>
               ) : results.length === 0 ? (
-                <p className="py-12 text-center font-sans text-sm text-brand-neutral-400">
+                <p className="py-12 text-center font-body text-sm text-brand-neutral-400">
                   No encontramos productos para “{query.trim()}”.
                 </p>
               ) : (
@@ -175,10 +175,10 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                           className="size-14 rounded-md object-cover"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-sans text-sm font-medium text-brand-neutral-900">
+                          <p className="truncate font-body text-sm font-medium text-brand-neutral-900">
                             {product.name}
                           </p>
-                          <p className="font-sans text-sm text-brand-gold">
+                          <p className="font-body text-sm text-brand-gold">
                             {formatCOP(product.price)}
                           </p>
                         </div>
@@ -190,7 +190,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                       <button
                         type="button"
                         onClick={goToFullResults}
-                        className="font-sans text-sm font-semibold text-brand-gold hover:underline"
+                        className="font-body text-sm font-medium text-brand-gold hover:underline"
                       >
                         Ver los {total} resultados
                       </button>

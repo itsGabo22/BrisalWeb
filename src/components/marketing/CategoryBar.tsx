@@ -27,7 +27,7 @@ const FALLBACK_ICONS: Record<string, string> = {
 
 export function CategoryBar({ categories }: CategoryBarProps) {
   return (
-    <div className="w-full border-y border-brand-neutral-100 bg-white shadow-2xs">
+    <div className="w-full border-y border-brand-line bg-brand-pearl shadow-2xs">
       <div className="mx-auto max-w-7xl">
         <nav
           aria-label="Categorías principales"
@@ -42,7 +42,7 @@ export function CategoryBar({ categories }: CategoryBarProps) {
                 href={`/catalogo/${category.slug}`}
                 className="group flex shrink-0 items-center gap-2.5 rounded-full px-1.5 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-neutral-200 bg-brand-neutral-50/50 transition-all group-hover:scale-105 group-hover:border-brand-gold group-hover:bg-brand-gold/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-line bg-brand-cream transition-all group-hover:scale-105 group-hover:border-brand-gold group-hover:bg-brand-gold/10">
                   <CategoryIcon
                     slug={category.slug}
                     name={category.name}
@@ -50,7 +50,7 @@ export function CategoryBar({ categories }: CategoryBarProps) {
                     className="h-7 w-7 object-contain"
                   />
                 </div>
-                <span className="font-sans text-sm font-semibold tracking-wider text-brand-neutral-800 uppercase transition-colors group-hover:text-brand-gold sm:text-base">
+                <span className="font-body text-xs font-light tracking-[0.18em] text-brand-text uppercase transition-colors group-hover:text-brand-gold-deep sm:text-sm">
                   {category.name}
                 </span>
               </Link>
