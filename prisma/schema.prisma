@@ -55,6 +55,12 @@ model Product {
   sku            String?      @unique
   stock          Int          @default(0)
   material       String?
+  /// The PRIMARY colour, which belongs to the product itself — its own
+  /// imageUrls, price, stock and sku ARE that colour's. ColorVariant rows are
+  /// ADDITIONAL colours on top of it, so a single-colour product needs no
+  /// variant and enters its stock only once.
+  colorName      String?
+  colorHex       String?
   imageUrls      String[]
   featured       Boolean      @default(false)
   active         Boolean      @default(true)

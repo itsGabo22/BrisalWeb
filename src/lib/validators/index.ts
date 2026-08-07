@@ -102,6 +102,8 @@ export const productAdminSchema = z.object({
   sku: z.string().optional().nullable(),
   stock: z.number().min(0, 'El stock no puede ser negativo'),
   material: z.string().optional().nullable(),
+  colorName: z.string().optional().nullable(),
+  colorHex: z.string().optional().nullable(),
   imageUrls: z.array(z.string()).min(1, 'Debes agregar al menos una imagen'),
   featured: z.boolean().default(false),
   active: z.boolean().default(true),

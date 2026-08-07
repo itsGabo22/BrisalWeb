@@ -71,6 +71,8 @@ export function toProduct(product: ProductWithRelations): Product {
     sku: product.sku,
     stock: product.stock,
     material: product.material,
+    colorName: product.colorName,
+    colorHex: product.colorHex,
     imageUrls: product.imageUrls,
     featured: product.featured,
     active: product.active,

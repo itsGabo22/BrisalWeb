@@ -12,6 +12,7 @@
  * materials.
  */
 import type { Product } from '@/types';
+import { getProductColorNames, getSelectableColors } from './product-options';
 
 /** Canonical swatch hexes for the colour names a Spanish catalog will use. */
 const COLOR_SWATCHES: Record<string, string> = {
@@ -66,11 +67,13 @@ function isUsableHex(value: string | null | undefined): value is string {
   return typeof value === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
-/** The colours a product is available in, taken from its variants. */
+/**
+ * The colours a product is available in — its PRIMARY colour plus every
+ * additional variant colour. Delegates to `getProductColorNames` so the filter
+ * and the product page can never disagree about what a product offers.
+ */
 export function getProductColors(product: Product): string[] {
-  return product.colorVariants
-    .map((variant) => variant.colorName.trim())
-    .filter(Boolean);
+  return getProductColorNames(product);
 }
 
 export interface ColorFacet {
@@ -92,12 +95,16 @@ export function getColorFacets(products: Product[]): ColorFacet[] {
   const byslug = new Map<string, ColorFacet>();
 
   for (const product of products) {
-    // A product offering the same colour twice must only count once.
+    // Primary first, then variants — `getSelectableColors` already carries the
+    // resolved hex for each, so the facet swatch matches the one the shopper
+    // sees on the product page.
     const seen = new Set<string>();
-    for (const variant of product.colorVariants) {
-      const name = variant.colorName.trim();
+    for (const color of getSelectableColors(product)) {
+      const name = color.colorName;
       const slug = colorSlug(name);
       if (!slug || seen.has(slug)) continue;
+      // A product offering the same colour as primary AND as a variant counts
+      // once.
       seen.add(slug);
 
       const existing = byslug.get(slug);
@@ -107,9 +114,7 @@ export function getColorFacets(products: Product[]): ColorFacet[] {
         byslug.set(slug, {
           slug,
           name,
-          swatch: isUsableHex(variant.colorHex)
-            ? variant.colorHex.trim()
-            : colorSwatch(name),
+          swatch: isUsableHex(color.colorHex) ? color.colorHex : colorSwatch(name),
           count: 1,
         });
       }

@@ -10,19 +10,20 @@ import { cn } from '@/lib/utils';
 import {
   formatCOP,
   getEffectivePrice,
-  getVariantStock,
   hasWholesalePrice,
   productForVariant,
 } from '@/lib/utils/pricing';
-import { getVariantReference } from '@/lib/utils/product-reference';
+import { getProductReference } from '@/lib/utils/product-reference';
+import type { SelectableColor } from '@/lib/utils/product-options';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
-import type { ColorVariant, Product, Tag } from '@/types';
+import type { Product, Tag } from '@/types';
 
 interface ProductInfoProps {
   product: Product;
-  /** Null when the product has no colour variants. */
-  selectedVariant?: ColorVariant | null;
-  onSelectVariant?: (variant: ColorVariant) => void;
+  /** Primary colour first, then variants. Empty for a colourless product. */
+  colors?: SelectableColor[];
+  selectedColor?: SelectableColor | null;
+  onSelectColor?: (color: SelectableColor) => void;
 }
 
 type BadgeVariant = 'nuevo' | 'mas-vendido' | 'en-oferta' | 'tendencia';
@@ -48,8 +49,9 @@ function clampQuantity(value: number): number {
 
 export function ProductInfo({
   product,
-  selectedVariant = null,
-  onSelectVariant,
+  colors = [],
+  selectedColor = null,
+  onSelectColor,
 }: ProductInfoProps) {
   const [quantity, setQuantity] = React.useState(1);
   const [added, setAdded] = React.useState(false);
@@ -57,19 +59,31 @@ export function ProductInfo({
   const wholesaleSession = useWholesaleSession();
 
   /**
+   * A different colour is effectively a different selection, so carrying a
+   * quantity across the change is confusing — "2" chosen for Dorado should not
+   * silently become "2 Plateado". Reset during render, keyed on the selected
+   * colour, rather than in an effect: React re-runs immediately with the
+   * corrected value and never paints the stale quantity.
+   */
+  const [quantityColorId, setQuantityColorId] = React.useState(selectedColor?.id ?? null);
+  if (quantityColorId !== (selectedColor?.id ?? null)) {
+    setQuantityColorId(selectedColor?.id ?? null);
+    setQuantity(1);
+  }
+
+  /**
    * The product re-priced for the chosen colour. Everything below then works
    * on a normal Product, so discounts and wholesale gating need no knowledge
-   * of variants at all.
+   * of colours at all.
    */
-  const priced = productForVariant(product, selectedVariant);
+  const priced = productForVariant(product, selectedColor?.variant ?? null);
   const showWholesalePrice =
     wholesaleSession === 'approved' && hasWholesalePrice(priced);
   const price = getEffectivePrice(priced, showWholesalePrice);
-  const stock = getVariantStock(product, selectedVariant);
-  const variants = product.colorVariants;
-  // Changes with the selected colour, so the shopper and the client are
-  // always looking at the same reference for the same thing.
-  const reference = getVariantReference(product, selectedVariant);
+  const stock = selectedColor ? selectedColor.stock : product.stock;
+  // Changes with the selected colour, so the shopper and the client are always
+  // looking at the same reference for the same thing.
+  const reference = selectedColor?.reference ?? getProductReference(product);
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
   const addedTimeoutRef = React.useRef<number | null>(null);
 
@@ -97,9 +111,9 @@ export function ProductInfo({
         // The chosen colour's own first image, so the cart line shows what
         // the shopper actually picked.
         imageUrl:
-          selectedVariant?.imageUrls[0] ?? product.imageUrls[0] ?? '',
+          selectedColor?.imageUrls[0] ?? product.imageUrls[0] ?? '',
         slug: product.slug,
-        color: selectedVariant?.colorName ?? null,
+        color: selectedColor?.colorName ?? null,
         reference,
       },
       quantity,
@@ -202,13 +216,36 @@ export function ProductInfo({
 
       <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
 
-      {/* Colour selector — omitted entirely for a simple product. */}
-      {variants.length > 0 && (
+      {/*
+        Colour block. Three states:
+          • no colours at all  → nothing renders, exactly as a plain product
+          • exactly ONE colour → a labelled swatch, NOT a radiogroup. A single
+            radio option is a control that can't do anything; the shopper only
+            needs to be told the colour.
+          • two or more       → the full selector, primary first.
+      */}
+      {colors.length === 1 && (
+        <div className="flex items-center gap-2">
+          <span
+            className="border-brand-line size-5 shrink-0 rounded-full border"
+            style={{ backgroundColor: colors[0].colorHex }}
+            aria-hidden="true"
+          />
+          <p className="font-body text-sm font-medium text-brand-text">
+            Color:{' '}
+            <span className="text-brand-text-soft font-normal">
+              {colors[0].colorName}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {colors.length > 1 && (
         <div className="space-y-3">
           <p className="font-body text-sm font-medium text-brand-text">
             Color:{' '}
             <span className="text-brand-text-soft font-normal">
-              {selectedVariant?.colorName}
+              {selectedColor?.colorName}
             </span>
           </p>
           <div
@@ -216,18 +253,18 @@ export function ProductInfo({
             role="radiogroup"
             aria-label="Color del producto"
           >
-            {variants.map((variant) => {
-              const isSelected = variant.id === selectedVariant?.id;
-              const soldOut = variant.stock <= 0;
+            {colors.map((color) => {
+              const isSelected = color.id === selectedColor?.id;
+              const soldOut = color.stock <= 0;
               return (
                 <button
-                  key={variant.id}
+                  key={color.id}
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
-                  aria-label={`${variant.colorName}${soldOut ? ' (agotado)' : ''}`}
-                  title={variant.colorName}
-                  onClick={() => onSelectVariant?.(variant)}
+                  aria-label={`${color.colorName}${soldOut ? ' (agotado)' : ''}`}
+                  title={color.colorName}
+                  onClick={() => onSelectColor?.(color)}
                   className={cn(
                     'focus-visible:ring-brand-gold relative size-9 rounded-full border-2 transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                     isSelected
@@ -237,7 +274,7 @@ export function ProductInfo({
                 >
                   <span
                     className="absolute inset-1 rounded-full"
-                    style={{ backgroundColor: variant.colorHex }}
+                    style={{ backgroundColor: color.colorHex }}
                     aria-hidden="true"
                   />
                   {soldOut && (

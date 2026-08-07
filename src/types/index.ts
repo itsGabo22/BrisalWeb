@@ -82,6 +82,12 @@ export interface Product {
   sku?: string | null;
   stock: number;
   material?: string | null;
+  /**
+   * The PRIMARY colour, owned by the product itself. Its images, price and
+   * stock are the product's own — no ColorVariant row is needed for it.
+   */
+  colorName?: string | null;
+  colorHex?: string | null;
   /** Always `imageUrls`, never `images`. */
   imageUrls: string[];
   featured: boolean;

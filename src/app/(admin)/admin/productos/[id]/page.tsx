@@ -54,6 +54,8 @@ export default function AdminProductFormPage() {
   const [stock, setStock] = React.useState<number>(0);
   const [material, setMaterial] = React.useState('');
   const [imageUrls, setImageUrls] = React.useState<string[]>([]);
+  const [colorName, setColorName] = React.useState('');
+  const [colorHex, setColorHex] = React.useState('#C9A96E');
   const [featured, setFeatured] = React.useState(false);
   const [active, setActive] = React.useState(true);
   
@@ -90,6 +92,8 @@ export default function AdminProductFormPage() {
             setSku(prod.sku || '');
             setStock(prod.stock);
             setMaterial(prod.material || '');
+            setColorName(prod.colorName || '');
+            setColorHex(prod.colorHex || '#C9A96E');
             setImageUrls(prod.imageUrls || []);
             setFeatured(prod.featured);
             setActive(prod.active);
@@ -137,7 +141,9 @@ export default function AdminProductFormPage() {
   const [bandejaImages, setBandejaImages] = React.useState<BandejaImage[]>([]);
   const [isLoadingBandeja, setIsLoadingBandeja] = React.useState(false);
   const [selectedBandejaIds, setSelectedBandejaIds] = React.useState<string[]>([]);
-  const [pendingAssignments, setPendingAssignments] = React.useState<PendingAssignment[]>([]);
+  // Kept only to drive the local "already picked" state in the bandeja tab;
+  // the server now owns the actual assigned/unassigned bookkeeping.
+  const [, setPendingAssignments] = React.useState<PendingAssignment[]>([]);
   const [isUploadingSingle, setIsUploadingSingle] = React.useState(false);
   const [imagesError, setImagesError] = React.useState<string | null>(null);
 
@@ -236,6 +242,8 @@ export default function AdminProductFormPage() {
       sku: sku.trim() || null,
       stock: Number(stock),
       material: material.trim() || null,
+      colorName: colorName.trim() || null,
+      colorHex: colorName.trim() ? colorHex : null,
       description: description.trim() || null,
       imageUrls,
       featured,
@@ -271,19 +279,10 @@ export default function AdminProductFormPage() {
         throw new Error(errorData.error || 'Error al guardar el producto');
       }
 
-      const savedProduct = (await res.json()) as { id: string };
-
-      if (pendingAssignments.length > 0) {
-        await Promise.all(
-          pendingAssignments.map(({ imageId }) =>
-            fetch(`/api/admin/imagenes/${imageId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ productId: savedProduct.id }),
-            }),
-          ),
-        );
-      }
+      // Bandeja bookkeeping is no longer done here. The product route
+      // reconciles it server-side from the saved image set, which is the only
+      // way variant images get marked used and removed images get freed.
+      await res.json();
 
       setSuccessMsg(isNew ? 'Producto creado con éxito' : 'Producto actualizado con éxito');
       setTimeout(() => {
@@ -425,6 +424,37 @@ export default function AdminProductFormPage() {
                 placeholder="Ej. Baño de oro 24k"
                 className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Color principal
+              </label>
+              <p className="mb-2 text-xs text-brand-neutral-400">
+                El color de las imágenes principales de arriba. Su stock y su precio
+                son los del producto — no necesitas crear una variante para el color
+                principal.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={colorHex}
+                  onChange={(e) => setColorHex(e.target.value)}
+                  aria-label="Color principal"
+                  className="size-10 shrink-0 cursor-pointer rounded border border-brand-neutral-200 bg-transparent dark:border-brand-neutral-800"
+                />
+                <input
+                  type="text"
+                  value={colorName}
+                  onChange={(e) => setColorName(e.target.value)}
+                  placeholder="Ej. Dorado (déjalo vacío si el producto no tiene color)"
+                  className="flex-1 rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                />
+              </div>
+              <p className="mt-1 text-xs text-brand-neutral-400">
+                Sin color el producto se guarda igual, pero no aparecerá en el filtro
+                de colores del catálogo.
+              </p>
             </div>
 
             <div className="sm:col-span-2">

@@ -3,10 +3,20 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Search, Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { formatCOP } from '@/lib/utils/pricing';
 import { resolveProductImageUrl } from '@/lib/utils/product-images';
 import { getProductReference } from '@/lib/utils/product-reference';
+import { getSelectableColors } from '@/lib/utils/product-options';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 
@@ -14,6 +24,12 @@ export default function AdminProductosPage() {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [search, setSearch] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
+  const [expandedIds, setExpandedIds] = React.useState<string[]>([]);
+
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const loadProducts = React.useCallback(async () => {
     try {
@@ -107,24 +123,53 @@ export default function AdminProductosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-neutral-100 dark:divide-brand-neutral-800">
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-brand-neutral-50/50 dark:hover:bg-brand-neutral-800/20 transition-colors">
-                    {/* Image */}
+                {filteredProducts.map((product) => {
+                  const colors = getSelectableColors(product);
+                  const isExpanded = expandedIds.includes(product.id);
+
+                  return (
+                  <React.Fragment key={product.id}>
+                  <tr className="hover:bg-brand-neutral-50/50 dark:hover:bg-brand-neutral-800/20 transition-colors">
+                    {/* Image + expander */}
                     <td className="px-6 py-4">
-                      <div className="relative size-12 overflow-hidden rounded-md border border-brand-neutral-100 bg-brand-neutral-50 dark:border-brand-neutral-800 dark:bg-brand-neutral-950">
-                        {product.imageUrls?.[0] ? (
-                          <Image
-                            src={resolveProductImageUrl(product.imageUrls[0])}
-                            alt={product.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
+                      <div className="flex items-center gap-2">
+                        {/* Only products that actually have colours can expand;
+                            a chevron on a colourless product would open an
+                            empty drawer. */}
+                        {colors.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(product.id)}
+                            aria-expanded={isExpanded}
+                            aria-label={
+                              isExpanded ? 'Ocultar colores' : 'Ver colores'
+                            }
+                            className="text-brand-neutral-400 transition-colors hover:text-brand-gold"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="size-4" />
+                            ) : (
+                              <ChevronRight className="size-4" />
+                            )}
+                          </button>
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-brand-neutral-400">
-                            Sin img
-                          </div>
+                          <span className="size-4" />
                         )}
+                        <div className="relative size-12 overflow-hidden rounded-md border border-brand-neutral-100 bg-brand-neutral-50 dark:border-brand-neutral-800 dark:bg-brand-neutral-950">
+                          {product.imageUrls?.[0] ? (
+                            <Image
+                              src={resolveProductImageUrl(product.imageUrls[0])}
+                              alt={product.name}
+                              fill
+                              sizes="48px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs text-brand-neutral-400">
+                              Sin img
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -211,7 +256,65 @@ export default function AdminProductosPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+
+                  {/* Per-colour sub-rows: primary first, then the additional
+                      colours, so all stock and pricing is visible without
+                      opening each product's edit form. */}
+                  {isExpanded &&
+                    colors.map((color) => (
+                      <tr
+                        key={`${product.id}-${color.id}`}
+                        className="bg-brand-neutral-50/60 text-sm dark:bg-brand-neutral-950/40"
+                      >
+                        <td className="px-6 py-2" />
+                        <td className="px-6 py-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="size-4 shrink-0 rounded-full border border-brand-neutral-200 dark:border-brand-neutral-700"
+                              style={{ backgroundColor: color.colorHex }}
+                              aria-hidden="true"
+                            />
+                            <span className="text-brand-neutral-800 dark:text-brand-neutral-200">
+                              {color.colorName}
+                            </span>
+                            {color.isPrimary && (
+                              <span className="rounded-full bg-brand-gold/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-gold-deep">
+                                Principal
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-2 text-xs text-brand-neutral-500">
+                          {color.reference}
+                        </td>
+                        <td className="px-6 py-2 text-brand-neutral-700 dark:text-brand-neutral-300">
+                          {formatCOP(color.price)}
+                          {/* A variant with no price of its own follows the
+                              product's — say so rather than showing a number
+                              the client didn't type. */}
+                          {!color.isPrimary && color.variant?.price == null && (
+                            <span className="ml-1 text-[11px] text-brand-neutral-400">
+                              (hereda)
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-2">
+                          <span
+                            className={
+                              color.stock === 0
+                                ? 'text-red-500'
+                                : 'text-brand-neutral-700 dark:text-brand-neutral-300'
+                            }
+                          >
+                            {color.stock}
+                          </span>
+                        </td>
+                        <td className="px-6 py-2" colSpan={2} />
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

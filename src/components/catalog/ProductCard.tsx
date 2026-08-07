@@ -12,6 +12,7 @@ import {
   resolveListingImageUrl,
 } from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
+import { getSelectableColors } from '@/lib/utils/product-options';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
 
@@ -47,6 +48,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   // One call now covers both sale sources — an active Discount row and a
   // hand-set comparePrice — and already accounts for the wholesale view.
   const price = getEffectivePrice(product, showWholesalePrice);
+  const colors = React.useMemo(() => getSelectableColors(product), [product]);
   const href = `/producto/${product.slug}`;
   // Resolves through the variants first — see resolveListingImageUrl for the
   // full base-vs-variant rule. A product whose photos all live on its colours
@@ -156,24 +158,26 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Colour dots, so a shopper scanning the grid can see a piece comes
             in several finishes. Capped at four with a "+N" so a product with
             many colours can't push the price out of the card. */}
-        {product.colorVariants.length > 0 && (
+        {/* Shown from two colours up: a single dot beside a product that only
+            comes one way says nothing worth the visual noise. */}
+        {colors.length > 1 && (
           <div
             className="flex items-center gap-1"
-            aria-label={`Colores disponibles: ${product.colorVariants
-              .map((variant) => variant.colorName)
+            aria-label={`Colores disponibles: ${colors
+              .map((color) => color.colorName)
               .join(', ')}`}
           >
-            {product.colorVariants.slice(0, 4).map((variant) => (
+            {colors.slice(0, 4).map((color) => (
               <span
-                key={variant.id}
-                title={variant.colorName}
+                key={color.id}
+                title={color.colorName}
                 className="border-brand-line size-3 rounded-full border"
-                style={{ backgroundColor: variant.colorHex }}
+                style={{ backgroundColor: color.colorHex }}
               />
             ))}
-            {product.colorVariants.length > 4 && (
+            {colors.length > 4 && (
               <span className="text-brand-text-soft/70 font-body text-[10px] tabular-nums">
-                +{product.colorVariants.length - 4}
+                +{colors.length - 4}
               </span>
             )}
           </div>

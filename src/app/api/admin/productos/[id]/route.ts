@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
+import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
 
 function slugify(text: string): string {
   return text
@@ -64,6 +65,8 @@ export async function PATCH(
       sku,
       stock,
       material,
+      colorName,
+      colorHex,
       description,
       imageUrls,
       featured,
@@ -86,6 +89,12 @@ export async function PATCH(
       ...(sku !== undefined && { sku }),
       ...(stock !== undefined && { stock }),
       ...(material !== undefined && { material }),
+      ...(colorName !== undefined && {
+        colorName: colorName?.trim() ? colorName.trim() : null,
+      }),
+      ...(colorHex !== undefined && {
+        colorHex: colorHex?.trim() ? colorHex.trim() : null,
+      }),
       ...(description !== undefined && {
         description: description?.trim() ? description.trim() : null,
       }),
@@ -148,6 +157,8 @@ export async function PATCH(
         include: PRODUCT_INCLUDE,
       });
     });
+
+    await reconcileBandejaAssignments(updated.id, collectProductImageUrls(updated));
 
     return NextResponse.json(toProduct(updated));
   } catch (err) {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
+import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
 
 function slugify(text: string): string {
   return text
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
       sku,
       stock,
       material,
+      colorName,
+      colorHex,
       description,
       imageUrls,
       featured,
@@ -74,6 +77,8 @@ export async function POST(request: Request) {
         sku,
         stock,
         material,
+        colorName: colorName?.trim() ? colorName.trim() : null,
+        colorHex: colorHex?.trim() ? colorHex.trim() : null,
         description: description?.trim() ? description.trim() : null,
         imageUrls,
         featured,
@@ -95,6 +100,11 @@ export async function POST(request: Request) {
       },
       include: PRODUCT_INCLUDE,
     });
+
+    await reconcileBandejaAssignments(
+      newProduct.id,
+      collectProductImageUrls(newProduct),
+    );
 
     return NextResponse.json(toProduct(newProduct), { status: 201 });
   } catch (err) {

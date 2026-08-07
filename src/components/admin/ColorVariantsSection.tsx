@@ -140,11 +140,12 @@ export function ColorVariantsSection({ variants, onChange }: ColorVariantsSectio
     <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 transition-colors">
       <h2 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50 mb-1 flex items-center gap-2">
         <Palette className="size-5 text-brand-gold" />
-        <span>Colores / Variantes</span>
+        <span>Colores adicionales (opcional)</span>
       </h2>
       <p className="text-xs text-brand-neutral-400 mb-4">
-        Cada color tiene sus propias imágenes y su propio stock. Un producto sin
-        colores funciona normal, usando las imágenes y el precio generales.
+        Colores <strong>además</strong> del color principal de arriba. Cada uno
+        tiene sus propias imágenes y su propio stock. Si el producto solo viene en
+        un color, deja esta sección vacía.
       </p>
 
       {error && (
