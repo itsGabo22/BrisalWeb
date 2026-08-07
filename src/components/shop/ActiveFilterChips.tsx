@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 
 import { formatCOP } from '@/lib/utils/pricing';
 import type { CategoryFacet, ColorFacet } from '@/lib/catalog';
+import { useFilterNav } from './useFilterNav';
 
 export interface ActiveFilterChipsProps {
   categories: CategoryFacet[];
@@ -31,9 +32,8 @@ interface Chip {
  * them be dismissed here would silently change which page they are on.
  */
 export function ActiveFilterChips({ categories, colors }: ActiveFilterChipsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { setParams, clearAll } = useFilterNav();
 
   const chips = React.useMemo<Chip[]>(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -83,25 +83,10 @@ export function ActiveFilterChips({ categories, colors }: ActiveFilterChipsProps
   if (chips.length === 0) return null;
 
   const dismiss = (chip: Chip) => {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const key of chip.clears) params.delete(key);
-    if (chip.remaining) {
-      if (chip.remaining.value === null) params.delete(chip.remaining.param);
-      else params.set(chip.remaining.param, chip.remaining.value);
-    }
-    params.delete('page');
-
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  };
-
-  const clearAll = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const key of ['categoria', 'color', 'precioMin', 'precioMax', 'page']) {
-      params.delete(key);
-    }
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const next: Record<string, string | null> = {};
+    for (const key of chip.clears) next[key] = null;
+    if (chip.remaining) next[chip.remaining.param] = chip.remaining.value;
+    setParams(next);
   };
 
   return (

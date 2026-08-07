@@ -87,7 +87,6 @@ export default async function SubcategoriaPage({
         categories={[]}
         colors={buildColorFacets(products)}
         priceBounds={getPriceBounds(products)}
-        resetHref={`/catalogo/${parentCategory.slug}/${subCategory.slug}`}
       />
     </>
   );

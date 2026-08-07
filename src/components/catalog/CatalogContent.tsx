@@ -1,12 +1,14 @@
 import * as React from 'react';
-import Link from 'next/link';
 import { SearchX } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CatalogFilters } from '@/components/shop/CatalogFilters';
+import {
+  CatalogFilters,
+  CatalogFilterDrawer,
+} from '@/components/shop/CatalogFilters';
 import { ActiveFilterChips } from '@/components/shop/ActiveFilterChips';
 import { CatalogPagination } from '@/components/shop/CatalogPagination';
+import { ClearFiltersButton } from '@/components/shop/ClearFiltersButton';
 import type {
   CategoryFacet,
   ColorFacet,
@@ -21,8 +23,6 @@ export interface CatalogContentProps {
   categories: CategoryFacet[];
   colors: ColorFacet[];
   priceBounds: PriceBounds | null;
-  /** Where "Limpiar filtros" returns to — the unfiltered version of this page. */
-  resetHref: string;
 }
 
 /**
@@ -36,7 +36,6 @@ export function CatalogContent({
   categories,
   colors,
   priceBounds,
-  resetHref,
 }: CatalogContentProps) {
   return (
     <section className="bg-brand-pearl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
@@ -45,31 +44,39 @@ export function CatalogContent({
           categories={categories}
           colors={colors}
           priceBounds={priceBounds}
-          resultCount={results.total}
         />
 
         {/* min-w-0 so the grid can shrink inside the flex row instead of
             forcing the page wider than the viewport. */}
         <div className="min-w-0 flex-1">
-          <p
-            className="text-brand-text-soft mb-4 font-body text-xs"
-            aria-live="polite"
-          >
-            {results.total} {results.total === 1 ? 'producto' : 'productos'}
-          </p>
+          {/* Toolbar: result count on the left, the mobile filter trigger on
+              the right. Keeping the trigger here rather than inside the
+              sidebar component is what stops it rendering as a stray oval
+              pinned to the left of the flex row on small screens. */}
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <p className="text-brand-text-soft font-body text-xs" aria-live="polite">
+              {results.total} {results.total === 1 ? 'producto' : 'productos'}
+            </p>
+            <CatalogFilterDrawer
+              categories={categories}
+              colors={colors}
+              priceBounds={priceBounds}
+              resultCount={results.total}
+            />
+          </div>
 
           <ActiveFilterChips categories={categories} colors={colors} />
 
           {results.items.length > 0 ? (
             <>
-              <ProductGrid products={results.items} />
+              <ProductGrid products={results.items} revealOnScroll={false} />
               <CatalogPagination
                 page={results.page}
                 totalPages={results.totalPages}
               />
             </>
           ) : (
-            <EmptyCatalogState resetHref={resetHref} />
+            <EmptyCatalogState />
           )}
         </div>
       </div>
@@ -77,7 +84,7 @@ export function CatalogContent({
   );
 }
 
-function EmptyCatalogState({ resetHref }: { resetHref: string }) {
+function EmptyCatalogState() {
   return (
     <div
       className={cn(
@@ -96,9 +103,7 @@ function EmptyCatalogState({ resetHref }: { resetHref: string }) {
       <p className="text-brand-text-soft mt-2 max-w-sm font-body text-sm">
         Prueba con menos filtros o amplía el rango de precio.
       </p>
-      <Button asChild className="mt-6" variant="primary">
-        <Link href={resetHref}>Limpiar filtros</Link>
-      </Button>
+      <ClearFiltersButton />
     </div>
   );
 }

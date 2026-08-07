@@ -87,7 +87,6 @@ export default async function CategoriaPage({
         categories={categoryFacets}
         colors={colorFacets}
         priceBounds={priceBounds}
-        resetHref={`/catalogo/${category.slug}`}
       />
     </>
   );

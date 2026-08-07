@@ -12,6 +12,16 @@ export interface ProductGridProps {
   products: Product[];
   className?: string;
   emptyMessage?: string;
+  /**
+   * Scroll-reveal the cards as they enter the viewport.
+   *
+   * True for the homepage rails, where the grid sits below the fold and the
+   * reveal is the point. FALSE for the catalog, where the product set changes
+   * as filters are applied: a reveal there is both a correctness hazard (see
+   * the note on the container below) and the wrong feel — filtered results
+   * should snap in, not fade.
+   */
+  revealOnScroll?: boolean;
 }
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -44,6 +54,7 @@ export function ProductGrid({
   products,
   className,
   emptyMessage = 'No hay productos disponibles por ahora.',
+  revealOnScroll = true,
 }: ProductGridProps) {
   const reducedMotion = useReducedMotion();
 
@@ -80,9 +91,32 @@ export function ProductGrid({
 
   return (
     <motion.div
+      /**
+       * Keyed on the rendered set so the container REMOUNTS whenever the
+       * products change.
+       *
+       * This is what fixed the blank catalog grid. `whileInView` with
+       * `viewport={{ once: true }}` fires once and then framer stops
+       * observing — and React reuses this exact DOM node across a filter
+       * change rather than remounting it (verified: a data-attribute set on
+       * the node survived the navigation). Products mounted afterwards
+       * therefore inherited the `hidden` variant, opacity 0, with nothing
+       * left to move them to `visible`, while the products already on screen
+       * kept their finished opacity 1 — blank rows exactly where the newly
+       * matched products should have been.
+       */
+      key={products.map((product) => product.id).join(',')}
       variants={containerVariants}
-      initial="hidden"
-      whileInView="visible"
+      /**
+       * `initial={false}` on the catalog means the cards mount at their final
+       * values: no hidden state to be stranded in, and no dependence on an
+       * IntersectionObserver firing after a client-side navigation. The key
+       * above already guarantees a correct remount; this removes the failure
+       * mode altogether rather than relying on the observer to rescue it.
+       */
+      initial={revealOnScroll ? 'hidden' : false}
+      whileInView={revealOnScroll ? 'visible' : undefined}
+      animate={revealOnScroll ? undefined : 'visible'}
       viewport={{ once: true, margin: '-60px' }}
       className={cn(
         'grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4',

@@ -57,16 +57,6 @@ export default async function CatalogoPage({ searchParams }: CatalogoPageProps) 
       subtitle: 'Toda nuestra colección de accesorios',
     };
 
-  // Clearing filters keeps the intent the shopper arrived with (Novedades,
-  // Descuentos…) and only drops the narrowing they added on top.
-  const resetParams = new URLSearchParams();
-  if (query.sort) resetParams.set('sort', query.sort);
-  if (query.filter) resetParams.set('filter', query.filter);
-  if (query.tagSlug) resetParams.set('tag', query.tagSlug);
-  const resetHref = resetParams.toString()
-    ? `/catalogo?${resetParams.toString()}`
-    : '/catalogo';
-
   return (
     <>
       <CatalogHeader
@@ -79,7 +69,6 @@ export default async function CatalogoPage({ searchParams }: CatalogoPageProps) 
         categories={categoryFacets}
         colors={colorFacets}
         priceBounds={priceBounds}
-        resetHref={resetHref}
       />
     </>
   );

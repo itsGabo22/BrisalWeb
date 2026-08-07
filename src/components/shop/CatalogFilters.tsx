@@ -1,24 +1,25 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import { formatCOP } from '@/lib/utils/pricing';
 import type { CategoryFacet, ColorFacet, PriceBounds } from '@/lib/catalog';
+import { useFilterNav } from './useFilterNav';
 
 export interface CatalogFiltersProps {
   categories: CategoryFacet[];
   colors: ColorFacet[];
   priceBounds: PriceBounds | null;
-  /** Result count, shown on the mobile apply button. */
-  resultCount: number;
 }
 
-/** The params this sidebar owns. Everything else on the URL is preserved. */
-const OWNED_PARAMS = ['categoria', 'color', 'precioMin', 'precioMax'] as const;
+export interface CatalogFilterDrawerProps extends CatalogFiltersProps {
+  /** Result count, shown under the drawer's apply button. */
+  resultCount: number;
+}
 
 interface Draft {
   categoria: string[];
@@ -48,27 +49,20 @@ function toggle(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export function CatalogFilters({
-  categories,
-  colors,
-  priceBounds,
-  resultCount,
-}: CatalogFiltersProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+/**
+ * Shared filter state for both presentations. The desktop sidebar and the
+ * mobile drawer differ only in WHEN they commit, so reading the URL, writing
+ * the next one, and clearing all live here once.
+ */
+function useFilterDraft() {
   const searchParams = useSearchParams();
-
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const { setParams, clearAll } = useFilterNav();
 
   const applied = React.useMemo(
     () => readDraft(new URLSearchParams(searchParams.toString())),
     [searchParams],
   );
 
-  /**
-   * Mobile edits a DRAFT and commits on "Filtrar"; desktop writes straight
-   * through. See `commit` for why.
-   */
   const [draft, setDraft] = React.useState<Draft>(applied);
 
   // Re-sync the draft whenever the URL changes underneath it — back/forward
@@ -84,90 +78,102 @@ export function CatalogFilters({
 
   const commit = React.useCallback(
     (next: Draft) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      for (const key of OWNED_PARAMS) params.delete(key);
-      if (next.categoria.length) params.set('categoria', next.categoria.join(','));
-      if (next.color.length) params.set('color', next.color.join(','));
-      if (next.precioMin !== undefined) params.set('precioMin', String(next.precioMin));
-      if (next.precioMax !== undefined) params.set('precioMax', String(next.precioMax));
-
-      // Any filter change invalidates the current page number.
-      params.delete('page');
-
-      const query = params.toString();
-      // `scroll: false` keeps the viewport where it is — re-anchoring to the
-      // top of the page on every checkbox tick is disorienting.
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      setParams({
+        categoria: next.categoria.length ? next.categoria.join(',') : null,
+        color: next.color.length ? next.color.join(',') : null,
+        precioMin: next.precioMin !== undefined ? String(next.precioMin) : null,
+        precioMax: next.precioMax !== undefined ? String(next.precioMax) : null,
+      });
     },
-    [pathname, router, searchParams],
+    [setParams],
   );
-
-  /**
-   * Desktop applies live: the sidebar sits beside the grid, so each change is
-   * immediately visible and an extra "apply" tap would be pure friction.
-   * Mobile defers to the Filtrar button because the drawer COVERS the results
-   * — live updates there would be invisible, and every tick would cost a
-   * navigation the shopper can't see the outcome of.
-   */
-  const update = (next: Draft) => {
-    setDraft(next);
-    if (!mobileOpen) commit(next);
-  };
-
-  const clearAll = () => {
-    const cleared: Draft = { categoria: [], color: [] };
-    setDraft(cleared);
-    commit(cleared);
-    setMobileOpen(false);
-  };
 
   const activeCount =
     applied.categoria.length +
     applied.color.length +
     (applied.precioMin !== undefined || applied.precioMax !== undefined ? 1 : 0);
 
-  const panel = (
-    <FilterPanel
-      categories={categories}
-      colors={colors}
-      priceBounds={priceBounds}
-      draft={draft}
-      onChange={update}
-      onClear={clearAll}
-    />
+  return { draft, setDraft, commit, clearAll, activeCount };
+}
+
+/**
+ * Desktop sidebar. Applies live: it sits beside the grid, so every change is
+ * immediately visible and an extra "apply" step would be pure friction.
+ */
+export function CatalogFilters({
+  categories,
+  colors,
+  priceBounds,
+}: CatalogFiltersProps) {
+  const { draft, setDraft, commit, clearAll } = useFilterDraft();
+
+  const update = (next: Draft) => {
+    setDraft(next);
+    commit(next);
+  };
+
+  return (
+    <aside
+      className="hidden w-60 shrink-0 lg:block"
+      aria-label="Filtros del catálogo"
+    >
+      <div className="sticky top-28">
+        <FilterPanel
+          categories={categories}
+          colors={colors}
+          priceBounds={priceBounds}
+          draft={draft}
+          onChange={update}
+          onClear={clearAll}
+        />
+      </div>
+    </aside>
   );
+}
+
+/**
+ * Mobile trigger + bottom sheet.
+ *
+ * The trigger renders inline wherever it is placed — the catalog toolbar row,
+ * beside the result count — rather than floating. The bottom-right of the
+ * viewport is already taken by the WhatsApp button and the scroll-to-top
+ * control, so a sticky bottom bar would stack against them.
+ *
+ * Unlike the sidebar, the sheet edits a DRAFT and commits on "Filtrar",
+ * because it COVERS the results: live updates would be invisible, and every
+ * tick would cost a navigation whose outcome the shopper cannot see.
+ */
+export function CatalogFilterDrawer({
+  categories,
+  colors,
+  priceBounds,
+  resultCount,
+}: CatalogFilterDrawerProps) {
+  const [open, setOpen] = React.useState(false);
+  const { draft, setDraft, commit, clearAll, activeCount } = useFilterDraft();
+
+  const close = () => setOpen(false);
 
   return (
     <>
-      {/* ── Desktop sidebar ─────────────────────────────── */}
-      <aside
-        className="hidden w-60 shrink-0 lg:block"
-        aria-label="Filtros del catálogo"
-      >
-        <div className="sticky top-28">{panel}</div>
-      </aside>
-
-      {/* ── Mobile trigger ──────────────────────────────── */}
       <button
         type="button"
-        onClick={() => setMobileOpen(true)}
-        className="border-brand-line bg-brand-pearl text-brand-text hover:border-brand-gold focus-visible:ring-brand-gold flex items-center gap-2 rounded-full border px-4 py-2 font-body text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
+        onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-expanded={mobileOpen}
+        aria-expanded={open}
+        className="border-brand-line bg-brand-pearl text-brand-text hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-brand-gold inline-flex items-center gap-2 rounded-md border px-3 py-1.5 font-body text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
       >
         <SlidersHorizontal className="size-4" aria-hidden="true" />
         Filtrar
         {activeCount > 0 && (
-          <span className="bg-brand-gold/20 text-brand-gold-deep rounded-full px-1.5 text-[11px]">
+          <span className="bg-brand-gold/20 text-brand-gold-deep flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 font-body text-[11px] tabular-nums">
             {activeCount}
           </span>
         )}
       </button>
 
-      {/* ── Mobile drawer ───────────────────────────────── */}
       <AnimatePresence>
-        {mobileOpen && (
+        {open && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -176,7 +182,7 @@ export function CatalogFilters({
               transition={{ duration: 0.2 }}
               className="bg-brand-text/35 fixed inset-0 z-50 backdrop-blur-sm lg:hidden"
               aria-hidden="true"
-              onClick={() => setMobileOpen(false)}
+              onClick={close}
             />
             <motion.div
               role="dialog"
@@ -194,7 +200,7 @@ export function CatalogFilters({
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={close}
                   aria-label="Cerrar filtros"
                   className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex size-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
@@ -202,7 +208,19 @@ export function CatalogFilters({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-5">{panel}</div>
+              <div className="flex-1 overflow-y-auto px-5 py-5">
+                <FilterPanel
+                  categories={categories}
+                  colors={colors}
+                  priceBounds={priceBounds}
+                  draft={draft}
+                  onChange={setDraft}
+                  onClear={() => {
+                    clearAll();
+                    close();
+                  }}
+                />
+              </div>
 
               <div
                 className="border-brand-line bg-brand-pearl border-t px-5 py-4"
@@ -212,7 +230,7 @@ export function CatalogFilters({
                   type="button"
                   onClick={() => {
                     commit(draft);
-                    setMobileOpen(false);
+                    close();
                   }}
                   className="border-brand-gold/70 bg-brand-pearl text-brand-text hover:bg-brand-gold/10 focus-visible:ring-brand-gold w-full rounded-md border py-3 font-body text-sm tracking-[0.1em] shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
