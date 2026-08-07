@@ -215,7 +215,7 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
             onClick={slideRight}
             tabIndex={-1}
             aria-hidden="true"
-            className="bg-brand-pearl text-brand-text hover:bg-brand-gold hover:text-brand-text absolute top-1/2 right-4 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full shadow-lg transition-colors active:scale-95 sm:right-6 md:flex"
+            className="bg-brand-pearl text-brand-text hover:bg-brand-gold/15 hover:text-brand-gold-deep absolute top-1/2 right-4 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full shadow-lg transition-colors active:scale-95 sm:right-6 md:flex"
           >
             <ChevronRight className="size-5" aria-hidden="true" />
           </button>

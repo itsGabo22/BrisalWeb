@@ -258,6 +258,66 @@
     min-height: max(600px, 100svh);
   }
 
+  /* ── Hero CTA — frosted glass ───────────────────────────────────────
+     Written by hand rather than assembled from utilities for three
+     reasons the utility classes can't cover:
+
+     1. `-webkit-backdrop-filter` is declared alongside the unprefixed
+        property. iOS Safari still needs the prefix, and without it the
+        button degrades to a flat translucent panel on iPhone — the exact
+        platform this matters most on.
+
+     2. `brightness(0.78)` inside the backdrop filter is what keeps the
+        label readable. The hero cycles through client-uploaded photos, so
+        the area behind this button is unpredictable: plain white-on-glass
+        vanishes the moment a pale image (a light backdrop, a bright
+        reflection) sits underneath. Darkening the BACKDROP rather than
+        adding an opaque layer preserves the glass read while guaranteeing
+        the white text always has something dark behind it.
+
+     3. The @supports fallback. Where backdrop-filter is unavailable there
+        is no frosting at all, and a 14%-white panel would be invisible —
+        so the button falls back to a solid warm-dark fill instead. */
+  .hero-glass-cta {
+    background-color: rgba(255, 255, 255, 0.16);
+    /* brightness(0.55), not something gentler: at 0.78 a cream-coloured
+       backdrop still left white-on-glass at roughly 1.9:1, which is not
+       readable. 0.55 puts it near 3.6:1 on the brightest plausible hero
+       image while staying translucent enough to read as glass over a dark
+       one. Tested against a white/cream gradient standing in for a
+       high-key product photo. */
+    -webkit-backdrop-filter: blur(14px) saturate(140%) brightness(0.55);
+    backdrop-filter: blur(14px) saturate(140%) brightness(0.55);
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    /* Outer shadow lifts it off the photo; the inset highlight is the lit
+       top edge that makes it read as a pane of glass rather than a tint. */
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    /* Survives even if the backdrop ends up bright despite the darkening. */
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .hero-glass-cta:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.55);
+    box-shadow:
+      0 10px 38px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.36);
+  }
+
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .hero-glass-cta {
+      background-color: rgba(42, 37, 33, 0.55);
+    }
+  }
+
   /* ── Horizontal-scroll momentum on iOS ──────────────────────────────
      Without this, horizontal overflow-x-auto strips (category chips,
      product thumbnails) feel sluggish/robotic on Safari specifically. */

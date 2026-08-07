@@ -90,7 +90,11 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
       role="region"
       aria-label="Anuncios de la tienda"
     >
-      <div className="mx-auto flex h-11 max-w-7xl items-center justify-center px-10 sm:px-14">
+      {/* min-h rather than a fixed h: on a narrow screen a long offer is
+          allowed to take two lines and grow the bar, which is always better
+          than hiding half the offer. Horizontal padding only has to clear the
+          arrows, so it tracks their size. */}
+      <div className="mx-auto flex min-h-10 max-w-7xl items-center justify-center px-9 py-1.5 sm:min-h-11 sm:px-14">
         {hasMultiple && (
           <ArrowButton
             side="left"
@@ -99,9 +103,14 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
           />
         )}
 
-        {/* aria-live so a screen reader announces each rotation, but politely. */}
+        {/* aria-live so a screen reader announces each rotation, but politely.
+            Deliberately NOT overflow-hidden: that clipped the second line
+            whenever a long offer wrapped on a narrow screen, which is the very
+            failure this bar is meant to avoid. There is nothing to clip anyway
+            — AnimatePresence runs in `mode="wait"`, so only one message exists
+            at a time, and its slide is 12px inside a full-width bar. */}
         <div
-          className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden"
+          className="relative flex min-w-0 flex-1 items-center justify-center"
           aria-live="polite"
           aria-atomic="true"
         >
@@ -120,7 +129,11 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
                   : { opacity: 0, x: direction * -slide }
               }
               transition={{ duration: reducedMotion ? 0.15 : 0.3, ease: 'easeOut' }}
-              className="text-brand-text truncate text-center font-body text-[11px] font-light tracking-[0.14em] uppercase sm:text-xs"
+              // Deliberately NOT truncated. A cut-off promotion ("...SUPERIORES
+              // A $") is worse than a two-line one, so the message wraps
+              // instead. Type and tracking both step down on small screens so
+              // the common offers still land on a single line at 375px.
+              className="text-brand-text text-center font-body text-[10px] leading-relaxed font-light tracking-[0.06em] text-balance uppercase sm:text-[11px] sm:tracking-[0.12em] md:text-xs"
             >
               <EmphasisedMessage text={messages[index]} />
             </motion.p>
@@ -154,11 +167,13 @@ function ArrowButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`text-brand-text-soft hover:text-brand-gold-deep focus-visible:ring-brand-gold absolute top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-        side === 'left' ? 'left-1 sm:left-3' : 'right-1 sm:right-3'
+      // Tighter and smaller on mobile so the arrows claim as little of the
+      // narrow line as possible; the tap target stays >=28px either way.
+      className={`text-brand-text-soft hover:text-brand-gold-deep focus-visible:ring-brand-gold absolute top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none sm:size-8 ${
+        side === 'left' ? 'left-0 sm:left-3' : 'right-0 sm:right-3'
       }`}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className="size-3.5 sm:size-4" aria-hidden="true" />
     </button>
   );
 }

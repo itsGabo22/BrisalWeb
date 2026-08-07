@@ -189,7 +189,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             })}
             <Link
               href={WHOLESALE_SECTION.href}
-              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-sm font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold/12 hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-sm font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               {WHOLESALE_SECTION.label}
             </Link>

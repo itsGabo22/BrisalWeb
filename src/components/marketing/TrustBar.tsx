@@ -19,7 +19,10 @@ export function TrustBar() {
     <section
       ref={ref}
       aria-label="Beneficios de compra"
-      className="w-full bg-brand-gold py-5 text-brand-text"
+      // Was a full-bleed solid gold band directly under the hero — by area the
+      // largest gold surface on the site. Now sand with gold hairlines top and
+      // bottom, so it still separates the hero from the page without the slab.
+      className="border-brand-gold/35 bg-brand-sand text-brand-text w-full border-y py-5"
     >
       <motion.div
         initial={{ opacity: reducedMotion ? 1 : 0 }}

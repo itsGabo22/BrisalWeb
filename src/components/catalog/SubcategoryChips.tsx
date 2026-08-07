@@ -34,8 +34,8 @@ export function SubcategoryChips({
                 'whitespace-nowrap rounded-full border px-4 py-2 font-body text-xs font-medium transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2',
                 isActive
-                  ? 'border-brand-gold bg-brand-gold text-brand-neutral-900'
-                  : 'border-brand-neutral-200 text-brand-neutral-700 hover:border-brand-gold/60 hover:text-brand-gold',
+                  ? 'border-brand-gold bg-brand-gold/12 text-brand-gold-deep'
+                  : 'border-brand-line text-brand-text-soft hover:border-brand-gold/60 hover:text-brand-gold-deep',
               )}
             >
               {subcategory.name}

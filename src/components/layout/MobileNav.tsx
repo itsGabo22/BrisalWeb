@@ -147,22 +147,22 @@ export function MobileNav({
             className="bg-brand-pearl fixed inset-y-0 left-0 z-50 flex w-80 max-w-[90vw] flex-col shadow-2xl lg:hidden"
           >
             {/* ── Header strip ──────────────────────────── */}
-            <div
-              className="border-brand-line flex items-center justify-between border-b px-6 py-4"
-              style={{ backgroundColor: '#C9A96E' }}
-            >
+            {/* Was a solid gold band. Now cream, so the drawer reads as one
+                continuous light surface from top to bottom, with a gold
+                hairline as the only gold left in the header. */}
+            <div className="border-brand-line bg-brand-cream flex items-center justify-between border-b px-6 py-4">
               <div className="flex flex-col leading-none">
                 <span className="text-brand-text font-wordmark text-base font-normal tracking-widest">
                   BRISAL
                 </span>
-                <span className="text-brand-text font-body text-[8px] font-normal tracking-[0.35em] uppercase">
+                <span className="text-brand-gold-deep font-body text-[8px] font-normal tracking-[0.35em] uppercase">
                   BY SALVADOR
                 </span>
               </div>
               <button
                 onClick={onClose}
                 aria-label="Cerrar menú"
-                className="text-brand-text hover:bg-brand-text/10 focus-visible:ring-brand-text flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>
@@ -300,7 +300,7 @@ export function MobileNav({
                 <Link
                   href={WHOLESALE_SECTION.href}
                   onClick={handleLinkClick}
-                  className="text-brand-gold-deep border-brand-gold/50 hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold flex w-full items-center rounded-lg border px-4 py-3 font-body text-sm font-normal tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  className="text-brand-gold-deep border-brand-gold/50 hover:bg-brand-gold/12 hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-brand-gold flex w-full items-center rounded-lg border px-4 py-3 font-body text-sm font-normal tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
                   {WHOLESALE_SECTION.label}
                 </Link>

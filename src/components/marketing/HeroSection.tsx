@@ -108,7 +108,11 @@ function HeroCTAs({ ctaText, ctaHref }: { ctaText?: string | null; ctaHref?: str
       variants={itemVariants}
       className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
     >
-      <Button variant="primary" size="lg" asChild>
+      {/* Glass rather than the site's standard pearl CTA: this is the one
+          button that sits on photography instead of on a flat light surface,
+          and the pearl pill would fight the image. There is no secondary hero
+          button — a single destination keeps the hero's focus. */}
+      <Button variant="glass" size="lg" asChild>
         <Link href={ctaHref || '/catalogo'}>{ctaText || 'Explorar Colección'}</Link>
       </Button>
     </m.div>
