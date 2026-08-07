@@ -19,6 +19,14 @@ function serializeOrder(order: Order & { items: OrderItem[] }) {
       price: item.price.toNumber(),
       quantity: item.quantity,
       imageUrl: item.imageUrl,
+      // The admin page has always rendered these three; they were never sent,
+      // so every line showed up without its colour or reference and two colours
+      // of one product were indistinguishable in the pedidos list.
+      color: item.color,
+      reference: item.reference,
+      // > 0 means the client still owes these units — what the "Sobrepedido"
+      // badge and filter are driven from.
+      backorderQty: item.backorderQty,
     })),
   };
 }

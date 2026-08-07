@@ -169,9 +169,21 @@ model OrderItem {
   /// Which colour was ordered. Null for simple products with no variants,
   /// so existing order history stays valid.
   color     String?
+  /// The ColorVariant this line was ordered in, or null when the line is the
+  /// product's PRIMARY colour (or the product has no colours at all). Stock
+  /// lives per colour, so confirming an order can only decrement the right
+  /// row if it knows which one it was. Deliberately NOT a relation: deleting a
+  /// variant must not cascade into — or be blocked by — order history, which
+  /// keeps its own `color` and `reference` snapshot regardless.
+  colorVariantId String?
   /// The reference as it stood WHEN ORDERED. Stored rather than derived so a
   /// later SKU change can't rewrite what an old order says was shipped.
   reference String?
+  /// How many of `quantity` were beyond the colour's available stock at order
+  /// time — 0 when the line was fully in stock. This is the record of what the
+  /// client still owes the customer ("sobrepedido"), and it is never rewritten
+  /// when stock is later replenished: it says what was true when ordered.
+  backorderQty Int @default(0)
 }
 
 model SiteConfig {

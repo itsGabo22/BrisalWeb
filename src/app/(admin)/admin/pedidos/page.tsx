@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDown, ChevronUp, Check, X, Phone, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, X, Phone, Calendar, Clock } from 'lucide-react';
 import { formatCOP } from '@/lib/utils/pricing';
 import { Button } from '@/components/ui/button';
 
@@ -17,6 +17,12 @@ interface OrderItemView {
   /** Null for orders placed before variants existed, and for simple products. */
   color: string | null;
   reference: string | null;
+  /**
+   * Units of this line that were beyond the colour's stock — what the client
+   * still has to produce or restock. 0 on a fully in-stock line, and on every
+   * order placed before sobrepedido existed.
+   */
+  backorderQty: number;
 }
 
 interface OrderView {
@@ -31,14 +37,34 @@ interface OrderView {
   items: OrderItemView[];
 }
 
-type Tab = 'PENDIENTES' | 'CONFIRMADOS' | 'RECHAZADOS' | 'TODOS';
+/**
+ * SOBREPEDIDO is not a status — an order with backordered lines can be pending
+ * or already confirmed. It is a cross-cutting view of "what do I still owe",
+ * which is why it filters on the items rather than on `order.status`.
+ */
+type Tab = 'PENDIENTES' | 'CONFIRMADOS' | 'SOBREPEDIDO' | 'RECHAZADOS' | 'TODOS';
 
 const STATUS_MAP: Record<Tab, OrderStatus | null> = {
   PENDIENTES: 'PENDING_WHATSAPP',
   CONFIRMADOS: 'CONFIRMED',
+  SOBREPEDIDO: null,
   RECHAZADOS: 'REJECTED',
   TODOS: null,
 };
+
+/** Units this order still owes across every line. 0 = nothing to restock. */
+function totalBackorderQty(order: OrderView): number {
+  return order.items.reduce((total, item) => total + (item.backorderQty ?? 0), 0);
+}
+
+/**
+ * A cancelled or rejected order owes nothing — it was never going to ship — so
+ * it must not sit in the restock list forever.
+ */
+function hasPendingBackorder(order: OrderView): boolean {
+  if (order.status === 'REJECTED' || order.status === 'CANCELLED') return false;
+  return totalBackorderQty(order) > 0;
+}
 
 const STATUS_BADGE: Record<OrderStatus, { label: string; className: string }> = {
   PENDING_WHATSAPP: {
@@ -104,6 +130,7 @@ export default function AdminPedidosPage() {
   };
 
   const filteredOrders = React.useMemo(() => {
+    if (activeTab === 'SOBREPEDIDO') return orders.filter(hasPendingBackorder);
     const status = STATUS_MAP[activeTab];
     return status ? orders.filter((o) => o.status === status) : orders;
   }, [orders, activeTab]);
@@ -118,6 +145,11 @@ export default function AdminPedidosPage() {
       key: 'CONFIRMADOS',
       label: 'Confirmados',
       count: orders.filter((o) => o.status === 'CONFIRMED').length,
+    },
+    {
+      key: 'SOBREPEDIDO',
+      label: 'Con sobrepedido',
+      count: orders.filter(hasPendingBackorder).length,
     },
     {
       key: 'RECHAZADOS',
@@ -180,6 +212,8 @@ export default function AdminPedidosPage() {
             {filteredOrders.map((order) => {
               const isExpanded = expandedId === order.id;
               const badge = STATUS_BADGE[order.status];
+              const backordered = totalBackorderQty(order);
+              const showsBackorder = hasPendingBackorder(order);
 
               return (
                 <div key={order.id}>
@@ -211,6 +245,16 @@ export default function AdminPedidosPage() {
                       <span className="font-sans text-sm font-semibold text-brand-neutral-900 dark:text-brand-neutral-100">
                         {formatCOP(order.total)}
                       </span>
+                      {/* Sits next to the status, not instead of it — an order
+                          can be confirmed AND still owe units. The count is
+                          here so the client sees how much to produce without
+                          having to open the order. */}
+                      {showsBackorder && (
+                        <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
+                          <Clock className="size-3" aria-hidden="true" />
+                          Sobrepedido · {backordered}
+                        </span>
+                      )}
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${badge.className}`}
                       >
@@ -239,6 +283,17 @@ export default function AdminPedidosPage() {
                                   {item.reference && <>Ref: {item.reference}</>}
                                 </span>
                               )}
+                              {/* Per line, because the restocking is per
+                                  colour: the order total says how much, this
+                                  says of WHAT. */}
+                              {item.backorderQty > 0 && (
+                                <span className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800 dark:text-amber-400">
+                                  <Clock className="size-3 shrink-0" aria-hidden="true" />
+                                  Sobrepedido: faltan {item.backorderQty}{' '}
+                                  {item.backorderQty === 1 ? 'unidad' : 'unidades'} por
+                                  reponer
+                                </span>
+                              )}
                             </span>
                             <span className="shrink-0 font-medium text-brand-neutral-900 dark:text-brand-neutral-100">
                               {formatCOP(item.price * item.quantity)}
@@ -246,6 +301,17 @@ export default function AdminPedidosPage() {
                           </li>
                         ))}
                       </ul>
+
+                      {/* Confirming no longer refuses an order it can't fully
+                          cover, so say what it will actually do instead. */}
+                      {order.status === 'PENDING_WHATSAPP' && showsBackorder && (
+                        <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 font-sans text-xs text-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
+                          Al confirmar se descuenta solo el stock disponible (nunca
+                          queda en negativo). Las {backordered}{' '}
+                          {backordered === 1 ? 'unidad' : 'unidades'} de sobrepedido
+                          quedan registradas como pendientes de reponer.
+                        </p>
+                      )}
 
                       {order.status === 'PENDING_WHATSAPP' && (
                         <div className="flex justify-end gap-3">

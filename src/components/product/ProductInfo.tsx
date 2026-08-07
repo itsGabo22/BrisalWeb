@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, Minus, Plus } from 'lucide-react';
+import { Check, Clock, Minus, Plus } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +80,19 @@ export function ProductInfo({
   const showWholesalePrice =
     wholesaleSession === 'approved' && hasWholesalePrice(priced);
   const price = getEffectivePrice(priced, showWholesalePrice);
-  const stock = selectedColor ? selectedColor.stock : product.stock;
+  const stock = Math.max(0, selectedColor ? selectedColor.stock : product.stock);
+  /**
+   * Sobrepedido: a colour with too little stock is still orderable — the client
+   * produces or restocks the difference — so the page never blocks the add. It
+   * says so instead, and the same arithmetic is redone server-side at order
+   * time (see `computeBackorderQty`), because this stock number is only as
+   * fresh as the page load.
+   */
+  const backorderQty = Math.max(0, quantity - stock);
+  const isSoldOut = stock <= 0;
+  const isBackorder = backorderQty > 0;
+  // "este color" only makes sense when the shopper actually chose one.
+  const subject = colors.length > 1 ? 'Este color está' : 'Este producto está';
   // Changes with the selected colour, so the shopper and the client are always
   // looking at the same reference for the same thing.
   const reference = selectedColor?.reference ?? getProductReference(product);
@@ -114,6 +126,9 @@ export function ProductInfo({
           selectedColor?.imageUrls[0] ?? product.imageUrls[0] ?? '',
         slug: product.slug,
         color: selectedColor?.colorName ?? null,
+        // Null for the primary colour, whose stock is the product's own — see
+        // `resolveLineVariant`, which reads that null the same way.
+        colorVariantId: selectedColor?.variant?.id ?? null,
         reference,
       },
       quantity,
@@ -212,6 +227,10 @@ export function ProductInfo({
             {formatCOP(price.final)}
           </span>
         )}
+
+        {/* Shown as soon as the colour is empty — before the shopper commits to
+            a quantity — so "sobre pedido" is never a surprise at checkout. */}
+        {isSoldOut && <Badge variant="sobre-pedido">Sobre pedido</Badge>}
       </div>
 
       <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
@@ -262,7 +281,7 @@ export function ProductInfo({
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
-                  aria-label={`${color.colorName}${soldOut ? ' (agotado)' : ''}`}
+                  aria-label={`${color.colorName}${soldOut ? ' (sobre pedido)' : ''}`}
                   title={color.colorName}
                   onClick={() => onSelectColor?.(color)}
                   className={cn(
@@ -278,8 +297,8 @@ export function ProductInfo({
                     aria-hidden="true"
                   />
                   {soldOut && (
-                    // Diagonal strike marks a colour that's out of stock
-                    // without removing it — the shopper still sees it exists.
+                    // Diagonal strike marks a colour with no stock without
+                    // disabling it — it is still orderable, on sobrepedido.
                     <span
                       className="absolute inset-0 flex items-center justify-center"
                       aria-hidden="true"
@@ -292,7 +311,9 @@ export function ProductInfo({
             })}
           </div>
           <p className="font-body text-xs text-brand-text-soft">
-            {stock > 0 ? `${stock} disponibles en este color` : 'Agotado en este color'}
+            {stock > 0
+              ? `${stock} disponibles en este color`
+              : 'Sin stock en este color — se hace sobre pedido'}
           </p>
         </div>
       )}
@@ -335,6 +356,44 @@ export function ProductInfo({
             <Plus size={15} aria-hidden="true" />
           </button>
         </div>
+      </div>
+
+      {/*
+        The sobrepedido notice. It sits directly above "Agregar al carrito"
+        because that is the moment it changes a decision — the shopper is told
+        what ordering more than exists means BEFORE they do it, and the button
+        stays enabled, which is the point of the whole feature.
+
+        `aria-live` because the message appears and changes as the quantity or
+        the colour changes, without the surrounding page moving.
+      */}
+      <div aria-live="polite">
+        {isBackorder && (
+          <div className="border-badge-sobrepedido-fg/25 bg-badge-sobrepedido-bg flex gap-2.5 rounded-md border px-4 py-3">
+            <Clock
+              size={16}
+              className="text-badge-sobrepedido-fg mt-0.5 shrink-0"
+              aria-hidden="true"
+            />
+            <p className="text-badge-sobrepedido-fg font-body text-sm leading-relaxed">
+              {isSoldOut ? (
+                <>
+                  {subject} <strong className="font-medium">sobre pedido</strong>. Tu
+                  pedido se procesará y coordinaremos el tiempo de entrega por
+                  WhatsApp.
+                </>
+              ) : (
+                <>
+                  Tenemos <strong className="font-medium">{stock}</strong>{' '}
+                  {stock === 1 ? 'unidad disponible' : 'unidades disponibles'} de
+                  inmediato. {backorderQty === 1 ? 'La otra unidad queda' : `Las otras ${backorderQty} unidades quedan`}{' '}
+                  <strong className="font-medium">sobre pedido</strong> y
+                  coordinaremos el tiempo de entrega por WhatsApp.
+                </>
+              )}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">

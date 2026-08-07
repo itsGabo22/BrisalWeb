@@ -72,6 +72,10 @@ export default function CartPage() {
             // though the cart itself had kept them apart.
             color: item.color ?? null,
             reference: item.reference ?? null,
+            // Identifies WHICH colour's stock the server checks for the
+            // sobrepedido. Null on lines added before this field existed —
+            // the server falls back to matching the colour name.
+            colorVariantId: item.colorVariantId ?? null,
           })),
           total,
           customerName: customerName.trim(),

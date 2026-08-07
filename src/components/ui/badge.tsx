@@ -13,6 +13,7 @@ const badgeVariants = cva(
         'en-oferta': 'bg-badge-oferta-bg text-badge-oferta-fg border-red-200/50 shadow-sm uppercase tracking-wider',
         tendencia: 'bg-badge-tendencia-bg text-badge-tendencia-fg border-purple-200/50 shadow-sm',
         mayorista: 'bg-badge-mayorista-bg text-badge-mayorista-fg border-brand-gold/35 shadow-sm uppercase tracking-wider',
+        'sobre-pedido': 'bg-badge-sobrepedido-bg text-badge-sobrepedido-fg border-amber-300/50 shadow-sm uppercase tracking-wider',
       },
     },
     defaultVariants: {

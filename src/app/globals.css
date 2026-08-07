@@ -54,6 +54,11 @@
   --color-badge-tendencia-fg: #6B4EAB;
   --color-badge-mayorista-bg: #F7EFE0;
   --color-badge-mayorista-fg: #8A6A2F;
+  /* "Sobre pedido" — a colour that can still be ordered but has to be made or
+     restocked first. Warm amber so it reads as a heads-up rather than as the
+     red of an error, and dark enough on its own chip (~5.3:1) to stay legible. */
+  --color-badge-sobrepedido-bg: #FCF1DE;
+  --color-badge-sobrepedido-fg: #8A5A12;
 
   /* ── shadcn/ui semantic colors ───────────────────── */
   --color-background: var(--background);

@@ -143,6 +143,16 @@ export const orderItemSchema = z.object({
   quantity: z.number().int().positive(),
   imageUrl: z.string().optional().nullable(),
   color: z.string().optional().nullable(),
+  /**
+   * Which ColorVariant the line is, so the server can read THAT colour's stock
+   * when computing the backorder. Null/absent means the product's primary
+   * colour — and is also what a cart persisted before this field existed sends,
+   * which the server recovers from the colour name.
+   *
+   * `backorderQty` is deliberately NOT accepted from the client: the shopper
+   * does not get to declare how much stock exists. The order route computes it.
+   */
+  colorVariantId: z.string().optional().nullable(),
   reference: z.string().optional().nullable(),
 });
 

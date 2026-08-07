@@ -13,6 +13,13 @@ export interface CartItem {
   /** Chosen colour, or null for a product without variants. */
   color?: string | null;
   /**
+   * The ColorVariant id behind `color`, or null when the chosen colour is the
+   * product's PRIMARY one (whose stock is the product's own). Carried so the
+   * order route can read the right colour's stock and work out the sobrepedido
+   * without having to match on a name the client could have since renamed.
+   */
+  colorVariantId?: string | null;
+  /**
    * The reference at add-to-cart time. Carried on the line rather than looked
    * up later so the order records what the shopper was actually shown.
    */
