@@ -1,12 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import {
-  ProductBreadcrumb,
-  ProductGallery,
-  ProductInfo,
-  RelatedProducts,
-} from '@/components/product';
+import { ProductBreadcrumb, RelatedProducts } from '@/components/product';
+import { ProductDetail } from '@/components/product/ProductDetail';
 import { productRepository } from '@/lib/repositories';
 import { getFrequentlyBoughtTogether } from '@/lib/recommendations';
 
@@ -60,14 +56,30 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
     <main className="bg-brand-pearl">
       <ProductBreadcrumb product={product} />
 
-      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:px-8 lg:py-14">
-        <ProductGallery
-          images={product.imageUrls}
-          productName={product.name}
-          className="lg:sticky lg:top-28 lg:self-start"
-        />
-        <ProductInfo product={product} />
-      </section>
+      <ProductDetail product={product} />
+
+      {/* Rendered only when the client actually wrote one — no empty
+          "Descripción" heading on products without a description. */}
+      {product.description && (
+        <section
+          className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8"
+          aria-labelledby="product-description-heading"
+        >
+          <div className="border-brand-line max-w-3xl border-t pt-10">
+            <h2
+              id="product-description-heading"
+              className="text-brand-text font-heading text-xl font-medium"
+            >
+              Descripción
+            </h2>
+            {/* whitespace-pre-line so paragraph breaks the client typed in the
+                admin textarea survive without needing a rich-text editor. */}
+            <p className="text-brand-text-soft mt-4 font-body text-base leading-8 whitespace-pre-line">
+              {product.description}
+            </p>
+          </div>
+        </section>
+      )}
 
       {frequentlyBoughtTogether && frequentlyBoughtTogether.length > 0 && (
         <RelatedProducts

@@ -5,14 +5,20 @@ import { formatCOP } from '@/lib/utils/pricing';
 
 function buildWhatsAppMessage(
   orderId: string,
-  items: { name: string; price: number; quantity: number }[],
+  items: { name: string; price: number; quantity: number; color?: string | null }[],
   total: number,
   customerName: string,
   customerPhone: string,
 ): string {
   const orderCode = orderId.slice(-6).toUpperCase();
   const itemLines = items
-    .map((item) => `• ${item.name} x${item.quantity} = ${formatCOP(item.price * item.quantity)}`)
+    .map(
+      (item) =>
+        // The colour is part of what was ordered, so it has to survive into
+        // the WhatsApp message the client actually reads when packing.
+        `• ${item.name}${item.color ? ` (${item.color})` : ''} x${item.quantity} = ` +
+        formatCOP(item.price * item.quantity),
+    )
     .join('\n');
 
   return (
@@ -59,6 +65,7 @@ export async function POST(request: Request) {
             price: item.price,
             quantity: item.quantity,
             imageUrl: item.imageUrl ?? null,
+            color: item.color ?? null,
           })),
         },
       },

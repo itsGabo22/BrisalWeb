@@ -30,6 +30,7 @@ export const PRODUCT_INCLUDE = {
   // productId and can never arrive this way — `attachScopedDiscounts` below
   // is what merges them in.
   discounts: true,
+  colorVariants: { orderBy: { order: 'asc' } },
 } satisfies Prisma.ProductInclude;
 
 /**

@@ -60,7 +60,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
     }
 
-    // variants/customAttributes have no Prisma columns yet — not persisted.
     const {
       name,
       price,
@@ -70,12 +69,19 @@ export async function PATCH(
       sku,
       stock,
       material,
+      description,
       imageUrls,
       featured,
       active,
       tagIds,
+      colorVariants,
     } = result.data;
 
+    /**
+     * Every field is spread conditionally on `!== undefined`, which is the
+     * existing-record fallback: the form only sends what it means to change,
+     * so editing a name can't blank the description or wipe the variants.
+     */
     const updateData: Prisma.ProductUpdateInput = {
       ...(name !== undefined && { name }),
       ...(price !== undefined && { price }),
@@ -85,10 +91,39 @@ export async function PATCH(
       ...(sku !== undefined && { sku }),
       ...(stock !== undefined && { stock }),
       ...(material !== undefined && { material }),
+      ...(description !== undefined && {
+        description: description?.trim() ? description.trim() : null,
+      }),
       ...(imageUrls !== undefined && { imageUrls }),
       ...(featured !== undefined && { featured }),
       ...(active !== undefined && { active }),
     };
+
+    /**
+     * Variants are replaced wholesale when the form sends them.
+     *
+     * Delete-then-recreate rather than upsert: the editor lets the client
+     * reorder and remove colours freely, so diffing by id would mean tracking
+     * client-side ids through every reorder for no benefit. `order` is
+     * reassigned from array position, and `imageUrls` arrives on each variant,
+     * so a save without re-uploading keeps the images the form already holds.
+     * Wrapped with the product update in one transaction so a failure halfway
+     * cannot leave the product with its colours deleted.
+     */
+    if (colorVariants !== undefined) {
+      updateData.colorVariants = {
+        deleteMany: {},
+        create: colorVariants.map((variant, index) => ({
+          colorName: variant.colorName.trim(),
+          colorHex: variant.colorHex,
+          imageUrls: variant.imageUrls,
+          price: variant.price ?? null,
+          wholesalePrice: variant.wholesalePrice ?? null,
+          stock: variant.stock,
+          order: index,
+        })),
+      };
+    }
 
     if (name) {
       const slug = slugify(name);

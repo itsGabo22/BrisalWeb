@@ -12,7 +12,49 @@
  * A discount's `percentage` is now actually applied. `product.price` is the
  * pre-discount retail price; the effective price is derived from it.
  */
-import type { Discount, Product } from '@/types';
+import type { ColorVariant, Discount, Product } from '@/types';
+
+/**
+ * A colour variant's prices, with inheritance resolved.
+ *
+ * A null `price` on a variant means "use the product's price", NOT zero — the
+ * admin form leaves it blank for every colour that costs the same, which is
+ * the common case. Same for wholesale. Resolving it in one place keeps that
+ * rule out of the components.
+ */
+export function resolveVariantPricing(
+  product: Product,
+  variant: ColorVariant | null,
+): Pick<Product, 'price' | 'wholesalePrice'> {
+  if (!variant) {
+    return { price: product.price, wholesalePrice: product.wholesalePrice };
+  }
+  return {
+    price: variant.price ?? product.price,
+    wholesalePrice: variant.wholesalePrice ?? product.wholesalePrice,
+  };
+}
+
+/**
+ * The product as priced for a chosen colour. Everything downstream
+ * (`getEffectivePrice`, discounts, wholesale gating) then works unchanged,
+ * because it only ever reads `price` / `wholesalePrice`.
+ */
+export function productForVariant(
+  product: Product,
+  variant: ColorVariant | null,
+): Product {
+  if (!variant) return product;
+  return { ...product, ...resolveVariantPricing(product, variant) };
+}
+
+/** Stock for the chosen colour, or the product's own when there are none. */
+export function getVariantStock(
+  product: Product,
+  variant: ColorVariant | null,
+): number {
+  return variant ? variant.stock : product.stock;
+}
 
 /**
  * A discount counts when it is switched on AND today falls inside its window.

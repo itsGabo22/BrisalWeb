@@ -6,8 +6,6 @@ import {
   ArrowLeft,
   Upload,
   Trash2,
-  Settings,
-  Sparkles,
   Save,
   CheckCircle,
   Images,
@@ -16,7 +14,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Category, ProductVariant } from '@/types';
+import type { Category } from '@/types';
+import {
+  ColorVariantsSection,
+  makeVariantDraft,
+  type VariantDraft,
+} from '@/components/admin/ColorVariantsSection';
 import { Button } from '@/components/ui/button';
 
 interface BandejaImage {
@@ -55,15 +58,10 @@ export default function AdminProductFormPage() {
   const [active, setActive] = React.useState(true);
   
   // Variants state
-  const [variants, setVariants] = React.useState<ProductVariant[]>([]);
-  const [newVarName, setNewVarName] = React.useState('');
-  const [newVarStock, setNewVarStock] = React.useState<number>(0);
-  const [newVarSku, setNewVarSku] = React.useState('');
+  const [colorVariants, setColorVariants] = React.useState<VariantDraft[]>([]);
+  const [description, setDescription] = React.useState('');
 
   // Custom attributes state
-  const [attributes, setAttributes] = React.useState<Record<string, string>>({});
-  const [newAttrKey, setNewAttrKey] = React.useState('');
-  const [newAttrVal, setNewAttrVal] = React.useState('');
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -95,8 +93,30 @@ export default function AdminProductFormPage() {
             setImageUrls(prod.imageUrls || []);
             setFeatured(prod.featured);
             setActive(prod.active);
-            setVariants(prod.variants || []);
-            setAttributes(prod.customAttributes || {});
+            setDescription(prod.description || '');
+            // Stored variants become drafts: prices back to text so a blank
+            // box keeps meaning "inherit" rather than turning into 0.
+            setColorVariants(
+              (prod.colorVariants || []).map(
+                (variant: {
+                  colorName: string;
+                  colorHex: string;
+                  imageUrls: string[];
+                  price: number | null;
+                  wholesalePrice: number | null;
+                  stock: number;
+                }) => ({
+                  ...makeVariantDraft(),
+                  colorName: variant.colorName,
+                  colorHex: variant.colorHex,
+                  imageUrls: variant.imageUrls ?? [],
+                  price: variant.price === null ? '' : String(variant.price),
+                  wholesalePrice:
+                    variant.wholesalePrice === null ? '' : String(variant.wholesalePrice),
+                  stock: variant.stock,
+                }),
+              ),
+            );
           } else {
             setError('Producto no encontrado');
           }
@@ -190,44 +210,6 @@ export default function AdminProductFormPage() {
     setPendingAssignments((prev) => prev.filter((p) => p.url !== removedUrl));
   };
 
-  // Variants helpers
-  const addVariant = () => {
-    if (!newVarName.trim()) return;
-    const newVariant: ProductVariant = {
-      id: `var-${Math.random().toString(36).substr(2, 9)}`,
-      name: newVarName.trim(),
-      stock: newVarStock,
-      sku: newVarSku.trim() || null,
-    };
-    setVariants((prev) => [...prev, newVariant]);
-    setNewVarName('');
-    setNewVarStock(0);
-    setNewVarSku('');
-  };
-
-  const removeVariant = (varId: string) => {
-    setVariants((prev) => prev.filter((v) => v.id !== varId));
-  };
-
-  // Custom attributes helpers
-  const addAttribute = () => {
-    if (!newAttrKey.trim() || !newAttrVal.trim()) return;
-    setAttributes((prev) => ({
-      ...prev,
-      [newAttrKey.trim()]: newAttrVal.trim(),
-    }));
-    setNewAttrKey('');
-    setNewAttrVal('');
-  };
-
-  const removeAttribute = (key: string) => {
-    setAttributes((prev) => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -254,11 +236,24 @@ export default function AdminProductFormPage() {
       sku: sku.trim() || null,
       stock: Number(stock),
       material: material.trim() || null,
+      description: description.trim() || null,
       imageUrls,
       featured,
       active,
-      variants,
-      customAttributes: attributes,
+      // Blank price boxes become null = "inherit the product price", which is
+      // what resolveVariantPricing reads. Sending 0 would mean free.
+      colorVariants: colorVariants
+        .filter((variant) => variant.colorName.trim())
+        .map((variant, index) => ({
+          colorName: variant.colorName.trim(),
+          colorHex: variant.colorHex,
+          imageUrls: variant.imageUrls,
+          price: variant.price.trim() === '' ? null : Number(variant.price),
+          wholesalePrice:
+            variant.wholesalePrice.trim() === '' ? null : Number(variant.wholesalePrice),
+          stock: variant.stock,
+          order: index,
+        })),
     };
 
     try {
@@ -430,6 +425,27 @@ export default function AdminProductFormPage() {
                 placeholder="Ej. Baño de oro 24k"
                 className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label
+                htmlFor="product-description"
+                className="block text-sm font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1"
+              >
+                Descripción
+              </label>
+              <textarea
+                id="product-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                placeholder="Describe la pieza: acabado, medidas, ocasión…"
+                className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              />
+              <p className="mt-1 text-xs text-brand-neutral-400">
+                Opcional. Si la dejas vacía, la sección no aparece en la página del
+                producto.
+              </p>
             </div>
           </div>
         </div>
@@ -649,145 +665,8 @@ export default function AdminProductFormPage() {
           </div>
         </div>
 
-        {/* Section 4: Variants */}
-        <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 transition-colors">
-          <h2 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50 mb-1 flex items-center gap-2">
-            <Settings className="size-5 text-brand-gold" />
-            <span>Variantes de Producto</span>
-          </h2>
-          <p className="text-xs text-brand-neutral-400 mb-4">
-            Agrega tallas, colores o tipos específicos para este producto.
-          </p>
-
-          {/* Current Variants list */}
-          {variants.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {variants.map((v) => (
-                <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-brand-neutral-50 dark:bg-brand-neutral-950 border border-brand-neutral-100 dark:border-brand-neutral-850">
-                  <div className="flex flex-wrap gap-4 text-sm font-sans">
-                    <span className="font-semibold text-brand-neutral-800 dark:text-brand-neutral-200">{v.name}</span>
-                    <span className="text-brand-neutral-500">Stock: {v.stock}</span>
-                    {v.sku && <span className="text-brand-neutral-400">SKU: {v.sku}</span>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeVariant(v.id)}
-                    className="text-brand-neutral-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Variant Builder Form */}
-          <div className="grid gap-4 p-4 rounded-lg border border-brand-neutral-100 dark:border-brand-neutral-800 sm:grid-cols-3">
-            <div>
-              <label className="block text-xs font-semibold text-brand-neutral-500 uppercase mb-1">Nombre Variante</label>
-              <input
-                type="text"
-                placeholder="Ej. Oro - Talla 6"
-                value={newVarName}
-                onChange={(e) => setNewVarName(e.target.value)}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-2 py-1 text-sm focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-neutral-500 uppercase mb-1">Stock Variante</label>
-              <input
-                type="number"
-                value={newVarStock}
-                onChange={(e) => setNewVarStock(Number(e.target.value))}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-2 py-1 text-sm focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-neutral-500 uppercase mb-1">SKU Variante</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ej. SKU-VAR-1"
-                  value={newVarSku}
-                  onChange={(e) => setNewVarSku(e.target.value)}
-                  className="w-full rounded border border-brand-neutral-200 bg-white px-2 py-1 text-sm focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950"
-                />
-                <button
-                  type="button"
-                  onClick={addVariant}
-                  className="rounded bg-brand-neutral-100 hover:bg-brand-gold hover:text-brand-neutral-950 px-3 text-brand-neutral-700 transition-colors font-semibold text-sm dark:bg-brand-neutral-800 dark:text-brand-neutral-200"
-                >
-                  Añadir
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 5: Custom Attributes */}
-        <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 transition-colors">
-          <h2 className="font-serif text-lg font-bold text-brand-neutral-900 dark:text-brand-neutral-50 mb-1 flex items-center gap-2">
-            <Sparkles className="size-5 text-brand-gold" />
-            <span>Ficha Técnica Personalizada</span>
-          </h2>
-          <p className="text-xs text-brand-neutral-400 mb-4">
-            Crea libremente campos de especificación. Puedes inventar parámetros nuevos para tu pedido.
-          </p>
-
-          {/* Current attributes */}
-          {Object.keys(attributes).length > 0 && (
-            <div className="mb-4 space-y-2">
-              {Object.entries(attributes).map(([key, val]) => (
-                <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-brand-neutral-50 dark:bg-brand-neutral-950 border border-brand-neutral-100">
-                  <div className="text-sm font-sans">
-                    <span className="font-semibold text-brand-neutral-500 uppercase tracking-wider text-xs mr-2">{key}:</span>
-                    <span className="text-brand-neutral-800 dark:text-brand-neutral-200">{val}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeAttribute(key)}
-                    className="text-brand-neutral-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Builder */}
-          <div className="flex gap-4 p-4 rounded-lg border border-brand-neutral-100 dark:border-brand-neutral-800 flex-col sm:flex-row">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-brand-neutral-500 uppercase mb-1">Parámetro (Clave)</label>
-              <input
-                type="text"
-                placeholder="Ej. Diámetro, Grosor, Kilates..."
-                value={newAttrKey}
-                onChange={(e) => setNewAttrKey(e.target.value)}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-2 py-1 text-sm focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-brand-neutral-500 uppercase mb-1">Valor</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ej. 15 mm, 2 mm, 18k..."
-                  value={newAttrVal}
-                  onChange={(e) => setNewAttrVal(e.target.value)}
-                  className="w-full rounded border border-brand-neutral-200 bg-white px-2 py-1 text-sm focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950"
-                />
-                <button
-                  type="button"
-                  onClick={addAttribute}
-                  className="rounded bg-brand-neutral-100 hover:bg-brand-gold hover:text-brand-neutral-950 px-3 text-brand-neutral-700 transition-colors font-semibold text-sm dark:bg-brand-neutral-800 dark:text-brand-neutral-200"
-                >
-                  Agregar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Section 4: Colores / Variantes */}
+        <ColorVariantsSection variants={colorVariants} onChange={setColorVariants} />
 
         {/* Sticky Mobile/Desktop Bottom Action Bar */}
         <div className="fixed bottom-0 left-0 right-0 lg:left-64 border-t border-brand-neutral-200 bg-white/80 dark:border-brand-neutral-800 dark:bg-brand-neutral-900/80 backdrop-blur-md p-4 flex items-center justify-between z-30 transition-all">

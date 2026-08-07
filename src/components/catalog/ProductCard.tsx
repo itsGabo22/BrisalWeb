@@ -147,6 +147,32 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </h3>
         </Link>
 
+        {/* Colour dots, so a shopper scanning the grid can see a piece comes
+            in several finishes. Capped at four with a "+N" so a product with
+            many colours can't push the price out of the card. */}
+        {product.colorVariants.length > 0 && (
+          <div
+            className="flex items-center gap-1"
+            aria-label={`Colores disponibles: ${product.colorVariants
+              .map((variant) => variant.colorName)
+              .join(', ')}`}
+          >
+            {product.colorVariants.slice(0, 4).map((variant) => (
+              <span
+                key={variant.id}
+                title={variant.colorName}
+                className="border-brand-line size-3 rounded-full border"
+                style={{ backgroundColor: variant.colorHex }}
+              />
+            ))}
+            {product.colorVariants.length > 4 && (
+              <span className="text-brand-text-soft/70 font-body text-[10px] tabular-nums">
+                +{product.colorVariants.length - 4}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Pricing */}
         {showWholesalePrice ? (
           <div className="flex flex-col gap-1">

@@ -71,12 +71,26 @@ export type MayoristaLoginFormData = z.infer<typeof mayoristaLoginSchema>;
 
 // ─── Administrador ────────────────────────────────────────────────────────────
 
-export const productVariantSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'El nombre de la variante es requerido'),
-  stock: z.number().min(0, 'El stock no puede ser negativo'),
-  sku: z.string().optional().nullable(),
+/**
+ * A colour variant as posted by the admin form.
+ *
+ * `price` / `wholesalePrice` are nullable on purpose: blank means "inherit the
+ * product's price", which is the common case, and is resolved by
+ * `resolveVariantPricing`. Up to 7 images per colour, matching the brief.
+ */
+export const colorVariantSchema = z.object({
+  colorName: z.string().min(1, 'El nombre del color es requerido'),
+  colorHex: z
+    .string()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Color inválido (usa #RRGGBB)'),
+  imageUrls: z.array(z.string()).max(7, 'Máximo 7 imágenes por color').default([]),
+  price: z.number().min(0).optional().nullable(),
+  wholesalePrice: z.number().min(0).optional().nullable(),
+  stock: z.number().min(0, 'El stock no puede ser negativo').default(0),
+  order: z.number().int().min(0).default(0),
 });
+
+export type ColorVariantFormData = z.infer<typeof colorVariantSchema>;
 
 
 export const productAdminSchema = z.object({
@@ -91,9 +105,9 @@ export const productAdminSchema = z.object({
   imageUrls: z.array(z.string()).min(1, 'Debes agregar al menos una imagen'),
   featured: z.boolean().default(false),
   active: z.boolean().default(true),
+  description: z.string().optional().nullable(),
   tagIds: z.array(z.string()).default([]),
-  variants: z.array(productVariantSchema).default([]),
-  customAttributes: z.record(z.string(), z.string()).default({}),
+  colorVariants: z.array(colorVariantSchema).default([]),
 });
 
 export type ProductAdminFormData = z.infer<typeof productAdminSchema>;
@@ -126,6 +140,7 @@ export const orderItemSchema = z.object({
   price: z.number().nonnegative(),
   quantity: z.number().int().positive(),
   imageUrl: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
 });
 
 export const createOrderSchema = z.object({

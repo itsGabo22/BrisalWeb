@@ -62,8 +62,31 @@ model Product {
   category       Category     @relation(fields: [categoryId], references: [id])
   tags           ProductTag[]
   discounts      Discount[]
+  // A product with NO colorVariants is a simple product and keeps using
+  // `imageUrls`, `price` and `stock` above exactly as before.
+  colorVariants  ColorVariant[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+/// One colour of a product: its own images, its own stock, and optional
+/// price overrides. A null `price`/`wholesalePrice` means "inherit the
+/// product-level value" rather than "free" — see resolveVariantPricing.
+model ColorVariant {
+  id             String   @id @default(cuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorName      String
+  /// Hex for the swatch, shown in both the catalog filter and the selector.
+  colorHex       String
+  imageUrls      String[]
+  price          Decimal? @db.Decimal(10, 2)
+  wholesalePrice Decimal? @db.Decimal(10, 2)
+  stock          Int      @default(0)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([productId])
 }
 
 model ProductTag {
@@ -137,6 +160,9 @@ model OrderItem {
   price     Decimal @db.Decimal(10, 2)
   quantity  Int
   imageUrl  String?
+  /// Which colour was ordered. Null for simple products with no variants,
+  /// so existing order history stays valid.
+  color     String?
 }
 
 model SiteConfig {

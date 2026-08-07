@@ -10,13 +10,25 @@ export interface CartItem {
   imageUrl: string;
   quantity: number;
   slug: string;
+  /** Chosen colour, or null for a product without variants. */
+  color?: string | null;
+}
+
+/**
+ * A cart line is identified by product AND colour, not product alone: the same
+ * ring in Dorado and in Plateado are two different things to pick, pack and
+ * ship, so they must not merge into one line or overwrite each other's
+ * quantity.
+ */
+export function cartLineId(productId: string, color?: string | null): string {
+  return `${productId}::${color ?? ''}`;
 }
 
 interface CartStore {
   items: CartItem[];
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeItem: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -38,14 +50,15 @@ export const useCartStore = create<CartStore>()(
         const quantityToAdd = normalizeQuantity(quantity);
 
         set((state) => {
+          const lineId = cartLineId(item.productId, item.color);
           const existingItem = state.items.find(
-            (cartItem) => cartItem.productId === item.productId,
+            (cartItem) => cartLineId(cartItem.productId, cartItem.color) === lineId,
           );
 
           if (existingItem) {
             return {
               items: state.items.map((cartItem) =>
-                cartItem.productId === item.productId
+                cartLineId(cartItem.productId, cartItem.color) === lineId
                   ? {
                       ...cartItem,
                       quantity: cartItem.quantity + quantityToAdd,
@@ -60,17 +73,19 @@ export const useCartStore = create<CartStore>()(
           };
         });
       },
-      removeItem: (productId) => {
+      removeItem: (lineId) => {
         set((state) => ({
-          items: state.items.filter((item) => item.productId !== productId),
+          items: state.items.filter(
+            (item) => cartLineId(item.productId, item.color) !== lineId,
+          ),
         }));
       },
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (lineId, quantity) => {
         const nextQuantity = normalizeQuantity(quantity);
 
         set((state) => ({
           items: state.items.map((item) =>
-            item.productId === productId
+            cartLineId(item.productId, item.color) === lineId
               ? { ...item, quantity: nextQuantity }
               : item,
           ),

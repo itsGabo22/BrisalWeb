@@ -7,12 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
 import { cn } from '@/lib/utils';
-import { formatCOP, getEffectivePrice, hasWholesalePrice } from '@/lib/utils/pricing';
+import {
+  formatCOP,
+  getEffectivePrice,
+  getVariantStock,
+  hasWholesalePrice,
+  productForVariant,
+} from '@/lib/utils/pricing';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
-import type { Product, Tag } from '@/types';
+import type { ColorVariant, Product, Tag } from '@/types';
 
 interface ProductInfoProps {
   product: Product;
+  /** Null when the product has no colour variants. */
+  selectedVariant?: ColorVariant | null;
+  onSelectVariant?: (variant: ColorVariant) => void;
 }
 
 type BadgeVariant = 'nuevo' | 'mas-vendido' | 'en-oferta' | 'tendencia';
@@ -36,14 +45,27 @@ function clampQuantity(value: number): number {
   return Math.floor(value);
 }
 
-export function ProductInfo({ product }: ProductInfoProps) {
+export function ProductInfo({
+  product,
+  selectedVariant = null,
+  onSelectVariant,
+}: ProductInfoProps) {
   const [quantity, setQuantity] = React.useState(1);
   const [added, setAdded] = React.useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const wholesaleSession = useWholesaleSession();
+
+  /**
+   * The product re-priced for the chosen colour. Everything below then works
+   * on a normal Product, so discounts and wholesale gating need no knowledge
+   * of variants at all.
+   */
+  const priced = productForVariant(product, selectedVariant);
   const showWholesalePrice =
-    wholesaleSession === 'approved' && hasWholesalePrice(product);
-  const price = getEffectivePrice(product, showWholesalePrice);
+    wholesaleSession === 'approved' && hasWholesalePrice(priced);
+  const price = getEffectivePrice(priced, showWholesalePrice);
+  const stock = getVariantStock(product, selectedVariant);
+  const variants = product.colorVariants;
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
   const addedTimeoutRef = React.useRef<number | null>(null);
 
@@ -68,8 +90,12 @@ export function ProductInfo({ product }: ProductInfoProps) {
         // This previously used the pre-discount base, which is now a real
         // difference rather than a no-op.
         price: price.final,
-        imageUrl: product.imageUrls[0] ?? '',
+        // The chosen colour's own first image, so the cart line shows what
+        // the shopper actually picked.
+        imageUrl:
+          selectedVariant?.imageUrls[0] ?? product.imageUrls[0] ?? '',
         slug: product.slug,
+        color: selectedVariant?.colorName ?? null,
       },
       quantity,
     );
@@ -167,11 +193,66 @@ export function ProductInfo({ product }: ProductInfoProps) {
 
       <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
 
-      {product.description && (
-        <p className="font-body text-base leading-7 text-brand-neutral-600">
-          {product.description}
-        </p>
+      {/* Colour selector — omitted entirely for a simple product. */}
+      {variants.length > 0 && (
+        <div className="space-y-3">
+          <p className="font-body text-sm font-medium text-brand-text">
+            Color:{' '}
+            <span className="text-brand-text-soft font-normal">
+              {selectedVariant?.colorName}
+            </span>
+          </p>
+          <div
+            className="flex flex-wrap gap-2.5"
+            role="radiogroup"
+            aria-label="Color del producto"
+          >
+            {variants.map((variant) => {
+              const isSelected = variant.id === selectedVariant?.id;
+              const soldOut = variant.stock <= 0;
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`${variant.colorName}${soldOut ? ' (agotado)' : ''}`}
+                  title={variant.colorName}
+                  onClick={() => onSelectVariant?.(variant)}
+                  className={cn(
+                    'focus-visible:ring-brand-gold relative size-9 rounded-full border-2 transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+                    isSelected
+                      ? 'border-brand-gold-deep scale-110'
+                      : 'border-brand-line hover:border-brand-gold',
+                  )}
+                >
+                  <span
+                    className="absolute inset-1 rounded-full"
+                    style={{ backgroundColor: variant.colorHex }}
+                    aria-hidden="true"
+                  />
+                  {soldOut && (
+                    // Diagonal strike marks a colour that's out of stock
+                    // without removing it — the shopper still sees it exists.
+                    <span
+                      className="absolute inset-0 flex items-center justify-center"
+                      aria-hidden="true"
+                    >
+                      <span className="bg-brand-text/60 h-px w-full rotate-45" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body text-xs text-brand-text-soft">
+            {stock > 0 ? `${stock} disponibles en este color` : 'Agotado en este color'}
+          </p>
+        </div>
       )}
+
+      {/* The description now has its own titled section below the gallery
+          (see the product page) — rendering it here too would duplicate it. */}
 
       <div className="space-y-3">
         <label

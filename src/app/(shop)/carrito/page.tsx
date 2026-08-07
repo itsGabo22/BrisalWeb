@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { formatCOP } from '@/lib/utils/pricing';
-import { useCartStore } from '@/stores/cartStore';
+import { cartLineId, useCartStore } from '@/stores/cartStore';
 
 export default function CartPage() {
   const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
@@ -132,7 +132,7 @@ export default function CartPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
             <section aria-label="Productos en el carrito" className="space-y-4">
               {items.map((item) => (
-                <Card key={item.productId} className="bg-white/80">
+                <Card key={cartLineId(item.productId, item.color)} className="bg-white/80">
                   <CardContent className="grid grid-cols-[80px_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:items-center">
                     <Image
                       src={item.imageUrl}
@@ -149,6 +149,11 @@ export default function CartPage() {
                       >
                         {item.name}
                       </Link>
+                      {item.color && (
+                        <p className="text-brand-text-soft mt-0.5 font-body text-xs">
+                          Color: {item.color}
+                        </p>
+                      )}
                       <p className="text-brand-neutral-600 mt-1 font-body text-sm">
                         {formatCOP(item.price)} unidad
                       </p>
@@ -161,7 +166,7 @@ export default function CartPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateQuantity(item.productId, item.quantity - 1)
+                              updateQuantity(cartLineId(item.productId, item.color), item.quantity - 1)
                             }
                             disabled={item.quantity <= 1}
                             className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold flex size-9 items-center justify-center rounded-l-md transition-colors disabled:cursor-not-allowed disabled:opacity-40"
@@ -175,7 +180,7 @@ export default function CartPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateQuantity(item.productId, item.quantity + 1)
+                              updateQuantity(cartLineId(item.productId, item.color), item.quantity + 1)
                             }
                             className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold flex size-9 items-center justify-center rounded-r-md transition-colors"
                             aria-label={`Aumentar cantidad de ${item.name}`}
@@ -186,7 +191,7 @@ export default function CartPage() {
 
                         <button
                           type="button"
-                          onClick={() => removeItem(item.productId)}
+                          onClick={() => removeItem(cartLineId(item.productId, item.color))}
                           className="text-brand-neutral-500 flex size-9 items-center justify-center rounded-md transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
                           aria-label={`Eliminar ${item.name}`}
                         >
@@ -224,7 +229,7 @@ export default function CartPage() {
                 <ul className="space-y-3">
                   {items.map((item) => (
                     <li
-                      key={item.productId}
+                      key={cartLineId(item.productId, item.color)}
                       className="flex items-start justify-between gap-4 font-body text-sm"
                     >
                       <span className="text-brand-neutral-700">

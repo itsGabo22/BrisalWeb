@@ -43,7 +43,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // variants/customAttributes have no Prisma columns yet — not persisted.
     const {
       name,
       price,
@@ -53,10 +52,12 @@ export async function POST(request: Request) {
       sku,
       stock,
       material,
+      description,
       imageUrls,
       featured,
       active,
       tagIds,
+      colorVariants,
     } = result.data;
     const slug = slugify(name);
 
@@ -79,10 +80,24 @@ export async function POST(request: Request) {
         sku,
         stock,
         material,
+        description: description?.trim() ? description.trim() : null,
         imageUrls,
         featured,
         active,
         tags: { create: tagIds.map((tagId) => ({ tagId })) },
+        colorVariants: {
+          create: colorVariants.map((variant, index) => ({
+            colorName: variant.colorName.trim(),
+            colorHex: variant.colorHex,
+            imageUrls: variant.imageUrls,
+            price: variant.price ?? null,
+            wholesalePrice: variant.wholesalePrice ?? null,
+            stock: variant.stock,
+            // Index wins over any client-sent order so the saved order always
+            // matches the order the client sees in the editor.
+            order: index,
+          })),
+        },
       },
       include: PRODUCT_INCLUDE,
     });

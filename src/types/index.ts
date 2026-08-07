@@ -42,12 +42,24 @@ export interface Discount {
   active: boolean;
 }
 
-// ─── ProductVariant ───────────────────────────────────────────────────────────
-export interface ProductVariant {
+// ─── ColorVariant ─────────────────────────────────────────────────────────────
+/**
+ * One colour of a product. Replaces the old `ProductVariant`, which existed
+ * only as a TypeScript shape — it had no table and `toProduct` never populated
+ * it, so nothing ever read a real value out of it.
+ */
+export interface ColorVariant {
   id: string;
-  name: string; // e.g. "Dorado - Talla M"
+  colorName: string;
+  /** Hex for the swatch, in the catalog filter and the product selector. */
+  colorHex: string;
+  imageUrls: string[];
+  /** null = inherit the product's price. Not "free". */
+  price?: number | null;
+  /** null = inherit the product's wholesale price. */
+  wholesalePrice?: number | null;
   stock: number;
-  sku?: string | null;
+  order: number;
 }
 
 // ─── Product ──────────────────────────────────────────────────────────────────
@@ -78,17 +90,19 @@ export interface Product {
   category: Category;
   tags: Tag[];
   discounts: Discount[];
-  /** Product variants (colors, sizes, etc.). Optional. */
-  variants?: ProductVariant[];
-  /** Free-form custom attributes — key/value pairs (e.g. "Largo": "45 cm"). */
-  customAttributes?: Record<string, string>;
+  /**
+   * Colour variants, ordered by `order`. Empty for a simple product, which
+   * keeps using the product-level `imageUrls`, `price` and `stock`.
+   */
+  colorVariants: ColorVariant[];
 }
 
 // ─── CartItem ─────────────────────────────────────────────────────────────────
 export interface CartItem {
   product: Product;
   quantity: number;
-  variantId?: string | null;
+  /** Colour name chosen at add-to-cart time, when the product has variants. */
+  color?: string | null;
 }
 
 // ─── HeroSlide ────────────────────────────────────────────────────────────────
