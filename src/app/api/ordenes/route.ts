@@ -5,20 +5,32 @@ import { formatCOP } from '@/lib/utils/pricing';
 
 function buildWhatsAppMessage(
   orderId: string,
-  items: { name: string; price: number; quantity: number; color?: string | null }[],
+  items: {
+    name: string;
+    price: number;
+    quantity: number;
+    color?: string | null;
+    reference?: string | null;
+  }[],
   total: number,
   customerName: string,
   customerPhone: string,
 ): string {
   const orderCode = orderId.slice(-6).toUpperCase();
+
+  /**
+   * Two lines of the same product in different colours have to be tellable
+   * apart at a glance — this message is what the client packs from. Colour is
+   * only printed when there is one, so a simple product doesn't get an empty
+   * "Color:" label.
+   */
   const itemLines = items
-    .map(
-      (item) =>
-        // The colour is part of what was ordered, so it has to survive into
-        // the WhatsApp message the client actually reads when packing.
-        `• ${item.name}${item.color ? ` (${item.color})` : ''} x${item.quantity} = ` +
-        formatCOP(item.price * item.quantity),
-    )
+    .map((item) => {
+      const color = item.color ? ` — Color: ${item.color}` : '';
+      const reference = item.reference ? ` (Ref: ${item.reference})` : '';
+      const amount = formatCOP(item.price * item.quantity);
+      return `• ${item.name}${color}${reference}\n  x${item.quantity} = ${amount}`;
+    })
     .join('\n');
 
   return (
@@ -66,6 +78,7 @@ export async function POST(request: Request) {
             quantity: item.quantity,
             imageUrl: item.imageUrl ?? null,
             color: item.color ?? null,
+            reference: item.reference ?? null,
           })),
         },
       },

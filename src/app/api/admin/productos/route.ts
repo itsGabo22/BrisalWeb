@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
-
-const PRODUCT_INCLUDE = {
-  category: true,
-  tags: { include: { tag: true } },
-  discounts: true,
-} satisfies Prisma.ProductInclude;
+import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 
 function slugify(text: string): string {
   return text

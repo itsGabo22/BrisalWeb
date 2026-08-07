@@ -14,6 +14,7 @@ import {
   hasWholesalePrice,
   productForVariant,
 } from '@/lib/utils/pricing';
+import { getVariantReference } from '@/lib/utils/product-reference';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { ColorVariant, Product, Tag } from '@/types';
 
@@ -66,6 +67,9 @@ export function ProductInfo({
   const price = getEffectivePrice(priced, showWholesalePrice);
   const stock = getVariantStock(product, selectedVariant);
   const variants = product.colorVariants;
+  // Changes with the selected colour, so the shopper and the client are
+  // always looking at the same reference for the same thing.
+  const reference = getVariantReference(product, selectedVariant);
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
   const addedTimeoutRef = React.useRef<number | null>(null);
 
@@ -96,6 +100,7 @@ export function ProductInfo({
           selectedVariant?.imageUrls[0] ?? product.imageUrls[0] ?? '',
         slug: product.slug,
         color: selectedVariant?.colorName ?? null,
+        reference,
       },
       quantity,
     );
@@ -149,6 +154,10 @@ export function ProductInfo({
             Material: {product.material}
           </p>
         )}
+
+        <p className="text-brand-text-soft/80 font-body text-xs tracking-wide">
+          Ref: {reference}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3" aria-label="Precio">

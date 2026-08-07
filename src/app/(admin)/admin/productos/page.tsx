@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Plus, Search, Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { formatCOP } from '@/lib/utils/pricing';
 import { resolveProductImageUrl } from '@/lib/utils/product-images';
+import { getProductReference } from '@/lib/utils/product-reference';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 
@@ -132,9 +133,27 @@ export default function AdminProductosPage() {
                       <div className="font-semibold text-brand-neutral-900 dark:text-brand-neutral-100 text-sm">
                         {product.name}
                       </div>
-                      {product.sku && (
-                        <div className="text-xs text-brand-neutral-400 dark:text-brand-neutral-500">
-                          SKU: {product.sku}
+                      <div className="text-xs text-brand-neutral-400 dark:text-brand-neutral-500">
+                        Ref: {getProductReference(product)}
+                      </div>
+                      {/* Makes it obvious at a glance which products carry
+                          colours, and how many, without opening the editor. */}
+                      {product.colorVariants.length > 0 && (
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span className="flex items-center gap-0.5">
+                            {product.colorVariants.slice(0, 5).map((variant) => (
+                              <span
+                                key={variant.id}
+                                title={variant.colorName}
+                                className="size-3 rounded-full border border-brand-neutral-200 dark:border-brand-neutral-700"
+                                style={{ backgroundColor: variant.colorHex }}
+                              />
+                            ))}
+                          </span>
+                          <span className="text-[11px] text-brand-neutral-500">
+                            {product.colorVariants.length}{' '}
+                            {product.colorVariants.length === 1 ? 'color' : 'colores'}
+                          </span>
                         </div>
                       )}
                     </td>

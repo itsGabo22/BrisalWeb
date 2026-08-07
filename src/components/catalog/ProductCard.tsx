@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { getEffectivePrice, hasWholesalePrice, formatCOP } from '@/lib/utils/pricing';
 import {
   PRODUCT_IMAGE_PLACEHOLDER,
-  resolveProductImageUrl,
+  resolveListingImageUrl,
 } from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
@@ -48,9 +48,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
   // hand-set comparePrice — and already accounts for the wholesale view.
   const price = getEffectivePrice(product, showWholesalePrice);
   const href = `/producto/${product.slug}`;
+  // Resolves through the variants first — see resolveListingImageUrl for the
+  // full base-vs-variant rule. A product whose photos all live on its colours
+  // used to render an empty card here.
   const imageSrc = imageError
     ? PRODUCT_IMAGE_PLACEHOLDER
-    : resolveProductImageUrl(product.imageUrls[0]);
+    : resolveListingImageUrl(product);
+  const hasAnyImage =
+    product.imageUrls.length > 0 ||
+    product.colorVariants.some((variant) => variant.imageUrls.length > 0);
 
   return (
     <article
@@ -66,7 +72,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         className="relative block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
         style={{ aspectRatio: '3 / 4' }}
       >
-        {product.imageUrls[0] ? (
+        {hasAnyImage ? (
           <Image
             src={imageSrc}
             alt={product.name}

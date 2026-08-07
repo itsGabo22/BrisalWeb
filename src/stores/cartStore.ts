@@ -12,6 +12,11 @@ export interface CartItem {
   slug: string;
   /** Chosen colour, or null for a product without variants. */
   color?: string | null;
+  /**
+   * The reference at add-to-cart time. Carried on the line rather than looked
+   * up later so the order records what the shopper was actually shown.
+   */
+  reference?: string | null;
 }
 
 /**

@@ -163,6 +163,9 @@ model OrderItem {
   /// Which colour was ordered. Null for simple products with no variants,
   /// so existing order history stays valid.
   color     String?
+  /// The reference as it stood WHEN ORDERED. Stored rather than derived so a
+  /// later SKU change can't rewrite what an old order says was shipped.
+  reference String?
 }
 
 model SiteConfig {

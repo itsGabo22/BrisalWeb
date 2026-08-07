@@ -67,6 +67,11 @@ export default function CartPage() {
             price: item.price,
             quantity: item.quantity,
             imageUrl: item.imageUrl,
+            // These two were being dropped here, which is why two colours of
+            // the same product arrived as indistinguishable order lines even
+            // though the cart itself had kept them apart.
+            color: item.color ?? null,
+            reference: item.reference ?? null,
           })),
           total,
           customerName: customerName.trim(),

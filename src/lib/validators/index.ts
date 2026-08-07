@@ -141,6 +141,7 @@ export const orderItemSchema = z.object({
   quantity: z.number().int().positive(),
   imageUrl: z.string().optional().nullable(),
   color: z.string().optional().nullable(),
+  reference: z.string().optional().nullable(),
 });
 
 export const createOrderSchema = z.object({

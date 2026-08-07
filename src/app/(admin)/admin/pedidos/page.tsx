@@ -14,6 +14,9 @@ interface OrderItemView {
   price: number;
   quantity: number;
   imageUrl: string | null;
+  /** Null for orders placed before variants existed, and for simple products. */
+  color: string | null;
+  reference: string | null;
 }
 
 interface OrderView {
@@ -222,12 +225,22 @@ export default function AdminPedidosPage() {
                         {order.items.map((item) => (
                           <li
                             key={item.id}
-                            className="flex items-center justify-between font-sans text-sm"
+                            className="flex items-start justify-between gap-4 font-sans text-sm"
                           >
                             <span className="text-brand-neutral-700 dark:text-brand-neutral-300">
                               {item.name} x{item.quantity}
+                              {/* Colour and reference are what the client
+                                  picks and packs from — without them two
+                                  colours of one product are identical here. */}
+                              {(item.color || item.reference) && (
+                                <span className="mt-0.5 block text-xs text-brand-neutral-500">
+                                  {item.color && <>Color: {item.color}</>}
+                                  {item.color && item.reference && ' · '}
+                                  {item.reference && <>Ref: {item.reference}</>}
+                                </span>
+                              )}
                             </span>
-                            <span className="font-medium text-brand-neutral-900 dark:text-brand-neutral-100">
+                            <span className="shrink-0 font-medium text-brand-neutral-900 dark:text-brand-neutral-100">
                               {formatCOP(item.price * item.quantity)}
                             </span>
                           </li>
