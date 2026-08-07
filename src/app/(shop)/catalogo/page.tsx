@@ -2,10 +2,11 @@ import { CatalogContent } from '@/components/catalog/CatalogContent';
 import { CatalogHeader } from '@/components/catalog/CatalogHeader';
 import {
   applyCatalogParams,
-  getUniqueTags,
-  normalizeFilterParam,
-  normalizeSortParam,
-  normalizeTagParam,
+  buildCategoryFacets,
+  buildColorFacets,
+  getPriceBounds,
+  paginateProducts,
+  parseCatalogQuery,
   type CatalogSearchParams,
 } from '@/lib/catalog';
 import { categoryRepository, productRepository } from '@/lib/repositories';
@@ -20,7 +21,7 @@ interface CatalogoPageProps {
 const HEADINGS: Record<string, { title: string; subtitle: string }> = {
   nuevo: {
     title: 'Novedades',
-    subtitle: 'Lo \u00faltimo que ha llegado a Brisal',
+    subtitle: 'Lo último que ha llegado a Brisal',
   },
   descuento: {
     title: 'Descuentos',
@@ -28,30 +29,43 @@ const HEADINGS: Record<string, { title: string; subtitle: string }> = {
   },
   regalo: {
     title: 'Ideas para regalar',
-    subtitle: 'Selecci\u00f3n pensada para sorprender',
+    subtitle: 'Selección pensada para sorprender',
   },
 };
 
 export default async function CatalogoPage({ searchParams }: CatalogoPageProps) {
-  const { tag, sort, filter } = await searchParams;
-  const activeTagSlug = normalizeTagParam(tag);
-  const activeSort = normalizeSortParam(sort);
-  const activeFilter = normalizeFilterParam(filter);
+  const query = parseCatalogQuery(await searchParams);
 
-  const allProducts = await productRepository.getAll({ active: true });
-  const allTags = getUniqueTags(allProducts);
-  const categories = await categoryRepository.getTree();
-  const filteredProducts = applyCatalogParams(allProducts, {
-    tagSlug: activeTagSlug,
-    filter: activeFilter,
-    sort: activeSort,
-  });
+  const [allProducts, categories] = await Promise.all([
+    productRepository.getAll({ active: true }),
+    categoryRepository.getTree(),
+  ]);
+
+  // Facets are computed over the page's FULL scope, before filtering, so the
+  // counts beside each checkbox stay stable as boxes are ticked rather than
+  // collapsing toward zero.
+  const categoryFacets = buildCategoryFacets(categories, allProducts);
+  const colorFacets = buildColorFacets(allProducts);
+  const priceBounds = getPriceBounds(allProducts);
+
+  const filtered = applyCatalogParams(allProducts, query, categories);
+  const results = paginateProducts(filtered, query.page);
 
   const heading =
-    HEADINGS[activeSort ?? activeFilter ?? activeTagSlug ?? ''] ?? {
-      title: 'Cat\u00e1logo',
-      subtitle: 'Toda nuestra colecci\u00f3n de accesorios',
+    HEADINGS[query.sort ?? query.filter ?? query.tagSlug ?? ''] ?? {
+      title: 'Catálogo',
+      subtitle: 'Toda nuestra colección de accesorios',
     };
+
+  // Clearing filters keeps the intent the shopper arrived with (Novedades,
+  // Descuentos…) and only drops the narrowing they added on top.
+  const resetParams = new URLSearchParams();
+  if (query.sort) resetParams.set('sort', query.sort);
+  if (query.filter) resetParams.set('filter', query.filter);
+  if (query.tagSlug) resetParams.set('tag', query.tagSlug);
+  const resetHref = resetParams.toString()
+    ? `/catalogo?${resetParams.toString()}`
+    : '/catalogo';
 
   return (
     <>
@@ -61,10 +75,11 @@ export default async function CatalogoPage({ searchParams }: CatalogoPageProps) 
         breadcrumbs={[{ label: 'Inicio', href: '/' }, { label: heading.title }]}
       />
       <CatalogContent
-        products={filteredProducts}
-        tags={allTags}
-        categories={categories}
-        activeTagSlug={activeTagSlug}
+        results={results}
+        categories={categoryFacets}
+        colors={colorFacets}
+        priceBounds={priceBounds}
+        resetHref={resetHref}
       />
     </>
   );

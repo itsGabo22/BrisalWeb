@@ -5,9 +5,12 @@ import { CatalogContent } from '@/components/catalog/CatalogContent';
 import { CatalogHeader } from '@/components/catalog/CatalogHeader';
 import { SubcategoryChips } from '@/components/catalog/SubcategoryChips';
 import {
-  filterProductsByTag,
-  getUniqueTags,
-  normalizeTagParam,
+  applyCatalogParams,
+  buildCategoryFacets,
+  buildColorFacets,
+  getPriceBounds,
+  paginateProducts,
+  parseCatalogQuery,
   type CatalogSearchParams,
 } from '@/lib/catalog';
 import { categoryRepository, productRepository } from '@/lib/repositories';
@@ -28,7 +31,7 @@ export async function generateMetadata({
 
   return {
     title: `${category.name} | Brisal by Salvador`,
-    description: category.description ?? `Colecci\u00f3n ${category.name} de Brisal`,
+    description: category.description ?? `Colección ${category.name} de Brisal`,
   };
 }
 
@@ -37,20 +40,32 @@ export default async function CategoriaPage({
   searchParams,
 }: CategoriaPageProps) {
   const { categoria } = await params;
-  const { tag } = await searchParams;
-  const activeTagSlug = normalizeTagParam(tag);
+  const query = parseCatalogQuery(await searchParams);
 
   const category = await categoryRepository.getBySlug(categoria);
   if (!category) notFound();
 
-  const subcategories = await categoryRepository.getChildren(categoria);
-  const products = await productRepository.getAll({
-    categorySlug: categoria,
-    active: true,
-  });
-  const filteredProducts = filterProductsByTag(products, activeTagSlug);
-  const tags = getUniqueTags(products);
-  const categories = await categoryRepository.getTree();
+  const [subcategories, products] = await Promise.all([
+    categoryRepository.getChildren(categoria),
+    productRepository.getAll({ categorySlug: categoria, active: true }),
+  ]);
+
+  /**
+   * Inside a category, the Categoría facet lists that category's SUBcategories
+   * rather than the whole tree — the shopper has already chosen "Aretes", so
+   * offering "Collares" here would navigate them out of the page they are on.
+   * Shaped as a single root so `expandCategorySlugs` and the facet builder
+   * work unchanged.
+   */
+  const scopedTree = [{ ...category, children: subcategories }];
+  const categoryFacets = buildCategoryFacets(scopedTree, products).flatMap(
+    (facet) => facet.children,
+  );
+  const colorFacets = buildColorFacets(products);
+  const priceBounds = getPriceBounds(products);
+
+  const filtered = applyCatalogParams(products, query, scopedTree);
+  const results = paginateProducts(filtered, query.page);
 
   return (
     <>
@@ -59,7 +74,7 @@ export default async function CategoriaPage({
         subtitle={category.description ?? undefined}
         breadcrumbs={[
           { label: 'Inicio', href: '/' },
-          { label: 'Cat\u00e1logo', href: '/catalogo' },
+          { label: 'Catálogo', href: '/catalogo' },
           { label: category.name },
         ]}
       />
@@ -68,10 +83,11 @@ export default async function CategoriaPage({
         subcategories={subcategories}
       />
       <CatalogContent
-        products={filteredProducts}
-        tags={tags}
-        categories={categories}
-        activeTagSlug={activeTagSlug}
+        results={results}
+        categories={categoryFacets}
+        colors={colorFacets}
+        priceBounds={priceBounds}
+        resetHref={`/catalogo/${category.slug}`}
       />
     </>
   );

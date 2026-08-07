@@ -5,9 +5,11 @@ import { CatalogContent } from '@/components/catalog/CatalogContent';
 import { CatalogHeader } from '@/components/catalog/CatalogHeader';
 import { SubcategoryChips } from '@/components/catalog/SubcategoryChips';
 import {
-  filterProductsByTag,
-  getUniqueTags,
-  normalizeTagParam,
+  applyCatalogParams,
+  buildColorFacets,
+  getPriceBounds,
+  paginateProducts,
+  parseCatalogQuery,
   type CatalogSearchParams,
 } from '@/lib/catalog';
 import { categoryRepository, productRepository } from '@/lib/repositories';
@@ -42,8 +44,7 @@ export default async function SubcategoriaPage({
   searchParams,
 }: SubcategoriaPageProps) {
   const { categoria, subcategoria } = await params;
-  const { tag } = await searchParams;
-  const activeTagSlug = normalizeTagParam(tag);
+  const query = parseCatalogQuery(await searchParams);
 
   const parentCategory = await categoryRepository.getBySlug(categoria);
   if (!parentCategory) notFound();
@@ -56,9 +57,10 @@ export default async function SubcategoriaPage({
     subcategorySlug: subcategoria,
     active: true,
   });
-  const filteredProducts = filterProductsByTag(products, activeTagSlug);
-  const tags = getUniqueTags(products);
-  const categories = await categoryRepository.getTree();
+  // A subcategory is a leaf: there is nothing left to narrow by category, so
+  // that facet is empty here and CatalogFilters hides the section.
+  const filtered = applyCatalogParams(products, query);
+  const results = paginateProducts(filtered, query.page);
 
   return (
     <>
@@ -81,10 +83,11 @@ export default async function SubcategoriaPage({
         activeSlug={subCategory.slug}
       />
       <CatalogContent
-        products={filteredProducts}
-        tags={tags}
-        categories={categories}
-        activeTagSlug={activeTagSlug}
+        results={results}
+        categories={[]}
+        colors={buildColorFacets(products)}
+        priceBounds={getPriceBounds(products)}
+        resetHref={`/catalogo/${parentCategory.slug}/${subCategory.slug}`}
       />
     </>
   );

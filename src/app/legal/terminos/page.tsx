@@ -29,7 +29,7 @@ export default function TerminosPage() {
           Términos y Condiciones
         </h1>
         <p className="mt-3 font-body text-sm text-brand-neutral-500">
-          Última actualización: Junio 2025
+          Última actualización: Junio 2026
         </p>
       </header>
 
