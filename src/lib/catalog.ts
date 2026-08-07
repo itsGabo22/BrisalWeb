@@ -130,7 +130,12 @@ export function filterProductsByDiscount(
   filter?: CatalogFilter,
 ) {
   if (filter !== 'descuento') return products;
-  return products.filter(hasActiveSalePrice);
+  // Wrapped, not passed by reference: `hasActiveSalePrice` takes an optional
+  // `now` second argument and `Array.filter` would hand it the array index.
+  // One evaluation instant for the whole pass, so a discount cannot expire
+  // midway through and split the results.
+  const now = new Date();
+  return products.filter((product) => hasActiveSalePrice(product, now));
 }
 
 /**

@@ -1,37 +1,69 @@
 /**
- * Canonical pricing logic for the client side.
+ * Canonical pricing logic.
  *
- * DECISION (documented for Fase 2.3 — product detail page):
- * ─────────────────────────────────────────────────────────
- * We use `comparePrice` as the "original price" display only.
- * The actual discounted price shown to the user is always `product.price`
- * (already the final price after any backend/admin discount was applied).
+ * ── Why this was rewritten ───────────────────────────────────────────────
+ * The previous version treated `product.price` as already-final and used
+ * `discounts[]` purely as a flag deciding whether to render sale styling,
+ * gated on a manually-set `comparePrice`. That meant a Discount row created
+ * in the admin changed nothing: with `comparePrice` null — which it is for
+ * most products — `hasActiveSalePrice` returned false before it ever looked
+ * at the discount, and no code path anywhere multiplied by `percentage`.
  *
- * `discounts[]` on a product are used ONLY to determine whether the sale UI
- * (struck-through comparePrice + gold price) should be rendered. The condition
- * is: comparePrice > price AND at least one Discount with
- * { scope: 'PRODUCT', active: true } exists in the product's discounts array.
- *
- * This avoids double-applying discounts: the backend is the single source of
- * truth for the final `price`; the frontend only decides *whether to show*
- * the sale treatment.
- *
- * In Fase 2.3 (product detail), reuse `hasActiveSalePrice` and display
- * the same struck/gold pattern — do NOT recompute the discount from percentage.
+ * A discount's `percentage` is now actually applied. `product.price` is the
+ * pre-discount retail price; the effective price is derived from it.
  */
-import type { Product } from '@/types';
+import type { Discount, Product } from '@/types';
 
 /**
- * Returns true when the product should display the "on sale" UI:
- * struck-through comparePrice + highlighted price.
+ * A discount counts when it is switched on AND today falls inside its window.
+ * Both bounds are optional and an absent bound means "unbounded on that side",
+ * which is how the admin's blank date fields are meant to read.
  */
-export function hasActiveSalePrice(product: Product): boolean {
-  if (!product.comparePrice || product.comparePrice <= product.price) {
-    return false;
-  }
-  return product.discounts.some(
-    (d) => d.scope === 'PRODUCT' && d.active,
+export function isDiscountActive(discount: Discount, now: Date = new Date()): boolean {
+  if (!discount.active) return false;
+  if (discount.percentage <= 0) return false;
+  if (discount.startsAt && new Date(discount.startsAt) > now) return false;
+  if (discount.endsAt && new Date(discount.endsAt) < now) return false;
+  return true;
+}
+
+/**
+ * The discount a product actually gets.
+ *
+ * Discounts do NOT stack: several could apply at once (a global sale plus a
+ * category promo plus a one-off on the product), and multiplying them together
+ * would compound into a discount nobody authored. The single deepest one wins,
+ * which is both predictable and always the offer most favourable to the
+ * shopper.
+ *
+ * `product.discounts` is expected to already contain every applicable scope —
+ * see `attachScopedDiscounts` in the product repository, which merges the
+ * GLOBAL and CATEGORY rows that the productId-based Prisma relation cannot
+ * reach on its own.
+ */
+export function getBestActiveDiscount(
+  product: Product,
+  now: Date = new Date(),
+): Discount | null {
+  const applicable = product.discounts.filter((discount) =>
+    isDiscountActive(discount, now),
   );
+  if (applicable.length === 0) return null;
+
+  return applicable.reduce((best, candidate) =>
+    candidate.percentage > best.percentage ? candidate : best,
+  );
+}
+
+export interface EffectivePrice {
+  /** What the shopper actually pays. */
+  final: number;
+  /** Struck-through reference price, or null when there is nothing to strike. */
+  original: number | null;
+  /** The discount that produced `final`, when one applied. */
+  discount: Discount | null;
+  /** Whole percent off, for the badge. Null when no discount applied. */
+  percentOff: number | null;
 }
 
 /**
@@ -44,15 +76,78 @@ export function hasWholesalePrice(product: Product): boolean {
 }
 
 /**
- * The price to charge/display for a given viewer. Wholesale pricing only
- * applies to approved wholesalers, and only when the admin has set one —
- * everyone else always sees `product.price`.
+ * The base price for a given viewer, BEFORE any promotional discount.
+ * Wholesale pricing only applies to approved wholesalers, and only when the
+ * admin has set one — everyone else always sees `product.price`.
  */
 export function getDisplayPrice(product: Product, isApprovedWholesaler: boolean): number {
   if (isApprovedWholesaler && hasWholesalePrice(product)) {
     return product.wholesalePrice as number;
   }
   return product.price;
+}
+
+/**
+ * The full price picture for a viewer: what they pay, what to strike through,
+ * and the badge percentage.
+ *
+ * ASSUMPTION worth knowing about: promotional discounts are NOT applied on top
+ * of a wholesale price. A wholesale price is already a negotiated rate, and
+ * silently compounding a public promo onto it would erode margin without the
+ * admin ever asking for it. An approved wholesaler therefore sees their
+ * wholesale price unchanged. Flip the `isApprovedWholesaler` guard below if
+ * the business wants promos to stack for wholesalers too.
+ */
+export function getEffectivePrice(
+  product: Product,
+  isApprovedWholesaler = false,
+  now: Date = new Date(),
+): EffectivePrice {
+  const base = getDisplayPrice(product, isApprovedWholesaler);
+
+  const usingWholesale = isApprovedWholesaler && hasWholesalePrice(product);
+  const discount = usingWholesale ? null : getBestActiveDiscount(product, now);
+
+  if (discount) {
+    // COP is not subdivided, so the result is whole pesos.
+    const final = Math.round(base * (1 - discount.percentage / 100));
+    return {
+      final,
+      original: base,
+      discount,
+      percentOff: Math.round(discount.percentage),
+    };
+  }
+
+  /**
+   * No discount row. `comparePrice` still drives a strikethrough on its own,
+   * which is how a product marked down by hand (price lowered, comparePrice
+   * left at the old value) keeps showing as a sale. This is the behaviour the
+   * previous implementation had, preserved.
+   */
+  const comparePrice = product.comparePrice ?? null;
+  const showsCompare =
+    !usingWholesale && comparePrice !== null && comparePrice > base;
+
+  return {
+    final: base,
+    original: showsCompare ? comparePrice : null,
+    discount: null,
+    percentOff: showsCompare
+      ? Math.round(((comparePrice - base) / comparePrice) * 100)
+      : null,
+  };
+}
+
+/**
+ * True when the product displays a reduced price — either from an active
+ * Discount row or from a hand-set `comparePrice`.
+ *
+ * This is what the catalog's `?filter=descuento` matches on. Evaluated for the
+ * retail viewer, so the Descuentos listing is the same for everyone.
+ */
+export function hasActiveSalePrice(product: Product, now: Date = new Date()): boolean {
+  return getEffectivePrice(product, false, now).original !== null;
 }
 
 /**

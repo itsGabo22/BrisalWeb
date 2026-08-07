@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
 import { cn } from '@/lib/utils';
-import { formatCOP, hasActiveSalePrice, hasWholesalePrice, getDisplayPrice } from '@/lib/utils/pricing';
+import { formatCOP, getEffectivePrice, hasWholesalePrice } from '@/lib/utils/pricing';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
 
@@ -40,10 +40,10 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const [quantity, setQuantity] = React.useState(1);
   const [added, setAdded] = React.useState(false);
   const addItem = useCartStore((state) => state.addItem);
-  const onSale = hasActiveSalePrice(product);
   const wholesaleSession = useWholesaleSession();
   const showWholesalePrice =
     wholesaleSession === 'approved' && hasWholesalePrice(product);
+  const price = getEffectivePrice(product, showWholesalePrice);
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
   const addedTimeoutRef = React.useRef<number | null>(null);
 
@@ -64,7 +64,10 @@ export function ProductInfo({ product }: ProductInfoProps) {
       {
         productId: product.id,
         name: product.name,
-        price: getDisplayPrice(product, showWholesalePrice),
+        // The DISCOUNTED price, so the cart charges what the page advertises.
+        // This previously used the pre-discount base, which is now a real
+        // difference rather than a no-op.
+        price: price.final,
         imageUrl: product.imageUrls[0] ?? '',
         slug: product.slug,
       },
@@ -133,19 +136,31 @@ export function ProductInfo({ product }: ProductInfoProps) {
             </span>
             <Badge variant="mayorista">Precio mayorista</Badge>
           </>
-        ) : onSale && product.comparePrice ? (
+        ) : price.original !== null ? (
           <>
             <span className="font-body text-sm text-brand-neutral-400 line-through">
-              {formatCOP(product.comparePrice)}
+              {formatCOP(price.original)}
             </span>
-            <span className="font-body text-2xl font-medium text-brand-gold">
-              {formatCOP(product.price)}
+            <span className="font-body text-2xl font-medium text-brand-gold-deep">
+              {formatCOP(price.final)}
             </span>
-            <Badge variant="en-oferta">En oferta</Badge>
+            {/* The discount's own label ("Black friday") when the reduction
+                came from a Discount row; the generic badge when it came from a
+                hand-set comparePrice. */}
+            <Badge variant="en-oferta">
+              {price.percentOff !== null && price.percentOff > 0
+                ? `-${price.percentOff}%`
+                : 'En oferta'}
+            </Badge>
+            {price.discount?.label && (
+              <span className="text-brand-text-soft font-body text-xs">
+                {price.discount.label}
+              </span>
+            )}
           </>
         ) : (
           <span className="font-body text-2xl font-medium text-brand-neutral-900">
-            {formatCOP(product.price)}
+            {formatCOP(price.final)}
           </span>
         )}
       </div>

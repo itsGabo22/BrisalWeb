@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
-import { hasActiveSalePrice, hasWholesalePrice, formatCOP } from '@/lib/utils/pricing';
+import { getEffectivePrice, hasWholesalePrice, formatCOP } from '@/lib/utils/pricing';
 import {
   PRODUCT_IMAGE_PLACEHOLDER,
   resolveProductImageUrl,
@@ -41,10 +41,12 @@ export interface ProductCardProps {
 export function ProductCard({ product, className }: ProductCardProps) {
   const [hovered, setHovered] = React.useState(false);
   const [imageError, setImageError] = React.useState(false);
-  const onSale = hasActiveSalePrice(product);
   const wholesaleSession = useWholesaleSession();
   const showWholesalePrice =
     wholesaleSession === 'approved' && hasWholesalePrice(product);
+  // One call now covers both sale sources — an active Discount row and a
+  // hand-set comparePrice — and already accounts for the wholesale view.
+  const price = getEffectivePrice(product, showWholesalePrice);
   const href = `/producto/${product.slug}`;
   const imageSrc = imageError
     ? PRODUCT_IMAGE_PLACEHOLDER
@@ -161,20 +163,27 @@ export function ProductCard({ product, className }: ProductCardProps) {
             </Badge>
           </div>
         ) : (
-          <div className="flex items-baseline gap-2">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span
               className={cn(
                 'font-body text-sm font-medium',
-                onSale ? 'text-brand-gold-deep' : 'text-brand-text',
+                price.original !== null ? 'text-brand-gold-deep' : 'text-brand-text',
               )}
             >
-              {formatCOP(product.price)}
+              {formatCOP(price.final)}
             </span>
 
-            {onSale && product.comparePrice && (
-              <span className="font-body text-xs text-brand-text-soft/70 line-through">
-                {formatCOP(product.comparePrice)}
-              </span>
+            {price.original !== null && (
+              <>
+                <span className="font-body text-xs text-brand-text-soft/70 line-through">
+                  {formatCOP(price.original)}
+                </span>
+                {price.percentOff !== null && price.percentOff > 0 && (
+                  <span className="border-brand-gold/40 bg-brand-gold/12 text-brand-gold-deep rounded-full border px-1.5 py-0.5 font-body text-[10px] font-medium tabular-nums">
+                    -{price.percentOff}%
+                  </span>
+                )}
+              </>
             )}
           </div>
         )}

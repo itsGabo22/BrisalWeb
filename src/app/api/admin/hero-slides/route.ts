@@ -115,7 +115,19 @@ export async function POST(request: Request) {
       }
     }
 
-    const order = await prisma.heroSlide.count();
+    /**
+     * Next order = highest existing + 1, NOT the row count.
+     *
+     * count() collides as soon as a slide has been deleted: with slides at
+     * orders 0,1,2 and the middle one removed, count() returns 2 and the new
+     * slide lands on an order that already exists. The live data already has
+     * two slides sharing order 1 from exactly this. Duplicate orders make the
+     * homepage's `orderBy: { order: 'asc' }` ambiguous and the admin's
+     * move-up/move-down swap unpredictable — which only becomes visible once
+     * more than one slide is active.
+     */
+    const highest = await prisma.heroSlide.aggregate({ _max: { order: true } });
+    const order = (highest._max.order ?? -1) + 1;
 
     const slide = await prisma.heroSlide.create({
       data: {
