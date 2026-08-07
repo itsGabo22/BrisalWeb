@@ -79,7 +79,7 @@ function MayoristaLoginForm() {
         </Link>
 
         <div className="rounded-2xl border border-brand-neutral-100 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
-          <h1 className="mb-2 font-heading text-2xl font-normal text-brand-text">
+          <h1 className="mb-2 font-heading text-2xl font-medium text-brand-text">
             Acceso Mayorista
           </h1>
           <p className="mb-8 font-body text-sm text-brand-neutral-600">

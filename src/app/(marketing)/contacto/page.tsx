@@ -33,7 +33,7 @@ export default function ContactoPage() {
           {/* ── Left column: contact info (40%) ─────────────────────── */}
           <aside className="flex flex-col gap-8 lg:w-2/5">
             <div>
-              <h2 className="font-heading text-2xl font-normal text-brand-text">
+              <h2 className="font-heading text-2xl font-medium text-brand-text">
                 Información de contacto
               </h2>
               <p className="mt-2 font-body text-sm text-brand-neutral-600">
@@ -111,7 +111,7 @@ export default function ContactoPage() {
 
           {/* ── Right column: form (60%) ─────────────────────────────── */}
           <div className="lg:w-3/5">
-            <h2 className="font-heading text-2xl font-normal text-brand-text mb-6">
+            <h2 className="font-heading text-2xl font-medium text-brand-text mb-6">
               Envíanos un mensaje
             </h2>
             <ContactForm />

@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, useMotionValueEvent } from 'framer-motion';
 import { Search, ShoppingBag } from 'lucide-react';
 
+import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { SearchOverlay } from '@/components/layout/SearchOverlay';
 import { WholesaleNavIndicator } from '@/components/layout/WholesaleNavIndicator';
@@ -79,16 +80,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
 
   return (
     <>
-      {announcementActive && announcementText && (
-        <div
-          className="w-full px-4 py-2 text-center font-body text-[11px] font-light uppercase tracking-[0.2em]"
-          style={{ backgroundColor: '#C9A96E', color: '#2A2521' }}
-          role="banner"
-          aria-label="Anuncio de la tienda"
-        >
-          {announcementText}
-        </div>
-      )}
+      <AnnouncementBar text={announcementText} active={announcementActive} />
 
       <motion.header
         ref={headerRef}
@@ -139,7 +131,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-heading text-lg font-normal tracking-widest"
+              className="text-brand-text font-wordmark text-lg font-normal tracking-widest"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
@@ -156,7 +148,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-heading text-lg font-normal tracking-widest"
+              className="text-brand-text font-wordmark text-lg font-normal tracking-widest"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
@@ -166,9 +158,12 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             </span>
           </Link>
 
-          {/* Four short intent links instead of eight category names is what
-              buys back the readable type size: 14px with 0.16em tracking now
-              fits comfortably alongside the logo and the icon cluster. */}
+          {/* Metrics taken from cornalinaaccesorios.com's computed styles:
+              Poppins, weight 400, letter-spacing NORMAL, sentence case. The
+              tracking is the important part — the earlier 0.16em is what made
+              this nav read cramped and stretched, not the type size. Theirs
+              measures 14px; 15px here sits in the range the client asked for
+              and reads all but identically beside the logo. */}
           <nav
             className="hidden items-center gap-7 lg:flex xl:gap-9"
             aria-label="Menú principal"
@@ -181,7 +176,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
                   href={href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'focus-visible:ring-brand-gold relative rounded-sm py-1 font-body text-sm font-light whitespace-nowrap tracking-[0.16em] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+                    'focus-visible:ring-brand-gold relative rounded-sm py-1 font-body text-[15px] font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                     'after:bg-brand-gold after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-300 after:content-[""]',
                     active
                       ? 'text-brand-gold-deep after:scale-x-100'
@@ -194,7 +189,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             })}
             <Link
               href={WHOLESALE_SECTION.href}
-              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-[13px] font-normal tracking-[0.14em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold hover:text-brand-text focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-sm font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               {WHOLESALE_SECTION.label}
             </Link>

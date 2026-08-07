@@ -114,7 +114,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top))' }}
           >
             <div className="flex items-center justify-between">
-              <span className="font-heading text-lg font-normal text-brand-text">
+              <span className="font-heading text-lg font-medium text-brand-text">
                 Buscar
               </span>
               <button

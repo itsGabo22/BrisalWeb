@@ -3,7 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
+import { useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
@@ -13,16 +14,20 @@ export interface CategoryShowcaseProps {
   categories: Category[];
 }
 
-/** How far one arrow press slides the row, as a fraction of the visible width. */
-const SCROLL_STEP_RATIO = 0.8;
 /**
- * Arrow enable/disable tolerance. Browsers report fractional scroll offsets at
- * non-integer zoom levels, so an exact `scrollLeft === 0` comparison leaves the
- * left arrow enabled-looking at the true start.
+ * Panel aspect ratio, measured off cornalinaaccesorios.com's category band:
+ * their panels render 348x435, i.e. 0.8 — a 4:5 portrait.
+ */
+const PANEL_ASPECT = '4 / 5';
+
+/**
+ * Tolerance for "are we at the end". Fractional scroll offsets at non-integer
+ * zoom levels mean an exact comparison never quite reaches the boundary.
  */
 const SCROLL_EPSILON = 8;
 
-function CategoryCard({ category }: { category: Category }) {
+
+function CategoryPanel({ category }: { category: Category }) {
   const [imageFailed, setImageFailed] = React.useState(false);
   const showImage = Boolean(category.imageUrl) && !imageFailed;
 
@@ -30,56 +35,70 @@ function CategoryCard({ category }: { category: Category }) {
     <Link
       href={`/catalogo/${category.slug}`}
       className={cn(
-        // Basis (not width) + shrink-0 so the cards keep their intended size
-        // inside the flex row instead of being squeezed to fit.
-        'group relative block shrink-0 snap-start overflow-hidden rounded-2xl',
-        'basis-[58%] sm:basis-[38%] lg:basis-[26%] xl:basis-[21%]',
-        'focus-visible:ring-brand-gold focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-brand-cream focus-visible:outline-none',
+        'group relative block shrink-0 snap-start overflow-hidden',
+        // No rounding and no margin — panels butt directly against their
+        // neighbours to read as one continuous filmstrip.
+        'basis-[62%] sm:basis-[42%] lg:basis-[28%] xl:basis-[23%]',
+        'focus-visible:ring-brand-gold focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none',
       )}
-      style={{ aspectRatio: '3 / 4' }}
+      style={{ aspectRatio: PANEL_ASPECT }}
     >
       {showImage ? (
         <Image
           src={category.imageUrl as string}
           alt=""
           fill
-          sizes="(max-width: 640px) 58vw, (max-width: 1024px) 38vw, 21vw"
-          className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
+          sizes="(max-width: 640px) 62vw, (max-width: 1024px) 42vw, 23vw"
+          className="object-cover transition-transform duration-[600ms] ease-out motion-safe:group-hover:scale-105"
           onError={() => setImageFailed(true)}
         />
       ) : (
-        // Placeholder for a category whose image the client hasn't set yet (or
-        // whose URL 404s). Deliberately not a broken <img>: a sand panel with
-        // the category's initial reads as intentional until an image lands.
+        // Placeholder for a category whose image the client hasn't uploaded yet
+        // (or whose URL 404s). A sand panel with the category's initial reads as
+        // intentional; a broken <img> would not.
         <div
           className="bg-brand-sand absolute inset-0 flex items-center justify-center"
           aria-hidden="true"
         >
-          <span className="text-brand-gold/45 font-heading text-[clamp(3rem,7vw,5rem)] leading-none font-normal select-none">
+          <span className="text-brand-gold/40 font-wordmark text-[clamp(3rem,8vw,5.5rem)] leading-none select-none">
             {category.name.charAt(0).toUpperCase()}
           </span>
         </div>
       )}
 
-      {/* Cream scrim, per the Phase 1 palette — the label sits on light, not on
-          a dark overlay. Anchored to the bottom third so the photograph itself
-          stays unveiled. */}
-      <div
-        className="from-brand-cream via-brand-cream/70 absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t to-transparent"
-        aria-hidden="true"
-      />
+      {/* Legibility scrim, matching Cornalina's measured
+          `linear-gradient(to top, rgba(0,0,0,0.43), rgba(0,0,0,0))`.
+          This is an overlay ON PHOTOGRAPHY for text contrast — the same
+          exemption the hero has — not a dark surface in the palette sense.
+          Which is exactly why it is skipped for the placeholder: over a flat
+          sand panel it buys no contrast and just muddies the cream. */}
+      {showImage && (
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent"
+          aria-hidden="true"
+        />
+      )}
 
-      <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-        <h3 className="text-brand-text font-heading text-lg font-normal tracking-wide sm:text-xl">
+      {/* Bottom-centred, exactly like the reference: a small "Categoría"
+          kicker above the uppercase category name. White over photography,
+          brand-text over the light placeholder. */}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-4 text-center">
+        <span
+          className={cn(
+            'font-body text-[11px] font-light tracking-[0.08em]',
+            showImage ? 'text-white/85' : 'text-brand-text-soft',
+          )}
+        >
+          Categoría
+        </span>
+        <h3
+          className={cn(
+            'font-body text-base font-normal tracking-[0.06em] uppercase sm:text-lg',
+            showImage ? 'text-white' : 'text-brand-text',
+          )}
+        >
           {category.name}
         </h3>
-        <span className="text-brand-gold-deep mt-1 flex items-center gap-1.5 font-body text-[11px] font-normal tracking-[0.16em] uppercase">
-          Ver
-          <ArrowRight
-            className="size-3 transition-transform duration-300 group-hover:translate-x-1"
-            aria-hidden="true"
-          />
-        </span>
       </div>
     </Link>
   );
@@ -87,14 +106,13 @@ function CategoryCard({ category }: { category: Category }) {
 
 export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
   const scrollerRef = React.useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
+  const reducedMotion = useReducedMotion();
 
-  const syncArrows = React.useCallback(() => {
+  const syncArrow = React.useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const maxScroll = el.scrollWidth - el.clientWidth;
-    setCanScrollLeft(el.scrollLeft > SCROLL_EPSILON);
     setCanScrollRight(el.scrollLeft < maxScroll - SCROLL_EPSILON);
   }, []);
 
@@ -102,130 +120,107 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
     const el = scrollerRef.current;
     if (!el) return;
 
-    syncArrows();
+    syncArrow();
 
     // ResizeObserver rather than a window resize listener: the row's overflow
-    // also changes when the cards themselves reflow (breakpoint change, font
-    // swap settling), not only when the window resizes.
-    const observer = new ResizeObserver(syncArrows);
+    // also changes when the panels reflow (breakpoint change, font swap
+    // settling), not only when the window resizes.
+    const observer = new ResizeObserver(syncArrow);
     observer.observe(el);
+    el.addEventListener('scroll', syncArrow, { passive: true });
 
-    el.addEventListener('scroll', syncArrows, { passive: true });
     return () => {
       observer.disconnect();
-      el.removeEventListener('scroll', syncArrows);
+      el.removeEventListener('scroll', syncArrow);
     };
-  }, [syncArrows]);
+  }, [syncArrow]);
 
-  const slide = (direction: 'left' | 'right') => {
+  const slideRight = () => {
     const el = scrollerRef.current;
     if (!el) return;
-    el.scrollBy({
-      left: el.clientWidth * SCROLL_STEP_RATIO * (direction === 'left' ? -1 : 1),
-      behavior: 'smooth',
+
+    const panel = el.firstElementChild as HTMLElement | null;
+    const panelWidth = panel?.getBoundingClientRect().width ?? 0;
+    if (panelWidth <= 0) return;
+
+    // Advance by whole panels — as many as currently fit, minus one so the
+    // panel that was peeking at the edge leads the next view. Targeting an
+    // exact multiple of the panel width means we always land ON a snap point,
+    // so `scroll-snap-type: x mandatory` has nothing to correct afterwards.
+    const perView = Math.max(1, Math.floor(el.clientWidth / panelWidth) - 1);
+    const currentIndex = Math.round(el.scrollLeft / panelWidth);
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const target = Math.min((currentIndex + perView) * panelWidth, maxScroll);
+
+    el.scrollTo({
+      left: target,
+      behavior: reducedMotion ? 'auto' : 'smooth',
     });
   };
 
   if (categories.length === 0) return null;
 
   return (
-    <section
-      aria-labelledby="categories-heading"
-      className="bg-brand-cream py-16 md:py-24"
-    >
-      {/* The heading is padded to the content gutter, but the SCROLLER below is
-          full-bleed so cards can bleed off the right edge as a "there's more"
-          cue. Padding lives on the scroller's inner track instead. */}
-      <div className="mx-auto mb-8 flex max-w-7xl items-end justify-between gap-6 px-4 sm:px-6 md:mb-10 lg:px-8">
-        <div>
-          <h2
-            id="categories-heading"
-            className="text-brand-text font-heading text-3xl font-normal md:text-4xl"
-          >
-            Categorías
-          </h2>
-          <div className="bg-brand-gold mt-3 h-px w-16" aria-hidden="true" />
-        </div>
+    <section aria-labelledby="categories-heading" className="bg-brand-cream py-14 md:py-20">
+      <div className="mx-auto mb-6 flex max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 md:mb-8 lg:px-8">
+        <h2
+          id="categories-heading"
+          className="text-brand-text font-heading text-2xl font-medium tracking-wide uppercase md:text-[28px]"
+        >
+          Categorías
+        </h2>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/catalogo"
-            className="group text-brand-gold-deep hover:text-brand-text focus-visible:ring-brand-gold flex items-center gap-1.5 rounded-sm font-body text-sm font-normal tracking-[0.12em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            Descubrir más
-            <ArrowRight
-              className="size-4 transition-transform duration-300 group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </Link>
-
-          {/* Desktop-only: touch devices swipe instead. aria-hidden because the
-              cards are already reachable by keyboard in DOM order — these are a
-              pointer affordance, not a second navigation path. */}
-          <div className="hidden items-center gap-1.5 lg:flex" aria-hidden="true">
-            <SlideButton
-              direction="left"
-              disabled={!canScrollLeft}
-              onClick={() => slide('left')}
-            />
-            <SlideButton
-              direction="right"
-              disabled={!canScrollRight}
-              onClick={() => slide('right')}
-            />
-          </div>
-        </div>
+        <Link
+          href="/catalogo"
+          className="group text-brand-text hover:text-brand-gold-deep focus-visible:ring-brand-gold flex items-center gap-1.5 rounded-sm font-body text-sm font-normal whitespace-nowrap underline underline-offset-4 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          Descubrir más
+          <ArrowRight
+            className="size-4 transition-transform duration-300 group-hover:translate-x-1"
+            aria-hidden="true"
+          />
+        </Link>
       </div>
 
-      {/*
-        overflow-x-auto on THIS element (not on any ancestor) is what keeps the
-        row from widening the page: the cards overflow their own scroll
-        container, so the document itself never gains horizontal scroll.
-        scrollbar-width:none hides the bar without disabling the scrolling.
-      */}
-      <div
-        ref={scrollerRef}
-        className="momentum-scroll-x flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:gap-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="region"
-        aria-label="Categorías — desplázate horizontalmente"
-        tabIndex={0}
-      >
-        {/* Leading/trailing spacers align the first card with the page gutter
-            while still letting the row scroll edge to edge. */}
-        <div className="w-4 shrink-0 sm:w-6 lg:w-8" aria-hidden="true" />
-        {categories.map((category) => (
-          <CategoryCard key={category.id} category={category} />
-        ))}
-        <div className="w-4 shrink-0 sm:w-6 lg:w-8" aria-hidden="true" />
+      {/* `relative` anchors the advance arrow over the band's right edge. */}
+      <div className="relative">
+        {/*
+          gap-0: the panels touch, forming one continuous band. Full-bleed —
+          no horizontal padding and no gutter spacers — so the strip runs edge
+          to edge and the next panel is cut off by the viewport, which is the
+          "there's more" cue.
+
+          overflow-x-auto lives on THIS element, so the panels overflow their
+          own scroll container and the document never gains horizontal scroll.
+        */}
+        <div
+          ref={scrollerRef}
+          className="momentum-scroll-x flex snap-x snap-mandatory gap-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="region"
+          aria-label="Categorías — desplázate horizontalmente"
+          tabIndex={0}
+        >
+          {categories.map((category) => (
+            <CategoryPanel key={category.id} category={category} />
+          ))}
+        </div>
+
+        {/* Circular advance control overlapping the right edge, as on the
+            reference. Hidden once the row is fully scrolled, and pointer-only:
+            the panels are already reachable by keyboard in DOM order, so this
+            is an affordance rather than a second navigation path. */}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={slideRight}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="bg-brand-pearl text-brand-text hover:bg-brand-gold hover:text-brand-text absolute top-1/2 right-4 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full shadow-lg transition-colors active:scale-95 sm:right-6 md:flex"
+          >
+            <ChevronRight className="size-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </section>
-  );
-}
-
-function SlideButton({
-  direction,
-  disabled,
-  onClick,
-}: {
-  direction: 'left' | 'right';
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  const Icon = direction === 'left' ? ChevronLeft : ChevronRight;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      tabIndex={-1}
-      className={cn(
-        'border-brand-line bg-brand-pearl text-brand-text flex size-9 items-center justify-center rounded-full border transition-all',
-        disabled
-          ? 'cursor-default opacity-35'
-          : 'hover:border-brand-gold hover:text-brand-gold-deep active:scale-95',
-      )}
-    >
-      <Icon className="size-4" aria-hidden="true" />
-    </button>
   );
 }

@@ -88,7 +88,7 @@ export function PromoPopup({ popup }: PromoPopupProps) {
 
             <div className="p-6 text-center">
               {popup.title && (
-                <h2 className="font-heading text-2xl font-normal text-brand-text">
+                <h2 className="font-heading text-2xl font-medium text-brand-text">
                   {popup.title}
                 </h2>
               )}

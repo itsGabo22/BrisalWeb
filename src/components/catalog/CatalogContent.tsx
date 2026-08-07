@@ -113,7 +113,7 @@ function CatalogSidebar({
       <section aria-labelledby="catalog-filter-heading" className="space-y-4">
         <h2
           id="catalog-filter-heading"
-          className="font-heading text-base font-normal text-brand-text"
+          className="font-heading text-base font-medium text-brand-text"
         >
           Filtrar por
         </h2>
@@ -123,7 +123,7 @@ function CatalogSidebar({
       <section aria-labelledby="catalog-category-heading" className="space-y-4">
         <h2
           id="catalog-category-heading"
-          className="font-heading text-base font-normal text-brand-text"
+          className="font-heading text-base font-medium text-brand-text"
         >
           {'Ver todas las categor\u00edas'}
         </h2>
@@ -186,7 +186,7 @@ function EmptyCatalogState({ resetHref }: { resetHref: string }) {
       <div className="mb-5 flex size-14 items-center justify-center rounded-full border border-brand-gold/25 bg-brand-gold/10 text-brand-gold">
         <SearchX className="size-6" aria-hidden="true" />
       </div>
-      <h2 className="font-heading text-xl font-normal text-brand-text">
+      <h2 className="font-heading text-xl font-medium text-brand-text">
         No encontramos productos con ese filtro
       </h2>
       <Button asChild className="mt-6" variant="primary">

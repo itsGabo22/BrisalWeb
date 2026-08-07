@@ -74,7 +74,7 @@ export default async function MayoristasPage() {
           </p>
           <h1
             id="mayoristas-hero-heading"
-            className="font-heading text-4xl font-normal leading-tight text-brand-text sm:text-5xl"
+            className="font-heading text-4xl font-medium leading-tight text-brand-text sm:text-5xl"
           >
             Programa para Mayoristas
           </h1>
@@ -92,7 +92,7 @@ export default async function MayoristasPage() {
       >
         <h2
           id="mayoristas-benefits-heading"
-          className="mb-10 text-center font-heading text-3xl font-normal text-brand-text"
+          className="mb-10 text-center font-heading text-3xl font-medium text-brand-text"
         >
           ¿Por qué ser mayorista Brisal?
         </h2>
@@ -106,7 +106,7 @@ export default async function MayoristasPage() {
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
                 <Icon className="h-7 w-7 text-brand-gold-deep" aria-hidden="true" />
               </span>
-              <h3 className="font-heading text-xl font-normal text-brand-text">
+              <h3 className="font-heading text-xl font-medium text-brand-text">
                 {title}
               </h3>
               <p className="font-body text-sm leading-relaxed text-brand-text-soft">
@@ -126,7 +126,7 @@ export default async function MayoristasPage() {
           <div className="mb-10 text-center">
             <h2
               id="mayoristas-categories-heading"
-              className="font-heading text-3xl font-normal text-brand-text"
+              className="font-heading text-3xl font-medium text-brand-text"
             >
               Nuestras categorías de productos
             </h2>
@@ -160,7 +160,7 @@ export default async function MayoristasPage() {
                   </div>
 
                   <div>
-                    <h3 className="font-heading text-base font-normal text-brand-text group-hover:text-brand-gold-deep transition-colors">
+                    <h3 className="font-heading text-base font-medium text-brand-text group-hover:text-brand-gold-deep transition-colors">
                       {category.name}
                     </h3>
                     <span className="font-body text-[11px] text-brand-text-soft group-hover:text-brand-text transition-colors">
@@ -183,7 +183,7 @@ export default async function MayoristasPage() {
         <div className="rounded-2xl border border-brand-line bg-brand-pearl px-6 py-8 shadow-sm sm:px-10 sm:py-10">
           <h2
             id="mayoristas-form-heading"
-            className="mb-2 font-heading text-2xl font-normal text-brand-text"
+            className="mb-2 font-heading text-2xl font-medium text-brand-text"
           >
             Solicita tu registro
           </h2>

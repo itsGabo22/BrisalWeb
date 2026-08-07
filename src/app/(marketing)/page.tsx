@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import {
   HeroSection,
   TrustBar,
-  CategoryBar,
   CategoryShowcase,
   BrandStatement,
   ProductShowcaseSection,
@@ -44,13 +43,14 @@ export default async function HomePage() {
     <>
       <HeroSection slides={heroSlides} />
       <TrustBar />
-      <CategoryBar categories={rootCategories} />
-      <BrandStatement />
-      {/* Categorías sits between the brand statement and the product rails:
-          the visitor is told what Brisal is, then given the shape of the
-          catalog, then shown individual pieces. It also replaces the
-          discovery path that categories lost when they left the top nav. */}
+      {/* Categorías is now the single category entry point on the homepage —
+          the old CategoryBar icon strip that used to sit here was showing the
+          same list twice. It rides directly under the hero, matching the
+          reference, so the shape of the catalog is the first thing after the
+          brand. Mobile keeps its own path via the drawer's Categorías
+          accordion, which is unaffected by this removal. */}
       <CategoryShowcase categories={rootCategories} />
+      <BrandStatement />
       <ProductShowcaseSection
         eyebrow="Recién llegado"
         title="Novedades"

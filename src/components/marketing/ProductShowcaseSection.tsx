@@ -55,7 +55,7 @@ export function ProductShowcaseSection({
           </p>
           <h2
             id={`${eyebrow}-heading`}
-            className="mt-2 font-heading text-3xl font-normal text-brand-text md:text-4xl"
+            className="mt-2 font-heading text-3xl font-medium text-brand-text md:text-4xl"
           >
             {title}
           </h2>

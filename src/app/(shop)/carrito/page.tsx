@@ -107,7 +107,7 @@ export default function CartPage() {
         </nav>
 
         <div className="mb-10">
-          <h1 className="text-brand-text font-heading text-4xl font-normal md:text-5xl">
+          <h1 className="text-brand-text font-heading text-4xl font-medium md:text-5xl">
             Tu carrito
           </h1>
         </div>
@@ -118,7 +118,7 @@ export default function CartPage() {
               <div className="border-brand-gold/30 bg-brand-gold/10 text-brand-gold mb-5 flex size-16 items-center justify-center rounded-full border">
                 <ShoppingBag size={30} aria-hidden="true" />
               </div>
-              <h2 className="text-brand-text font-heading text-2xl font-normal">
+              <h2 className="text-brand-text font-heading text-2xl font-medium">
                 Tu carrito está vacío
               </h2>
               <div className="mt-6">

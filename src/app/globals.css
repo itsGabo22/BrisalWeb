@@ -67,11 +67,20 @@
      --font-sans / --font-serif are kept as aliases because the existing
      components address them by those names.
 
-     --font-wordmark is deliberately pinned to Playfair Display: it is the
-     hero "BRISAL / by Salvador" lockup, which the client signed off on and
-     which must not move when the body typeface changes. */
+     --font-heading points at Poppins, not Playfair. Inspecting the live
+     cornalinaaccesorios.com computed styles showed the reference site has
+     exactly ONE webfont — Poppins — and uses it for nav, body AND section
+     headings (their "CATEGORÍAS" h3 is Poppins 500). The serif look in
+     their design comes from the CORNALINA logo, which is an inline SVG,
+     and from hero artwork baked into images — not from any loaded face.
+
+     --font-wordmark stays pinned to Playfair Display. It carries the
+     "BRISAL / by Salvador" lockup in the hero, header, footer and mobile
+     drawer, which the client signed off on and which must not move when
+     the heading typeface changes. --font-serif likewise stays Playfair,
+     because HeroSection addresses the wordmark through it. */
   --font-body: var(--font-poppins);
-  --font-heading: var(--font-playfair);
+  --font-heading: var(--font-poppins);
   --font-wordmark: var(--font-playfair);
   --font-sans: var(--font-poppins);
   --font-serif: var(--font-playfair);

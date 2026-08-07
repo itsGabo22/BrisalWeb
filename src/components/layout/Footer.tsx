@@ -76,7 +76,7 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex flex-col leading-none">
               <span
-                className="font-heading text-xl font-normal tracking-widest text-brand-text"
+                className="font-wordmark text-xl font-normal tracking-widest text-brand-text"
                 style={{ letterSpacing: '0.2em' }}
               >
                 BRISAL

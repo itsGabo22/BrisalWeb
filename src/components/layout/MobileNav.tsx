@@ -152,7 +152,7 @@ export function MobileNav({
               style={{ backgroundColor: '#C9A96E' }}
             >
               <div className="flex flex-col leading-none">
-                <span className="text-brand-text font-heading text-base font-normal tracking-widest">
+                <span className="text-brand-text font-wordmark text-base font-normal tracking-widest">
                   BRISAL
                 </span>
                 <span className="text-brand-text font-body text-[8px] font-normal tracking-[0.35em] uppercase">

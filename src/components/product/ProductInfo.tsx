@@ -111,7 +111,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       )}
 
       <div className="space-y-3">
-        <h1 className="font-heading text-3xl font-normal leading-tight text-brand-text sm:text-4xl">
+        <h1 className="font-heading text-3xl font-medium leading-tight text-brand-text sm:text-4xl">
           {product.name}
         </h1>
 

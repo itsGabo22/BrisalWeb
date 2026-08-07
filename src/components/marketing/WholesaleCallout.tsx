@@ -42,7 +42,7 @@ export function WholesaleCallout() {
         >
           <h2
             id="wholesale-heading"
-            className="font-heading text-3xl font-normal text-brand-text md:text-4xl"
+            className="font-heading text-3xl font-medium text-brand-text md:text-4xl"
           >
             ¿Tienes un negocio?
           </h2>

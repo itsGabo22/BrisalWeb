@@ -140,7 +140,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           aria-hidden="true"
           className="focus-visible:outline-none"
         >
-          <h3 className="font-heading text-sm font-normal leading-snug text-brand-text line-clamp-2">
+          <h3 className="font-heading text-sm font-medium leading-snug text-brand-text line-clamp-2">
             {product.name}
           </h3>
         </Link>

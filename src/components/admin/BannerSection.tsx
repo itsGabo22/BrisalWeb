@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 interface SiteConfig {
   announcementText: string;
@@ -72,7 +71,7 @@ export function BannerSection() {
         <span>Banner superior</span>
       </h2>
       <p className="mt-1 font-sans text-xs text-brand-neutral-400">
-        El mensaje que aparece en la franja dorada sobre el encabezado.
+        Los mensajes que rotan en la franja sobre el encabezado.
       </p>
 
       {isLoading ? (
@@ -81,12 +80,31 @@ export function BannerSection() {
         </div>
       ) : (
         <div className="mt-6 space-y-4 font-sans text-sm">
-          <Input
-            label="Texto del banner"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Envíos gratis en compras superiores a $200.000"
-          />
+          {/* A textarea, not an input: the bar treats each LINE as a separate
+              rotating message. That keeps multi-message support on the existing
+              String column with no migration — one line behaves exactly as the
+              single message did before. */}
+          <div className="w-full flex flex-col gap-1.5">
+            <label
+              htmlFor="announcement-text"
+              className="font-body text-sm font-normal tracking-[0.04em] text-brand-text dark:text-brand-neutral-300"
+            >
+              Mensajes del banner
+            </label>
+            <textarea
+              id="announcement-text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={3}
+              placeholder={'Envíos gratis en compras superiores a $200.000\nCompras nacionales mínima de $30.000'}
+              className="w-full rounded-md border border-brand-line bg-brand-pearl px-3 py-2 text-base sm:text-sm text-brand-text placeholder:text-brand-text-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold transition-colors dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+            />
+            <p className="text-xs text-brand-neutral-400">
+              Un mensaje por línea. Si escribes varios, rotan automáticamente cada
+              5 segundos y el visitante puede cambiarlos con las flechas. Las
+              cantidades ($30.000) se resaltan solas.
+            </p>
+          </div>
 
           <label className="flex items-center gap-2">
             <input

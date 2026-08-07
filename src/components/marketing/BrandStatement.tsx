@@ -20,7 +20,7 @@ export function BrandStatement() {
         transition={{ duration: reducedMotion ? 0 : 1.5, ease: 'easeOut' }}
         className="mx-auto max-w-3xl text-center"
       >
-        <p className="font-heading text-[clamp(2rem,5vw,4rem)] leading-tight font-normal text-brand-text">
+        <p className="font-heading text-[clamp(2rem,5vw,4rem)] leading-tight font-medium text-brand-text">
           Cada pieza, una historia.
         </p>
         <p className="mx-auto mt-6 max-w-xl font-body text-base leading-relaxed text-brand-text-soft md:text-lg">

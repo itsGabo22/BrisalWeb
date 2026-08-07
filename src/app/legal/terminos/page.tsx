@@ -25,7 +25,7 @@ export default function TerminosPage() {
       </div>
 
       <header className="mb-10">
-        <h1 className="font-heading text-4xl font-normal text-brand-text">
+        <h1 className="font-heading text-4xl font-medium text-brand-text">
           Términos y Condiciones
         </h1>
         <p className="mt-3 font-body text-sm text-brand-neutral-500">
@@ -37,7 +37,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s1">
           <h2
             id="terms-s1"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             1. Aceptación de los términos
           </h2>
@@ -54,7 +54,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s2">
           <h2
             id="terms-s2"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             2. Uso del catálogo
           </h2>
@@ -73,7 +73,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s3">
           <h2
             id="terms-s3"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             3. Propiedad intelectual
           </h2>
@@ -91,7 +91,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s4">
           <h2
             id="terms-s4"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             4. Limitación de responsabilidad
           </h2>
@@ -108,7 +108,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s5">
           <h2
             id="terms-s5"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             5. Modificaciones
           </h2>
@@ -124,7 +124,7 @@ export default function TerminosPage() {
         <section aria-labelledby="terms-s6">
           <h2
             id="terms-s6"
-            className="mb-3 font-heading text-2xl font-normal text-brand-text"
+            className="mb-3 font-heading text-2xl font-medium text-brand-text"
           >
             6. Ley aplicable y jurisdicción
           </h2>

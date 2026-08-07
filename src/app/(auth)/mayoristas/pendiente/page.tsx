@@ -33,7 +33,7 @@ export default function MayoristaPendientePage() {
           <Clock className="size-6" aria-hidden="true" />
         </div>
 
-        <h1 className="mb-2 font-heading text-2xl font-normal text-brand-text">
+        <h1 className="mb-2 font-heading text-2xl font-medium text-brand-text">
           Solicitud en revisión
         </h1>
         <p className="mb-8 font-body text-sm text-brand-neutral-600">
