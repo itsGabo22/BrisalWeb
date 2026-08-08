@@ -69,40 +69,65 @@ export function Footer() {
       {/* ── Top divider line ────────────────────────────── */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-brand-gold/60 to-transparent" />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      {/*
+        Layout: brand block on top, everything else compact beneath it.
 
-          {/* ── Col 1: Brand ──────────────────────────────── */}
-          <div className="space-y-4">
-            <p className="font-body text-sm text-brand-text-soft leading-relaxed max-w-xs">
-              Accesorios premium en acero y rodio. Elegancia atemporal para quienes aprecian los detalles.
-            </p>
-            {/* Social icons */}
-            <div className="flex items-center gap-3 pt-1">
-              {SOCIAL_LINKS.map(({ label, href, icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  className="flex items-center justify-center h-8 w-8 rounded-full border border-brand-line bg-brand-pearl text-brand-text-soft hover:border-brand-gold hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-                >
-                  {icon}
-                </a>
-              ))}
-            </div>
-          </div>
+        The wordmark moved from a band near the BOTTOM to the top, above the
+        tagline it belongs to — previously the tagline sat in a column with no
+        mark over it while the mark sat alone 400px lower, so the two halves of
+        the same lockup never read as one thing. There is exactly ONE wordmark
+        in the footer now.
 
-          {/* ── Col 2: Navegar ────────────────────────────── */}
-          <div className="space-y-4">
+        Centred rather than left-aligned: the three link columns below are
+        evenly distributed, so a left-flushed mark would hang off-axis from
+        everything under it. Centred also lets the tagline sit directly beneath
+        the mark at a readable measure instead of being squeezed into a quarter
+        column.
+
+        Vertical rhythm is deliberately tight — this footer was taller than the
+        viewport on a phone. Padding and gaps are roughly halved throughout.
+      */}
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        {/* ── Tier 1: brand block ─────────────────────────── */}
+        <div className="flex flex-col items-center text-center">
+          <span
+            className="font-wordmark text-4xl font-normal text-brand-text sm:text-5xl"
+            style={{ letterSpacing: '0.18em' }}
+          >
+            BRISAL
+          </span>
+          <span className="mt-2 font-body text-[10px] font-normal tracking-[0.4em] text-brand-gold-deep uppercase sm:text-xs">
+            BY SALVADOR
+          </span>
+
+          <p className="mt-4 max-w-md font-body text-sm leading-relaxed text-brand-text-soft">
+            Accesorios premium en acero y rodio. Elegancia atemporal para quienes
+            aprecian los detalles.
+          </p>
+        </div>
+
+        {/*
+          ── Tier 2: links + socials, one row ─────────────
+          Two columns on a phone rather than three stacked blocks: stacking was
+          most of the 954px this footer used to occupy there. Contacto spans the
+          full width on its own row because the email address is long enough to
+          break badly in a third of a 390px screen.
+
+          The socials are the fourth cell of this row rather than a block of
+          their own under the tagline — that removed a whole tier from the
+          desktop footer without losing anything.
+        */}
+        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-7 border-t border-brand-line pt-7 sm:grid-cols-4">
+          <div className="space-y-3">
             <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Navegar
             </h3>
-            <ul className="space-y-2.5" role="list">
+            <ul className="space-y-2" role="list">
               {NAV_LINKS.map(({ label, href }) => (
                 <li key={href}>
                   <Link
                     href={href}
-                    className="font-body text-sm text-brand-text hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="rounded-sm font-body text-sm text-brand-text transition-colors hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                   >
                     {label}
                   </Link>
@@ -111,17 +136,16 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* ── Col 3: Legal ──────────────────────────────── */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Legal
             </h3>
-            <ul className="space-y-2.5" role="list">
+            <ul className="space-y-2" role="list">
               {LEGAL_LINKS.map(({ label, href }) => (
                 <li key={href}>
                   <Link
                     href={href}
-                    className="font-body text-sm text-brand-text hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                    className="rounded-sm font-body text-sm text-brand-text transition-colors hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                   >
                     {label}
                   </Link>
@@ -130,16 +154,15 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* ── Col 4: Contacto ───────────────────────────── */}
-          <div className="space-y-4">
+          <div className="col-span-2 space-y-3 sm:col-span-1">
             <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Contacto
             </h3>
-            <ul className="space-y-2.5 font-body text-sm text-brand-text" role="list">
+            <ul className="space-y-2 font-body text-sm text-brand-text" role="list">
               <li>
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm break-all"
+                  className="rounded-sm break-all transition-colors hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -147,45 +170,39 @@ export function Footer() {
               <li>
                 <a
                   href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}
-                  className="hover:text-brand-gold-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
+                  className="rounded-sm transition-colors hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                 >
                   {CONTACT_PHONE}
                 </a>
               </li>
             </ul>
           </div>
-        </div>
 
-        {/*
-          ── Closing brand mark ─────────────────────────────
-          Its own full-width band rather than a fourth thing inside column 1,
-          which is what lets it be this large without fighting the link
-          columns for space. Moved out of that column entirely so the wordmark
-          appears once, not twice.
-
-          Playfair (font-wordmark), dark text on the light sand footer, per the
-          palette. Tracking eases off as the size grows: 0.2em is elegant at
-          36px and starts to pull the six letters apart at 72px, so the largest
-          step tightens rather than widening the lockup past its own row.
-        */}
-        <div className="mt-14 flex flex-col items-center border-t border-brand-line pt-12">
-          <span
-            className="font-wordmark text-4xl font-normal text-brand-text sm:text-5xl lg:text-6xl"
-            style={{ letterSpacing: '0.18em' }}
-          >
-            BRISAL
-          </span>
-          <span className="mt-3 font-body text-[10px] font-normal tracking-[0.4em] text-brand-gold-deep uppercase sm:text-xs">
-            BY SALVADOR
-          </span>
-          <span
-            className="mt-6 h-px w-16 bg-brand-gold/60"
-            aria-hidden="true"
-          />
+          {/* The same three icons that were under the tagline, relocated here.
+              "Síguenos" is a label for them, not new content — the columns
+              beside it all carry one, and a bare icon row in a grid of titled
+              columns reads as an orphan. */}
+          <div className="col-span-2 space-y-3 sm:col-span-1">
+            <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
+              Síguenos
+            </h3>
+            <div className="flex items-center gap-3">
+              {SOCIAL_LINKS.map(({ label, href, icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-brand-line bg-brand-pearl text-brand-text-soft transition-colors hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
+                >
+                  {icon}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── Bottom bar ──────────────────────────────────── */}
-        <div className="mt-10 border-t border-brand-line pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-7 flex flex-col items-center justify-between gap-3 border-t border-brand-line pt-5 sm:flex-row">
           <p className="font-body text-xs text-brand-text-soft">
             © {COPYRIGHT_YEAR} Brisal by Salvador. Todos los derechos reservados.
           </p>

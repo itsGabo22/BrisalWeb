@@ -350,6 +350,59 @@
     }
   }
 
+  /* ── Review card — frosted glass on a LIGHT backdrop ────────────────
+     The hero's glass darkens its backdrop because it floats over
+     unpredictable client photography. This one sits over a known cream
+     /sand gradient, so the problem is inverted: the text is dark and the
+     card must stay light enough to keep it legible while still reading
+     as glass.
+
+     55% white over #FAF7F2 lands around #FCFAF8, which puts brand-text
+     (#2A2521) at roughly 13:1 — far past AA, and it holds even where a
+     gold glow blooms underneath, because the glow is a low-alpha wash
+     rather than a solid fill.
+
+     `-webkit-backdrop-filter` is declared alongside the standard
+     property: without it iOS Safari drops the frosting entirely and the
+     card degrades to a flat translucent panel. */
+  .review-glass {
+    background-color: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    backdrop-filter: blur(14px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    /* Soft outer shadow lifts the pane off the wash; the inset highlight
+       is the lit top edge that sells it as glass rather than as a tint. */
+    box-shadow:
+      0 8px 30px rgba(42, 37, 33, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  /* Where backdrop-filter is unsupported there is no frosting at all, and
+     a 55%-white panel over a busy wash would look muddy — so it falls
+     back to a near-opaque pearl card that still reads as a surface. */
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .review-glass {
+      background-color: rgba(255, 255, 255, 0.92);
+    }
+  }
+
+  /* Decorative gold glow drift. Transform-only so it composites on the GPU
+     and never triggers layout; `background-attachment: fixed` is
+     deliberately not used anywhere here because iOS Safari ignores it and
+     produces a jumping backdrop. Wrapped in motion-safe by the component,
+     and the animation is on a pointer-events-none layer either way. */
+  @keyframes brisal-glow-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(0, -18px, 0) scale(1.07);
+    }
+  }
+
   /* ── Horizontal-scroll momentum on iOS ──────────────────────────────
      Without this, horizontal overflow-x-auto strips (category chips,
      product thumbnails) feel sluggish/robotic on Safari specifically. */

@@ -51,6 +51,50 @@ export async function getRatingSummary(productId: string): Promise<RatingSummary
   };
 }
 
+/** A review carrying the product it belongs to, for the homepage showcase. */
+export interface ShowcaseReview extends Review {
+  productName: string;
+  productSlug: string;
+}
+
+/**
+ * The minimum number of qualifying reviews before the homepage showcase is
+ * worth rendering. Below this it reads as an empty shelf rather than social
+ * proof, so the section removes itself entirely.
+ */
+export const SHOWCASE_MIN_REVIEWS = 3;
+
+/**
+ * Approved reviews across ALL products, for the homepage testimonials band.
+ *
+ * Two rules beyond "approved", both reportable:
+ *   • a written body is required — a stars-only review is perfectly valid on a
+ *     product page but makes an empty card in a showcase whose whole job is
+ *     the quote;
+ *   • ordered by rating then recency, so the strongest lead. Nothing is
+ *     permanently hidden: every approved review still shows on its product.
+ */
+export async function getShowcaseReviews(limit = 9): Promise<ShowcaseReview[]> {
+  const reviews = await prisma.review.findMany({
+    where: {
+      status: 'APPROVED',
+      body: { not: null },
+    },
+    orderBy: [{ rating: 'desc' }, { createdAt: 'desc' }],
+    take: limit,
+    include: { product: { select: { name: true, slug: true } } },
+  });
+
+  return reviews
+    // `body: { not: null }` cannot exclude an empty string, so trim here.
+    .filter((review) => (review.body ?? '').trim().length > 0)
+    .map((review) => ({
+      ...toReview(review),
+      productName: review.product.name,
+      productSlug: review.product.slug,
+    }));
+}
+
 /**
  * Rating summaries for many products at once, keyed by product id.
  *
