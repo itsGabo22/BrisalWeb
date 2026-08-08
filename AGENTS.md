@@ -85,10 +85,18 @@ Light palette, defined in `globals.css` `@theme`:
   legible over photography.
 - Fonts are addressed by **role**, never by typeface name: `font-body`,
   `font-heading`, `font-wordmark` (plus `font-sans` / `font-serif` aliases).
-- **Body/nav/headings currently load Poppins** via `next/font`, matched to
-  cornalinaaccesorios.com's computed styles. Several briefs have said "Jost";
-  that swap has never been made. If Jost is wanted it is a deliberate change to
-  `src/app/layout.tsx` — do not assume it is already there.
+- **Body/nav/headings load Jost** via `next/font` (`--font-jost`), matched to
+  cornalinaaccesorios.com. It is loaded as the **variable** font, so every
+  weight resolves; 300/400/500 are the ones the design uses. Poppins was
+  removed in Phase 8 — do not reintroduce it.
+- **300 (light) is the site-wide default**, applied by `html { @apply
+  font-body font-light }` in `globals.css`. Weight is something a component
+  opts INTO for hierarchy, never something it has to opt out of. On a
+  geometric light face, prefer **400/500 for emphasis** — `font-semibold` and
+  above read blunt against a 300 base and should be reserved for the admin
+  panel, where information density matters more than elegance.
+- Nav links sit at **400 / 15px** with normal letter-spacing, deliberately not
+  dropped to 300: they are small tap targets that have to stay crisp.
 - **The "BRISAL" hero wordmark stays Playfair Display.** `--font-wordmark` is
   pinned to it so it cannot drift when the body typeface changes. Never change
   it. `HeroSection.tsx` and its overlay/shimmer are off-limits unless a task

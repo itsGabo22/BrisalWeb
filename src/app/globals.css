@@ -66,28 +66,31 @@
 
   /* ── Typography tokens ────────────────────────────
      next/font declares three uniquely-named variables on <html>
-     (--font-poppins / --font-playfair / --font-geist-mono). Everything
+     (--font-jost / --font-playfair / --font-geist-mono). Everything
      below is a semantic alias onto those, so components only ever name a
      ROLE (font-body, font-heading, font-wordmark) and never a typeface.
      --font-sans / --font-serif are kept as aliases because the existing
      components address them by those names.
 
-     --font-heading points at Poppins, not Playfair. Inspecting the live
-     cornalinaaccesorios.com computed styles showed the reference site has
-     exactly ONE webfont — Poppins — and uses it for nav, body AND section
-     headings (their "CATEGORÍAS" h3 is Poppins 500). The serif look in
-     their design comes from the CORNALINA logo, which is an inline SVG,
-     and from hero artwork baked into images — not from any loaded face.
+     The sans is JOST (was Poppins). Jost sits in the Futura lineage —
+     tighter apertures and a lighter stroke than Poppins at the same
+     nominal weight — which is what makes the page read thinner without
+     dropping below 300. It is also what cornalinaaccesorios.com loads.
+
+     --font-heading points at the sans, not at Playfair. The reference
+     site has exactly ONE webfont and uses it for nav, body AND section
+     headings; the serif look in their design comes from their logo,
+     which is an inline SVG, and from hero artwork baked into images.
 
      --font-wordmark stays pinned to Playfair Display. It carries the
      "BRISAL / by Salvador" lockup in the hero, header, footer and mobile
      drawer, which the client signed off on and which must not move when
-     the heading typeface changes. --font-serif likewise stays Playfair,
-     because HeroSection addresses the wordmark through it. */
-  --font-body: var(--font-poppins);
-  --font-heading: var(--font-poppins);
+     the sans changes. --font-serif likewise stays Playfair, because
+     HeroSection addresses the wordmark through it. */
+  --font-body: var(--font-jost);
+  --font-heading: var(--font-jost);
   --font-wordmark: var(--font-playfair);
-  --font-sans: var(--font-poppins);
+  --font-sans: var(--font-jost);
   --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -211,7 +214,7 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* Poppins Light (300) is the site-wide default so the page reads thin and
+  /* Jost Light (300) is the site-wide default so the page reads thin and
      airy by default and weight becomes something a component opts INTO for
      hierarchy, rather than something it has to opt out of. */
   html {

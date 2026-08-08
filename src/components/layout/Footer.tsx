@@ -74,17 +74,6 @@ export function Footer() {
 
           {/* ── Col 1: Brand ──────────────────────────────── */}
           <div className="space-y-4">
-            <div className="flex flex-col leading-none">
-              <span
-                className="font-wordmark text-xl font-normal tracking-widest text-brand-text"
-                style={{ letterSpacing: '0.2em' }}
-              >
-                BRISAL
-              </span>
-              <span className="font-body text-[9px] font-normal tracking-[0.35em] text-brand-gold-deep uppercase mt-0.5">
-                BY SALVADOR
-              </span>
-            </div>
             <p className="font-body text-sm text-brand-text-soft leading-relaxed max-w-xs">
               Accesorios premium en acero y rodio. Elegancia atemporal para quienes aprecian los detalles.
             </p>
@@ -167,8 +156,36 @@ export function Footer() {
           </div>
         </div>
 
+        {/*
+          ── Closing brand mark ─────────────────────────────
+          Its own full-width band rather than a fourth thing inside column 1,
+          which is what lets it be this large without fighting the link
+          columns for space. Moved out of that column entirely so the wordmark
+          appears once, not twice.
+
+          Playfair (font-wordmark), dark text on the light sand footer, per the
+          palette. Tracking eases off as the size grows: 0.2em is elegant at
+          36px and starts to pull the six letters apart at 72px, so the largest
+          step tightens rather than widening the lockup past its own row.
+        */}
+        <div className="mt-14 flex flex-col items-center border-t border-brand-line pt-12">
+          <span
+            className="font-wordmark text-4xl font-normal text-brand-text sm:text-5xl lg:text-6xl"
+            style={{ letterSpacing: '0.18em' }}
+          >
+            BRISAL
+          </span>
+          <span className="mt-3 font-body text-[10px] font-normal tracking-[0.4em] text-brand-gold-deep uppercase sm:text-xs">
+            BY SALVADOR
+          </span>
+          <span
+            className="mt-6 h-px w-16 bg-brand-gold/60"
+            aria-hidden="true"
+          />
+        </div>
+
         {/* ── Bottom bar ──────────────────────────────────── */}
-        <div className="mt-12 border-t border-brand-line pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-10 border-t border-brand-line pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="font-body text-xs text-brand-text-soft">
             © {COPYRIGHT_YEAR} Brisal by Salvador. Todos los derechos reservados.
           </p>

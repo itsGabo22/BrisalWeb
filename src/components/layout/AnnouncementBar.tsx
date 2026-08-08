@@ -73,7 +73,9 @@ function EmphasisedMessage({ text }: { text: string }) {
     <>
       {parseEmphasis(text).map((segment, i) =>
         segment.bold ? (
-          <strong key={i} className="font-semibold">
+          // 500, not 600: against a Jost 300 base that is already a clear
+          // step up, and semibold on a geometric light face reads blunt.
+          <strong key={i} className="font-medium">
             {segment.text}
           </strong>
         ) : (

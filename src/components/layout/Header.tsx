@@ -97,7 +97,11 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
         aria-label="Navegación principal"
       >
-        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Taller from md up so the enlarged wordmark has room to breathe
+            instead of pressing against the announcement bar and the nav.
+            Height is a fixed step, not a min-height, so the sticky offset
+            stays constant and nothing shifts as the header goes translucent. */}
+        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 md:h-20 lg:px-8">
           {/* Mobile: hamburger left */}
           <button
             className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
@@ -124,46 +128,62 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             </svg>
           </button>
 
-          {/* Desktop: logo left */}
+          {/*
+            The wordmark, at two sizes. Stays Playfair Display (font-wordmark)
+            per AGENTS.md — only the scale changes.
+
+            Desktop steps up hard (18px → 30px) so it anchors the top-left as a
+            real brand mark; the "BY SALVADOR" line and its tracking grow with
+            it so the lockup keeps its proportions rather than looking like a
+            big word with a tiny label stuck under it. The md step (24px) is
+            deliberately smaller than the lg one: between md and lg the nav is
+            hidden, but at lg it appears, and 30px is the largest that still
+            leaves the nav its full gap on a 1024px viewport.
+          */}
           <Link
             href="/"
             className="focus-visible:ring-brand-gold hidden flex-col rounded-sm leading-none focus-visible:ring-2 focus-visible:outline-none md:flex"
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-wordmark text-lg font-normal tracking-widest"
+              className="text-brand-text font-wordmark text-2xl font-normal lg:text-3xl"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold-deep font-body text-[9px] font-normal tracking-[0.35em] uppercase">
+            <span className="text-brand-gold-deep mt-1 font-body text-[10px] font-normal tracking-[0.3em] uppercase lg:text-[11px]">
               BY SALVADOR
             </span>
           </Link>
 
-          {/* Mobile: logo centered */}
+          {/* Mobile: centred, and only moderately larger (18px → 20px) — the
+              hamburger and the cart/search icons flank it on a 375px line, so
+              this is the ceiling before the lockup crowds them. */}
           <Link
             href="/"
             className="focus-visible:ring-brand-gold absolute left-1/2 flex -translate-x-1/2 flex-col rounded-sm leading-none focus-visible:ring-2 focus-visible:outline-none md:hidden"
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-wordmark text-lg font-normal tracking-widest"
+              className="text-brand-text font-wordmark text-xl font-normal"
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold-deep font-body text-[9px] font-normal tracking-[0.35em] uppercase">
+            <span className="text-brand-gold-deep mt-0.5 font-body text-[9px] font-normal tracking-[0.3em] uppercase">
               BY SALVADOR
             </span>
           </Link>
 
           {/* Metrics taken from cornalinaaccesorios.com's computed styles:
-              Poppins, weight 400, letter-spacing NORMAL, sentence case. The
-              tracking is the important part — the earlier 0.16em is what made
-              this nav read cramped and stretched, not the type size. Theirs
-              measures 14px; 15px here sits in the range the client asked for
-              and reads all but identically beside the logo. */}
+              weight 400, letter-spacing NORMAL, sentence case. The tracking is
+              the important part — the earlier 0.16em is what made this nav read
+              cramped and stretched, not the type size. Theirs measures 14px;
+              15px here sits in the range the client asked for and reads all but
+              identically beside the logo. Held at 400 rather than dropped to
+              300 with the body: nav links are small tap targets that have to
+              stay crisp, and Jost 400 is already lighter than the Poppins 400
+              this replaces. */}
           <nav
             className="hidden items-center gap-7 lg:flex xl:gap-9"
             aria-label="Menú principal"

@@ -143,10 +143,30 @@ export function ProductInfo({
     }, 1500);
   };
 
-  const productUrl =
-    typeof window === 'undefined'
-      ? `/producto/${product.slug}`
-      : `${window.location.origin}/producto/${product.slug}`;
+  /**
+   * The origin — empty on the server AND through hydration, real afterwards.
+   *
+   * This used to be `typeof window === 'undefined' ? path : origin + path`
+   * evaluated during render, which is a guaranteed hydration mismatch: the
+   * server produced a relative link and the client an absolute one, so the two
+   * trees disagreed on the href and React warned on every product page.
+   *
+   * `useSyncExternalStore` is the sanctioned way to read a browser-only value
+   * without that mismatch — React uses the server snapshot while hydrating and
+   * only then switches to the client one, so the first paint matches by
+   * construction. The subscribe callback is a no-op because the origin cannot
+   * change without a full navigation.
+   *
+   * The link stays a real href throughout, so middle-click and "copy link
+   * address" keep working — which an onClick-only fix would have broken.
+   */
+  const origin = React.useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => '',
+  );
+
+  const productUrl = `${origin}/producto/${product.slug}`;
   const whatsappHref = whatsappNumber
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         `Hola, me interesa el producto: ${product.name} — ${productUrl}`,

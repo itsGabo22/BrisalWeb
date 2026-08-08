@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Poppins, Playfair_Display } from 'next/font/google';
+import { Jost, Playfair_Display } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -8,16 +8,24 @@ import { PageScrollProvider } from '@/hooks/usePageScroll';
 import { getCategoryNavigationTree } from '@/lib/repositories';
 import { prisma } from '@/lib/prisma';
 
-// Body / nav / banner typeface. Poppins is a geometric sans built on true
-// circles, so it reads noticeably rounder and airier than the Inter it
-// replaces. It is NOT a variable font on Google Fonts, so the weights have to
-// be enumerated; 300/400 carry the "thin" default the design calls for and
-// 500/600 exist only for the few places hierarchy genuinely needs weight.
-// globals.css maps this to --font-body (and the --font-sans alias).
-const poppins = Poppins({
-  variable: '--font-poppins',
+/**
+ * Body / nav / banner typeface — Jost, replacing Poppins.
+ *
+ * Jost is a geometric sans in the Futura lineage: narrower apertures and a
+ * markedly lighter stroke than Poppins at the same nominal weight, which is
+ * the "thinner, more refined" read the client asked for and what
+ * cornalinaaccesorios.com uses.
+ *
+ * Loaded as the VARIABLE font (no `weight` array) rather than as three static
+ * cuts. It is one file either way, 300/400/500 all resolve exactly as the
+ * brief specifies, and the admin panel's existing 600/700 headings keep
+ * rendering at their real weight instead of being clamped to the nearest
+ * loaded cut. globals.css maps this to --font-body (and the --font-sans alias);
+ * `html` applies font-light, so 300 is the site-wide default.
+ */
+const jost = Jost({
+  variable: '--font-jost',
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
   display: 'swap',
 });
 
@@ -93,7 +101,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
-      className={`${poppins.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
+      className={`${jost.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
     >
       {/*
         Layout decision — MobileNav state lives inside Header via local useState.
