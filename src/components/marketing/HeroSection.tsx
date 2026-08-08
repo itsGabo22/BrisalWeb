@@ -14,6 +14,7 @@ import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { objectPositionOf } from '@/lib/utils/hero-focal';
 import { usePageScroll } from '@/hooks/usePageScroll';
 import type { HeroSlide } from '@/types';
 
@@ -201,6 +202,31 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
   const hasSlides = slides.length > 0;
   const activeSlide = hasSlides ? slides[currentIndex % slides.length] : null;
 
+  /**
+   * The active slide's focal point for each breakpoint, handed to CSS as custom
+   * properties. `.hero-focal` picks the right one at 640px — the same breakpoint
+   * the image pair below already switches on.
+   *
+   * Custom properties rather than a plain objectPosition: a VIDEO slide is one
+   * element serving both breakpoints, so its position has to change in CSS, not
+   * by swapping elements. The cast is needed because React.CSSProperties has no
+   * index signature for `--*` names.
+   */
+  const focalVars = React.useMemo(
+    () =>
+      ({
+        '--hero-pos-desktop': objectPositionOf(
+          activeSlide?.desktopPosX,
+          activeSlide?.desktopPosY,
+        ),
+        '--hero-pos-mobile': objectPositionOf(
+          activeSlide?.mobilePosX,
+          activeSlide?.mobilePosY,
+        ),
+      }) as React.CSSProperties,
+    [activeSlide],
+  );
+
   React.useEffect(() => {
     if (!hasSlides || slides.length <= 1 || isPaused) return;
     const timer = setInterval(() => {
@@ -251,7 +277,8 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
                 muted
                 loop
                 playsInline
-                className="h-full w-full object-cover"
+                className="hero-focal h-full w-full object-cover"
+                style={focalVars}
               />
             ) : (
               <>
@@ -261,7 +288,8 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
                   fill
                   priority={currentIndex === 0}
                   sizes="100vw"
-                  className="hidden object-cover sm:block"
+                  className="hero-focal hidden object-cover sm:block"
+                  style={focalVars}
                 />
                 <NextImage
                   src={activeSlide.mobileUrl || activeSlide.desktopUrl}
@@ -269,7 +297,8 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
                   fill
                   priority={currentIndex === 0}
                   sizes="100vw"
-                  className="object-cover sm:hidden"
+                  className="hero-focal object-cover sm:hidden"
+                  style={focalVars}
                 />
               </>
             )}

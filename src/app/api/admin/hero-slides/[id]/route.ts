@@ -7,6 +7,7 @@ import {
   slugifyFilename,
   uploadVideo,
 } from '@/lib/supabase/storage';
+import { parsePercent } from '@/lib/admin/hero-slides';
 import type { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
@@ -47,6 +48,19 @@ export async function PATCH(
       data.ctaHref = typeof ctaHref === 'string' && ctaHref.trim() ? ctaHref.trim() : null;
     if (active !== null) data.active = active === 'true';
     if (order !== null && !Number.isNaN(Number(order))) data.order = Number(order);
+
+    /**
+     * Focal points fall back to what is ALREADY stored, not to 50.
+     *
+     * The reorder and activate/deactivate actions PATCH with a FormData holding
+     * only `order` or `active`. Defaulting to centre here would silently throw
+     * away a crop the client had arranged every time they moved a slide up the
+     * list.
+     */
+    data.desktopPosX = parsePercent(formData.get('desktopPosX'), existing.desktopPosX);
+    data.desktopPosY = parsePercent(formData.get('desktopPosY'), existing.desktopPosY);
+    data.mobilePosX = parsePercent(formData.get('mobilePosX'), existing.mobilePosX);
+    data.mobilePosY = parsePercent(formData.get('mobilePosY'), existing.mobilePosY);
 
     const timestamp = Date.now();
 

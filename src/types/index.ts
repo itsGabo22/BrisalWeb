@@ -124,6 +124,17 @@ export interface HeroSlide {
   ctaHref?: string | null;
   order: number;
   active: boolean;
+  /**
+   * Focal point as whole percentages (0-100), fed straight to CSS
+   * object-position. Separate per breakpoint because a 16:9 desktop frame and
+   * a 9:16 phone frame keep different parts of the same media. 50/50 is
+   * centre — what object-cover does unaided — so slides created before this
+   * existed behave identically.
+   */
+  desktopPosX?: number;
+  desktopPosY?: number;
+  mobilePosX?: number;
+  mobilePosY?: number;
 }
 
 // ─── Wholesaler ───────────────────────────────────────────────────────────────

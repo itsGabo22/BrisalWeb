@@ -263,6 +263,30 @@
     min-height: max(600px, 100svh);
   }
 
+  /* ── Hero focal point ───────────────────────────────────────────────
+     The admin sets an object-position per breakpoint, because the same
+     media almost never crops well both in a 16:9 desktop frame and in a
+     9:16 phone one. Two custom properties carry the values, set inline
+     per slide, and this rule picks the right one at the SAME 640px
+     breakpoint the hero's own sm: classes switch on.
+
+     A media query rather than two elements: a VIDEO slide is a single
+     <video> that has to serve both breakpoints, so there is nothing to
+     swap out — only the position can change. Images go through the same
+     class so there is one mechanism to reason about, not two.
+
+     Both properties fall back to 50% 50%, which is what object-cover
+     does unaided, so a slide that never set a focal point is unchanged. */
+  .hero-focal {
+    object-position: var(--hero-pos-mobile, 50% 50%);
+  }
+
+  @media (min-width: 640px) {
+    .hero-focal {
+      object-position: var(--hero-pos-desktop, 50% 50%);
+    }
+  }
+
   /* ── Hero CTA — frosted glass ───────────────────────────────────────
      Written by hand rather than assembled from utilities for three
      reasons the utility classes can't cover:

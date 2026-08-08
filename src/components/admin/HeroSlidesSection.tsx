@@ -19,6 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
+import {
+  CENTER,
+  HeroFocalPreview,
+  type FocalPoint,
+} from '@/components/admin/HeroFocalPreview';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface HeroSlide {
   id: string;
@@ -32,6 +38,10 @@ interface HeroSlide {
   ctaHref: string | null;
   order: number;
   active: boolean;
+  desktopPosX: number;
+  desktopPosY: number;
+  mobilePosX: number;
+  mobilePosY: number;
 }
 
 export function HeroSlidesSection() {
@@ -49,9 +59,32 @@ export function HeroSlidesSection() {
   const [desktopFile, setDesktopFile] = React.useState<File | null>(null);
   const [mobileFile, setMobileFile] = React.useState<File | null>(null);
   const [posterFile, setPosterFile] = React.useState<File | null>(null);
+  const [desktopFocal, setDesktopFocal] = React.useState<FocalPoint>(CENTER);
+  const [mobileFocal, setMobileFocal] = React.useState<FocalPoint>(CENTER);
 
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  /**
+   * Preview URLs for files that are picked but not yet uploaded, so the focal
+   * frames show the NEW media the moment it's chosen rather than the old one
+   * it is about to replace.
+   */
+  const desktopObjectUrl = useObjectUrl(desktopFile);
+  const mobileObjectUrl = useObjectUrl(mobileFile);
+  const posterObjectUrl = useObjectUrl(posterFile);
+
+  const previewKind = type === 'VIDEO' ? 'video' : 'image';
+  const previewPosterUrl = posterObjectUrl ?? editingSlide?.posterUrl ?? null;
+  const previewDesktopUrl = desktopObjectUrl ?? editingSlide?.desktopUrl ?? null;
+  /**
+   * A VIDEO slide has no separate mobile file at all, and an IMAGE slide's
+   * mobile upload is optional — both cases fall back to the desktop media,
+   * which is exactly what the live hero renders below the breakpoint.
+   */
+  const ownMobileUrl =
+    type === 'VIDEO' ? null : (mobileObjectUrl ?? editingSlide?.mobileUrl ?? null);
+  const previewMobileUrl = ownMobileUrl ?? previewDesktopUrl;
 
   const loadSlides = React.useCallback(async () => {
     try {
@@ -80,6 +113,8 @@ export function HeroSlidesSection() {
     setDesktopFile(null);
     setMobileFile(null);
     setPosterFile(null);
+    setDesktopFocal(CENTER);
+    setMobileFocal(CENTER);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -94,6 +129,10 @@ export function HeroSlidesSection() {
     setDesktopFile(null);
     setMobileFile(null);
     setPosterFile(null);
+    // Slides saved before focal points existed come back as 50/50 from the
+    // column default, so `?? 50` is only a guard against a partial payload.
+    setDesktopFocal({ x: slide.desktopPosX ?? 50, y: slide.desktopPosY ?? 50 });
+    setMobileFocal({ x: slide.mobilePosX ?? 50, y: slide.mobilePosY ?? 50 });
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -177,6 +216,10 @@ export function HeroSlidesSection() {
     if (desktopFile) formData.append('desktopFile', desktopFile);
     if (mobileFile) formData.append('mobileFile', mobileFile);
     if (posterFile) formData.append('posterFile', posterFile);
+    formData.append('desktopPosX', String(desktopFocal.x));
+    formData.append('desktopPosY', String(desktopFocal.y));
+    formData.append('mobilePosX', String(mobileFocal.x));
+    formData.append('mobilePosY', String(mobileFocal.y));
 
     try {
       const url = editingSlide
@@ -427,6 +470,21 @@ export function HeroSlidesSection() {
               />
             </div>
           )}
+
+          {/* Sits directly under the upload cards: the admin picks a file, then
+              immediately sees and adjusts how it will be cropped, without
+              having to save and go look at the homepage. */}
+          <HeroFocalPreview
+            kind={previewKind}
+            desktopUrl={previewDesktopUrl}
+            mobileUrl={previewMobileUrl}
+            posterUrl={previewPosterUrl}
+            mobileIsFallback={!ownMobileUrl}
+            desktop={desktopFocal}
+            mobile={mobileFocal}
+            onDesktopChange={setDesktopFocal}
+            onMobileChange={setMobileFocal}
+          />
 
           <Input
             label="Título (opcional — sobrescribe el copy por defecto)"

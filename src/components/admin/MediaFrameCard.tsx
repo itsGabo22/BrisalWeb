@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface MediaFrameCardProps {
   label: string;
@@ -34,17 +35,7 @@ export function MediaFrameCard({
   className,
 }: MediaFrameCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!file) {
-      void Promise.resolve().then(() => setObjectUrl(null));
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    void Promise.resolve().then(() => setObjectUrl(url));
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+  const objectUrl = useObjectUrl(file);
 
   const previewUrl = objectUrl ?? existingUrl ?? null;
 

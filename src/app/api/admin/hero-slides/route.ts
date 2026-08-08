@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { processAndUploadImage, slugifyFilename, uploadVideo } from '@/lib/supabase/storage';
+import { parsePercent } from '@/lib/admin/hero-slides';
 
 function traceHash(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex').slice(0, 16);
@@ -139,6 +140,10 @@ export async function POST(request: Request) {
         subtitle: typeof subtitle === 'string' && subtitle.trim() ? subtitle.trim() : null,
         ctaText: typeof ctaText === 'string' && ctaText.trim() ? ctaText.trim() : null,
         ctaHref: typeof ctaHref === 'string' && ctaHref.trim() ? ctaHref.trim() : null,
+        desktopPosX: parsePercent(formData.get('desktopPosX'), 50),
+        desktopPosY: parsePercent(formData.get('desktopPosY'), 50),
+        mobilePosX: parsePercent(formData.get('mobilePosX'), 50),
+        mobilePosY: parsePercent(formData.get('mobilePosY'), 50),
         order,
         active: true,
       },
