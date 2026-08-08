@@ -12,6 +12,7 @@ import {
   resolveListingImageUrl,
 } from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
+import { Stars } from '@/components/ui/star-rating';
 import { getSelectableColors } from '@/lib/utils/product-options';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
@@ -154,6 +155,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
             {product.name}
           </h3>
         </Link>
+
+        {/* Rating, only once something has actually been approved. A product
+            nobody has reviewed shows nothing at all — five empty stars read as
+            "rated zero", which is worse than saying nothing. */}
+        {product.rating && product.rating.count > 0 && product.rating.average !== null && (
+          <div className="flex items-center gap-1.5">
+            <Stars value={product.rating.average} size="sm" />
+            <span className="text-brand-text-soft/80 font-body text-[11px] tabular-nums">
+              {product.rating.average.toFixed(1)} ({product.rating.count})
+            </span>
+          </div>
+        )}
 
         {/* Colour dots, so a shopper scanning the grid can see a piece comes
             in several finishes. Capped at four with a "+N" so a product with

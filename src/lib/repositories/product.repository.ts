@@ -4,6 +4,7 @@
 import type { Prisma, Discount as PrismaDiscount } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { Product } from '@/types';
+import { getRatingSummaries } from '@/lib/reviews';
 import { toProduct } from './mappers';
 
 export interface GetAllProductsOptions {
@@ -82,6 +83,30 @@ async function attachScopedDiscounts<
   });
 }
 
+/**
+ * The single exit path from every repository read: merge the scoped discounts,
+ * attach the APPROVED-review rating aggregate, then map to the client type.
+ *
+ * Both extras cost exactly one query each for the whole batch, no matter how
+ * many products came back — a per-card rating query would have been N+1 on a
+ * 40-product catalog page. Products with no approved reviews get no `rating`
+ * at all, which is what lets a card render nothing rather than five grey stars.
+ */
+async function finalize(
+  products: Parameters<typeof toProduct>[0][],
+): Promise<Product[]> {
+  const [withDiscounts, ratings] = await Promise.all([
+    attachScopedDiscounts(products),
+    getRatingSummaries(products.map((product) => product.id)),
+  ]);
+
+  return withDiscounts.map((product) => {
+    const mapped = toProduct(product);
+    const rating = ratings.get(product.id);
+    return rating ? { ...mapped, rating } : mapped;
+  });
+}
+
 class PrismaProductRepository implements IProductRepository {
   async getAll(options: GetAllProductsOptions = {}): Promise<Product[]> {
     const where: Prisma.ProductWhereInput = {
@@ -116,7 +141,7 @@ class PrismaProductRepository implements IProductRepository {
       orderBy: { createdAt: 'desc' },
     });
 
-    return (await attachScopedDiscounts(products)).map(toProduct);
+    return finalize(products);
   }
 
   async getBySlug(slug: string): Promise<Product | null> {
@@ -126,8 +151,8 @@ class PrismaProductRepository implements IProductRepository {
     });
 
     if (!product) return null;
-    const [withScopedDiscounts] = await attachScopedDiscounts([product]);
-    return toProduct(withScopedDiscounts);
+    const [finalized] = await finalize([product]);
+    return finalized;
   }
 
   async getFeatured(tagSlug?: string): Promise<Product[]> {
@@ -143,7 +168,7 @@ class PrismaProductRepository implements IProductRepository {
       orderBy: { createdAt: 'desc' },
     });
 
-    return (await attachScopedDiscounts(products)).map(toProduct);
+    return finalize(products);
   }
 
   async search(query: string): Promise<Product[]> {
@@ -162,7 +187,7 @@ class PrismaProductRepository implements IProductRepository {
       orderBy: { createdAt: 'desc' },
     });
 
-    return (await attachScopedDiscounts(products)).map(toProduct);
+    return finalize(products);
   }
 
   /** Same category first, then fills remaining slots with same-tag products. */
@@ -192,7 +217,7 @@ class PrismaProductRepository implements IProductRepository {
       related.push(...sameTag);
     }
 
-    return (await attachScopedDiscounts(related)).map(toProduct);
+    return finalize(related);
   }
 }
 

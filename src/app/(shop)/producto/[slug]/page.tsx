@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { ProductBreadcrumb, RelatedProducts } from '@/components/product';
+import { ProductBreadcrumb, ProductReviews, RelatedProducts } from '@/components/product';
 import { ProductDetail } from '@/components/product/ProductDetail';
 import { productRepository } from '@/lib/repositories';
 import { getFrequentlyBoughtTogether } from '@/lib/recommendations';
+import { getApprovedReviews, getRatingSummary } from '@/lib/reviews';
 
 interface ProductoPageProps {
   params: Promise<{
@@ -47,9 +48,13 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
     notFound();
   }
 
-  const [related, frequentlyBoughtTogether] = await Promise.all([
+  const [related, frequentlyBoughtTogether, reviews, ratingSummary] = await Promise.all([
     productRepository.getRelated(product, 4),
     getFrequentlyBoughtTogether(product.id, 4),
+    // Both filter on APPROVED — a pending or rejected review must never reach
+    // this page, and the aggregate must not count one either.
+    getApprovedReviews(product.id),
+    getRatingSummary(product.id),
   ]);
 
   return (
@@ -80,6 +85,13 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
           </div>
         </section>
       )}
+
+      <ProductReviews
+        productId={product.id}
+        productName={product.name}
+        reviews={reviews}
+        summary={ratingSummary}
+      />
 
       {frequentlyBoughtTogether && frequentlyBoughtTogether.length > 0 && (
         <RelatedProducts

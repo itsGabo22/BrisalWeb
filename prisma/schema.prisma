@@ -20,6 +20,15 @@ enum DiscountScope {
   PRODUCT
 }
 
+/// Every review lands on PENDING and is invisible to shoppers until an admin
+/// approves it. Brisal has no general customer login — only wholesale accounts —
+/// so moderation, not authentication, is the spam gate.
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ── Models ─────────────────────────────────────────────
 
 model Category {
@@ -71,8 +80,35 @@ model Product {
   // A product with NO colorVariants is a simple product and keeps using
   // `imageUrls`, `price` and `stock` above exactly as before.
   colorVariants  ColorVariant[]
+  reviews        Review[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+/// A shopper-submitted review. Anyone can write one without an account, which
+/// is why `status` exists — nothing reaches the storefront unread.
+model Review {
+  id         String       @id @default(cuid())
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Display name the shopper typed. Not a User link: reviewers are anonymous.
+  authorName String
+  /// 1-5. Validated at the API edge; there is no CHECK constraint because the
+  /// only writer is the route, which clamps before it ever reaches Postgres.
+  rating     Int
+  title      String?
+  body       String?
+  /// Up to 4 customer photos, already processed to WebP and uploaded.
+  imageUrls  String[]
+  status     ReviewStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  /// The storefront always asks for one product's APPROVED reviews, and the
+  /// rating aggregate groups by the same pair — so they share an index.
+  @@index([productId, status])
+  /// The moderation queue reads newest-first within a status.
+  @@index([status, createdAt])
 }
 
 /// One colour of a product: its own images, its own stock, and optional

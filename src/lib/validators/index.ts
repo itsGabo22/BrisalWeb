@@ -172,3 +172,39 @@ export const createOrderSchema = z.object({
 
 export type CreateOrderData = z.infer<typeof createOrderSchema>;
 
+// ─── Reseñas ──────────────────────────────────────────────────────────────────
+
+/** Photos a shopper may attach to one review. */
+export const MAX_REVIEW_IMAGES = 4;
+export const MAX_REVIEW_BODY = 1500;
+
+/**
+ * A review as submitted from the product page.
+ *
+ * No login is required — Brisal has no general customer account — so this
+ * validates shape only. The real defence is that every row is created PENDING
+ * and an admin reads it before it is ever public. The limits here just stop the
+ * obvious junk: an empty name, a rating outside 1-5, or an essay.
+ */
+export const createReviewSchema = z.object({
+  productId: z.string().min(1, 'Producto inválido'),
+  authorName: z
+    .string()
+    .trim()
+    .min(2, 'Escribe tu nombre')
+    .max(60, 'El nombre no puede superar 60 caracteres'),
+  rating: z
+    .number()
+    .int('La calificación debe ser un número entero')
+    .min(1, 'Selecciona de 1 a 5 estrellas')
+    .max(5, 'Selecciona de 1 a 5 estrellas'),
+  title: z.string().trim().max(120, 'El título no puede superar 120 caracteres').optional(),
+  body: z
+    .string()
+    .trim()
+    .max(MAX_REVIEW_BODY, `La reseña no puede superar ${MAX_REVIEW_BODY} caracteres`)
+    .optional(),
+});
+
+export type CreateReviewData = z.infer<typeof createReviewSchema>;
+

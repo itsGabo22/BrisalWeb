@@ -3,3 +3,4 @@ export type { ProductGalleryProps } from './ProductGallery';
 export { ProductBreadcrumb } from './ProductBreadcrumb';
 export { ProductInfo } from './ProductInfo';
 export { RelatedProducts } from './RelatedProducts';
+export { ProductReviews } from './ProductReviews';

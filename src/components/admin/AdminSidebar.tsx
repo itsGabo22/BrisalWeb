@@ -12,6 +12,7 @@ import {
   Images,
   Settings,
   ClipboardList,
+  Star,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -29,6 +30,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Productos', href: '/admin/productos', icon: ShoppingBag },
   { name: 'Categorías', href: '/admin/categorias', icon: FolderTree },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ClipboardList },
+  { name: 'Reseñas', href: '/admin/resenas', icon: Star },
   { name: 'Descuentos', href: '/admin/descuentos', icon: Percent },
   { name: 'Mayoristas', href: '/admin/mayoristas', icon: Users },
   { name: 'Imágenes', href: '/admin/imagenes', icon: Images },
@@ -39,30 +41,39 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
-  const [pendingOrdersCount, setPendingOrdersCount] = React.useState(0);
+  /**
+   * Badge counts keyed by the sidebar href they belong on. Generalised from a
+   * single pending-orders number so a second queue (reseñas) doesn't need a
+   * second piece of state and a third wouldn't either — the notifications
+   * endpoint already returns an href per entry, so it says where each count goes.
+   */
+  const [badgeCounts, setBadgeCounts] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
     queueMicrotask(() => setIsMobileOpen(false));
   }, [pathname]);
 
   React.useEffect(() => {
-    async function loadPendingOrders() {
+    async function loadNotificationCounts() {
       try {
         const res = await fetch('/api/admin/notificaciones');
         if (res.ok) {
-          const data = await res.json();
-          const pendingOrders = data.notifications.find(
-            (n: { id: string; count: number }) => n.id === 'pending-orders',
-          );
-          setPendingOrdersCount(pendingOrders?.count ?? 0);
+          const data = (await res.json()) as {
+            notifications: { id: string; href: string; count: number }[];
+          };
+          const next: Record<string, number> = {};
+          for (const notification of data.notifications) {
+            next[notification.href] = (next[notification.href] ?? 0) + notification.count;
+          }
+          setBadgeCounts(next);
         }
       } catch (error) {
-        console.error('Error loading pending orders count:', error);
+        console.error('Error loading notification counts:', error);
       }
     }
 
-    void Promise.resolve().then(loadPendingOrders);
-    const timer = setInterval(loadPendingOrders, 60_000);
+    void Promise.resolve().then(loadNotificationCounts);
+    const timer = setInterval(loadNotificationCounts, 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -123,6 +134,7 @@ export function AdminSidebar() {
           {sidebarItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
             const Icon = item.icon;
+            const badgeCount = badgeCounts[item.href] ?? 0;
 
             return (
               <Link
@@ -148,9 +160,9 @@ export function AdminSidebar() {
                   )}
                 >
                   {item.name}
-                  {item.href === '/admin/pedidos' && pendingOrdersCount > 0 && (
+                  {badgeCount > 0 && (
                     <span className="flex size-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                      {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
+                      {badgeCount > 9 ? '9+' : badgeCount}
                     </span>
                   )}
                 </span>
@@ -159,7 +171,7 @@ export function AdminSidebar() {
                 {isCollapsed && (
                   <span className="absolute left-14 z-50 scale-0 rounded bg-brand-neutral-900 px-2 py-1 text-xs text-brand-neutral-100 transition-all group-hover:scale-100 shadow-md">
                     {item.name}
-                    {item.href === '/admin/pedidos' && pendingOrdersCount > 0 && ` (${pendingOrdersCount})`}
+                    {badgeCount > 0 && ` (${badgeCount})`}
                   </span>
                 )}
               </Link>

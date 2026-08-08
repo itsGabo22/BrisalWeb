@@ -101,6 +101,13 @@ export interface Product {
    * keeps using the product-level `imageUrls`, `price` and `stock`.
    */
   colorVariants: ColorVariant[];
+  /**
+   * Aggregate over APPROVED reviews, attached by the repository in one extra
+   * query per fetch — see `attachRatingSummaries`. Optional because a product
+   * assembled outside the repository (tests, the admin form) has no reviews
+   * loaded, and absent must read as "unknown", not as "zero stars".
+   */
+  rating?: RatingSummary;
 }
 
 // ─── CartItem ─────────────────────────────────────────────────────────────────
@@ -109,6 +116,34 @@ export interface CartItem {
   quantity: number;
   /** Colour name chosen at add-to-cart time, when the product has variants. */
   color?: string | null;
+}
+
+// ─── Review ───────────────────────────────────────────────────────────────────
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/**
+ * A shopper review. Reviewers are anonymous — Brisal has no general customer
+ * login — so `authorName` is free text and there is no user link.
+ */
+export interface Review {
+  id: string;
+  productId: string;
+  authorName: string;
+  /** 1-5. */
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  imageUrls: string[];
+  status: ReviewStatus;
+  /** ISO string — this crosses the server/client boundary. */
+  createdAt: string;
+}
+
+/** Aggregate over a product's APPROVED reviews only. */
+export interface RatingSummary {
+  /** Mean rating, or null when there is nothing approved yet. */
+  average: number | null;
+  count: number;
 }
 
 // ─── HeroSlide ────────────────────────────────────────────────────────────────

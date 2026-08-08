@@ -60,6 +60,7 @@ export function AdminTopBar() {
     if (pathname.startsWith('/admin/descuentos')) return 'Gestión de Descuentos';
     if (pathname.startsWith('/admin/mayoristas')) return 'Aprobación de Mayoristas';
     if (pathname.startsWith('/admin/pedidos')) return 'Gestión de Pedidos';
+    if (pathname.startsWith('/admin/resenas')) return 'Moderación de Reseñas';
     if (pathname.startsWith('/admin/imagenes')) return 'Bandeja de Imágenes';
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración del Sitio';
     return 'Administración';
