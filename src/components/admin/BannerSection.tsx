@@ -96,13 +96,25 @@ export function BannerSection() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
-              placeholder={'Envíos gratis en compras superiores a $200.000\nCompras nacionales mínima de $30.000'}
+              placeholder={'Envíos gratis en compras superiores a **$200.000**\nCompras nacionales mínima de $30.000'}
               className="w-full rounded-md border border-brand-line bg-brand-pearl px-3 py-2 text-base sm:text-sm text-brand-text placeholder:text-brand-text-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:border-brand-gold transition-colors dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
             />
             <p className="text-xs text-brand-neutral-400">
               Un mensaje por línea. Si escribes varios, rotan automáticamente cada
-              5 segundos y el visitante puede cambiarlos con las flechas. Las
-              cantidades ($30.000) se resaltan solas.
+              5 segundos y el visitante puede cambiarlos con las flechas.
+            </p>
+            {/* The `**` syntax needs to be spelled out here — it is the only
+                place the client will ever see it. */}
+            <p className="text-xs text-brand-neutral-400">
+              Usa{' '}
+              <code className="rounded bg-brand-neutral-100 px-1 py-0.5 font-mono text-[11px] text-brand-neutral-700 dark:bg-brand-neutral-800 dark:text-brand-neutral-200">
+                **texto**
+              </code>{' '}
+              para poner algo en negrita. Ejemplo:{' '}
+              <span className="text-brand-neutral-500">
+                Envíos gratis desde **$200.000**
+              </span>
+              . Si no marcas nada, las cantidades ($30.000) se resaltan solas.
             </p>
           </div>
 
