@@ -6,8 +6,18 @@ import { motion, useInView, useReducedMotion } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ParallaxBackdrop } from '@/components/marketing/ParallaxBackdrop';
 
-export function WholesaleCallout() {
+interface WholesaleCalloutProps {
+  /**
+   * Admin-configured parallax backdrop. Null keeps the flat cream→sand
+   * gradient this band shipped with, which is a finished look in its own
+   * right — there is no placeholder image to fall back to.
+   */
+  backgroundUrl?: string | null;
+}
+
+export function WholesaleCallout({ backgroundUrl }: WholesaleCalloutProps) {
   const ref = React.useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-60px' });
   const reducedMotion = useReducedMotion();
@@ -18,10 +28,22 @@ export function WholesaleCallout() {
       aria-labelledby="wholesale-heading"
       className="relative overflow-hidden bg-brand-sand px-6 py-20 md:py-28"
     >
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-cream via-brand-sand to-brand-sand"
-        aria-hidden="true"
-      />
+      {backgroundUrl ? (
+        // A lighter scrim than BrandStatement gets away with, because the copy
+        // here already sits on a bg-brand-pearl/80 glass card rather than
+        // directly on the band — worst case that lands the secondary text
+        // around 5.2:1 even over a near-black upload.
+        <ParallaxBackdrop src={backgroundUrl} overlayClassName="bg-brand-cream/70" />
+      ) : (
+        // The original ground. Skipped entirely when there is a photo: these
+        // are opaque brand colours, so leaving it in would hide the backdrop
+        // completely rather than tint it.
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-cream via-brand-sand to-brand-sand"
+          aria-hidden="true"
+        />
+      )}
+      {/* Translucent, so it keeps warming whichever ground is underneath. */}
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,rgba(201,169,110,0.18),transparent)]"
         aria-hidden="true"

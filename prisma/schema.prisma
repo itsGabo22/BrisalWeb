@@ -226,6 +226,16 @@ model SiteConfig {
   id                 String   @id @default("singleton")
   announcementText   String   @default("Envíos gratis en compras superiores a $200.000")
   announcementActive Boolean  @default(true)
+  /// Parallax backdrops for the two homepage bands that scroll their
+  /// background against their content: BrandStatement ("Cada pieza, una
+  /// historia.") and WholesaleCallout ("¿Tienes un negocio?").
+  ///
+  /// Named after the components rather than the copy so a future wording
+  /// change doesn't strand the column. Nullable on purpose — null means "no
+  /// backdrop", and each section falls back to the flat gradient treatment it
+  /// shipped with, which is a valid finished look rather than a broken one.
+  brandStatementImageUrl String?
+  wholesaleImageUrl      String?
   updatedAt          DateTime @updatedAt
 }
 
