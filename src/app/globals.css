@@ -357,16 +357,23 @@
      card must stay light enough to keep it legible while still reading
      as glass.
 
-     55% white over #FAF7F2 lands around #FCFAF8, which puts brand-text
-     (#2A2521) at roughly 13:1 — far past AA, and it holds even where a
-     gold glow blooms underneath, because the glow is a low-alpha wash
-     rather than a solid fill.
+     62%, raised from 55% when the aurora landed. The backdrop this sits
+     on is now far more saturated: at an aurora peak (0.80-alpha gold)
+     plus grain the ground reaches about rgb(206,179,130), and 55% white
+     over that put brand-text-soft (#6B6259) at 4.44:1 — under AA for
+     normal-size body copy. 62% lifts the same worst case to 4.65:1 and
+     brand-text (#2A2521) to 11.8:1, while still passing 38% of the
+     backdrop through, which is more than enough for the sparkles to
+     visibly haze under the glass.
+
+     Do not read this as headroom to make the aurora bolder still: it is
+     the secondary text, not the primary, that binds here.
 
      `-webkit-backdrop-filter` is declared alongside the standard
      property: without it iOS Safari drops the frosting entirely and the
      card degrades to a flat translucent panel. */
   .review-glass {
-    background-color: rgba(255, 255, 255, 0.55);
+    background-color: rgba(255, 255, 255, 0.62);
     -webkit-backdrop-filter: blur(14px) saturate(130%);
     backdrop-filter: blur(14px) saturate(130%);
     border: 1px solid rgba(255, 255, 255, 0.75);
@@ -398,113 +405,126 @@
     background-image: linear-gradient(135deg, #faf7f2 0%, #f0e9e0 52%, #f5eddd 100%);
   }
 
-  /* ── Reviews band — gold bokeh blobs ────────────────────────────────
-     The structure the frosting actually diffuses. Each blob is a radial
-     gradient that fades to transparent well inside its own box, then gets
-     blurred again, so what lands on the page is a soft bloom of light
-     rather than a circle with an edge.
+  /* ── Reviews band — LAYER 1: flowing aurora ─────────────────────────
+     The bolder replacement for the old drifting-blob backdrop, which read
+     as too subtle to notice. Four radial ellipses plus a linear ground,
+     all in one background shorthand at 220% 220%, so a single
+     `background-position` keyframe can slide all five independently and
+     the whole field appears to flow.
 
-     `filter: blur()` is declared once and never animated: the browser
-     rasterises the blurred blob into a layer a single time, and the
-     keyframes below move that finished layer. Animating the filter
-     itself would re-run the blur every frame, which is the expensive
-     mistake this avoids.
+     `inset: -30%` on the element: the animation walks each layer well
+     past its own box, and an oversized element means those excursions
+     never expose a hard container edge.
 
-     Sizing/placement/opacity stay in the component as utilities, since
-     those are per-blob composition decisions rather than shared mechanics. */
-  .reviews-bokeh {
-    filter: blur(22px);
-    /* Promotes the blob to its own compositor layer up front, so the
-       drift below is a GPU transform on a cached texture. */
-    transform: translate3d(0, 0, 0);
-  }
+     `filter: blur(24px)` is what turns five hard-edged ellipses into an
+     aurora instead of five visible blobs.
 
-  /* ── Reviews band — bokeh specks ────────────────────────────────────
-     The blooms above carry the colour, but they alone do NOT make the
-     cards frost, and this was measured rather than assumed: with only the
-     big blobs behind them, toggling `backdrop-filter` off the cards
-     produced a pixel-identical render. A 14px blur can only soften detail
-     finer than itself, and a 340px gradient has none — the "glass" was
-     coming entirely from the 55% white fill.
-
-     These specks are that missing detail, and they are also what the word
-     bokeh actually describes: small points of light thrown out of focus.
-     At 20–46px across with a 7px edge they sit right in the range a 14px
-     backdrop blur visibly smears, so a speck reads crisp out on the wash
-     and dissolves the moment it passes under a card — which is the frost
-     becoming legible as an effect rather than as a tint.
-
-     All eight live in one element as stacked radial gradients: one node,
-     one compositor layer, one blur rasterisation, one animation. */
-  .reviews-specks {
+     Honest performance note: unlike the drift this replaces,
+     `background-position` is NOT a compositor-only property — every frame
+     repaints this layer and re-runs the 24px blur. It is one large
+     element with no children, which keeps that affordable, but it is the
+     most expensive thing in this section and worth re-checking on a
+     mid-range phone if the band ever grows taller. */
+  .reviews-aurora {
     background-image:
-      radial-gradient(circle 30px at 14% 57%, rgba(201, 169, 110, 0.8), transparent 100%),
-      radial-gradient(circle 20px at 27% 75%, rgba(224, 203, 160, 0.82), transparent 100%),
-      radial-gradient(circle 25px at 41% 47%, rgba(201, 169, 110, 0.72), transparent 100%),
-      radial-gradient(circle 16px at 49% 84%, rgba(212, 184, 132, 0.78), transparent 100%),
-      radial-gradient(circle 27px at 58% 65%, rgba(224, 203, 160, 0.78), transparent 100%),
-      radial-gradient(circle 18px at 70% 39%, rgba(201, 169, 110, 0.78), transparent 100%),
-      radial-gradient(circle 22px at 83% 70%, rgba(212, 184, 132, 0.75), transparent 100%),
-      radial-gradient(circle 15px at 92% 53%, rgba(224, 203, 160, 0.82), transparent 100%);
-    /* Enough to round the edge into a defocused disc, little enough to
-       leave the card's own blur something to remove. */
-    filter: blur(6px);
-    transform: translate3d(0, 0, 0);
+      radial-gradient(ellipse 55% 45% at 20% 20%, rgba(201, 169, 110, 0.8), transparent 62%),
+      radial-gradient(ellipse 50% 42% at 82% 75%, rgba(184, 145, 79, 0.7), transparent 62%),
+      radial-gradient(ellipse 48% 50% at 50% 95%, rgba(201, 169, 110, 0.55), transparent 65%),
+      radial-gradient(ellipse 40% 38% at 60% 10%, rgba(217, 195, 160, 0.5), transparent 60%),
+      linear-gradient(135deg, #faf7f2 0%, #f0e9e0 45%, #ede0c8 100%);
+    background-size: 220% 220%;
+    filter: blur(24px);
   }
 
-  /* Three drifts rather than one. Same shape of movement, but different
-     directions, magnitudes and cycle lengths (19s / 23s / 26s, chosen so
-     they don't share a short common multiple) — blobs that move in
-     lockstep read as one sliding sheet, which is exactly the mechanical
-     look this is trying to avoid.
+  /* 12s and a large amplitude, deliberately: this is the "clearly visible
+     at a glance" brief, not the barely-there drift it replaces. Every
+     stop lists five positions, one per background layer, so the ellipses
+     travel independently and the field never slides as one sheet.
 
-     Transform-only, so nothing here touches layout or paint.
-     `background-attachment: fixed` is deliberately absent from this whole
-     file: iOS Safari ignores it and renders a backdrop that jumps on
-     every scroll frame.
-
-     The component applies these through Tailwind's `motion-safe:` variant,
-     so a prefers-reduced-motion visitor keeps the full backdrop — gradient
-     and blobs — with only the movement removed. */
-  @keyframes brisal-bokeh-drift-a {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    25% {
-      transform: translate3d(22px, -16px, 0) scale(1.05);
+     No `background-attachment: fixed` here or anywhere in this file —
+     iOS Safari ignores it and renders a backdrop that jumps per frame. */
+  @keyframes brisal-aurora-flow {
+    0% {
+      background-position:
+        0% 0%,
+        100% 100%,
+        50% 100%,
+        40% 0%,
+        0% 0%;
     }
     50% {
-      transform: translate3d(30px, 12px, 0) scale(1.02);
+      background-position:
+        100% 60%,
+        10% 20%,
+        30% 70%,
+        70% 40%,
+        100% 100%;
     }
-    75% {
-      transform: translate3d(10px, 24px, 0) scale(1.06);
+    100% {
+      background-position:
+        0% 0%,
+        100% 100%,
+        50% 100%,
+        40% 0%,
+        0% 0%;
     }
   }
 
-  @keyframes brisal-bokeh-drift-b {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1.04);
-    }
-    33% {
-      transform: translate3d(-26px, 18px, 0) scale(1);
-    }
-    66% {
-      transform: translate3d(-12px, -22px, 0) scale(1.07);
+  /* ── Reviews band — LAYER 2: diagonal hairline ──────────────────────
+     ONE pass only. A second, crossed pass was tried and rejected: two
+     directions read as a moiré grid, which is upholstery, not jewellery.
+     Static, so prefers-reduced-motion has nothing to switch off. */
+  .reviews-hairline {
+    background-image: repeating-linear-gradient(
+      115deg,
+      transparent 0px,
+      transparent 26px,
+      rgba(138, 106, 47, 0.06) 27px,
+      transparent 28px
+    );
+  }
+
+  /* ── Reviews band — LAYER 3: twinkling sparkles ─────────────────────
+     Jewellery catching the light, and the layer that makes the frosting
+     legible as frosting: at 2–6px with a 9px glow these sit squarely in
+     the range a 14px backdrop blur visibly smears, so a sparkle reads as
+     a point out on the wash and dissolves into a haze under a card.
+
+     Position/size/duration/delay all arrive as inline styles from the
+     component, because they are per-sparkle random values. Only the
+     shared appearance lives here. The resting state is deliberately
+     visible (opacity .85, no transform) so that a reduced-motion visitor
+     — who gets no animation at all — still sees the full sparkle field
+     rather than an empty backdrop. */
+  .reviews-sparkle {
+    background-image: radial-gradient(circle, #fff7e6, rgba(201, 169, 110, 0));
+    box-shadow: 0 0 9px 2px rgba(201, 169, 110, 0.85);
+    opacity: 0.85;
+  }
+
+  /* Duration and delay come from custom properties set per element, which
+     is what desynchronises the field; the animation itself is shared. */
+  @media (prefers-reduced-motion: no-preference) {
+    .reviews-sparkle {
+      animation-name: brisal-sparkle-twinkle;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+      animation-duration: var(--sparkle-duration, 2.4s);
+      animation-delay: var(--sparkle-delay, 0s);
     }
   }
 
-  @keyframes brisal-bokeh-drift-c {
+  /* opacity + transform only — both compositor properties, so 32 of these
+     animating at once cost nothing on the main thread. */
+  @keyframes brisal-sparkle-twinkle {
     0%,
     100% {
-      transform: translate3d(0, 0, 0) scale(1);
+      opacity: 0;
+      transform: scale(0.4);
     }
-    40% {
-      transform: translate3d(16px, 20px, 0) scale(1.08);
-    }
-    70% {
-      transform: translate3d(-18px, 8px, 0) scale(1.03);
+    50% {
+      opacity: 1;
+      transform: scale(1.5);
     }
   }
 

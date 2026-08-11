@@ -13,70 +13,122 @@ interface ReviewsShowcaseProps {
 }
 
 /**
- * Decorative gold bokeh behind the glass.
+ * Deterministic PRNG (mulberry32).
  *
- * The cards' `backdrop-filter` can only diffuse what is actually behind them,
- * so a flat cream fill defeats it: blurring one colour returns that colour and
- * the cards read as plain white boxes. These three blooms are what the frosting
- * has to work with, and they are deliberately positioned to sit BEHIND the card
- * row rather than decorating the section's corners — a blob in the margin
- * frosts nothing.
- *
- * Kept legible by construction: even at peak the densest blob is ~0.27 alpha
- * gold over sand, which a 55%-white card lightens back to roughly #F3ECE2 —
- * brand-text stays around 12:1 there, so no card ever lands on a hot spot that
- * eats its own copy.
- *
- * `pointer-events-none` + aria-hidden: this layer is texture, not content.
+ * The sparkle field has to look scattered, but `Math.random()` would hand the
+ * server one layout and the client another and blow up hydration — this
+ * component renders inside a Server Component page. A fixed seed gives the
+ * scatter of random numbers with the reproducibility of a constant.
  */
-function GoldBokeh() {
+function createRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The sparkle field, computed once at module load rather than per render.
+ *
+ * Not `useMemo`: these values depend on nothing, so there is no reason to
+ * recompute them per component instance or to carry them in a hook's
+ * dependency graph. Not `useEffect` either — that would leave the field empty
+ * through the first paint and pop it in after hydration.
+ */
+const SPARKLES = (() => {
+  const random = createRandom(0x8a6a2f);
+  return Array.from({ length: 32 }, (_, id) => ({
+    id,
+    left: Number((random() * 100).toFixed(2)),
+    top: Number((random() * 100).toFixed(2)),
+    size: Number((2 + random() * 4).toFixed(2)),
+    // 1.4–3.8s, and an independent 0–3s delay: two randomised axes rather
+    // than one, so the field never settles into a visible pulse.
+    duration: Number((1.4 + random() * 2.4).toFixed(2)),
+    delay: Number((random() * 3).toFixed(2)),
+  }));
+})();
+
+/**
+ * The animated backdrop behind the glass, in three layers back-to-front:
+ * flowing aurora, static grain + hairline texture, twinkling sparkles.
+ *
+ * All three exist so the cards' `backdrop-filter` has something real to
+ * diffuse. That is not a guess: an earlier pass sat the same cards on a
+ * near-flat wash, and toggling `backdrop-filter` off produced a
+ * pixel-identical render, because a 14px blur can only soften detail finer
+ * than itself. The sparkles are the layer that fixes that — at 2–6px they are
+ * exactly the size the card blur destroys.
+ *
+ * `pointer-events-none` + aria-hidden throughout: this is texture, not
+ * content, and none of it should ever be in the tab order or the a11y tree.
+ */
+function AuroraBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      {/* Behind the left card. The largest and warmest of the three, so the
-          band has a clear centre of gravity instead of an even wash. */}
+      {/* LAYER 1 — the flowing aurora. Oversized so the animation's excursions
+          never bring a container edge into view. */}
       <div
         className={cn(
-          'reviews-bokeh absolute top-[30%] -left-12 h-[21rem] w-[21rem] rounded-full opacity-[0.26]',
-          'motion-safe:animate-[brisal-bokeh-drift-a_19s_ease-in-out_infinite]',
-        )}
-        style={{
-          background:
-            'radial-gradient(circle, rgba(201,169,110,0.9) 0%, rgba(201,169,110,0.42) 45%, transparent 72%)',
-        }}
-      />
-      {/* Behind the right card, dropped lower so the two large blooms sit on a
-          diagonal rather than a level line. */}
-      <div
-        className={cn(
-          'reviews-bokeh absolute top-[44%] -right-16 h-[19rem] w-[19rem] rounded-full opacity-[0.22]',
-          'motion-safe:animate-[brisal-bokeh-drift-b_23s_ease-in-out_infinite]',
-        )}
-        style={{
-          background:
-            'radial-gradient(circle, rgba(212,184,132,0.85) 0%, rgba(201,169,110,0.35) 48%, transparent 74%)',
-        }}
-      />
-      {/* Behind the middle card, high and pale — this one mostly exists to keep
-          the gap between the other two from reading as an empty trough. */}
-      <div
-        className={cn(
-          'reviews-bokeh absolute top-[22%] left-[38%] h-[15rem] w-[15rem] rounded-full opacity-[0.18]',
-          'motion-safe:animate-[brisal-bokeh-drift-c_26s_ease-in-out_infinite]',
-        )}
-        style={{
-          background:
-            'radial-gradient(circle, rgba(224,203,160,0.9) 0%, rgba(224,203,160,0.4) 50%, transparent 75%)',
-        }}
-      />
-      {/* The specks that make the frosting readable as frosting — see the
-          `.reviews-specks` comment for why the blooms alone could not. Drifts
-          on its own long cycle so it never tracks a bloom. */}
-      <div
-        className={cn(
-          'reviews-specks absolute inset-0 opacity-60',
-          'motion-safe:animate-[brisal-bokeh-drift-c_31s_ease-in-out_infinite]',
+          'reviews-aurora absolute -inset-[30%]',
+          'motion-safe:animate-[brisal-aurora-flow_12s_ease-in-out_infinite]',
         )}
       />
+
+      {/* LAYER 2a — fine-paper grain. The single SVG filter in the section:
+          one turbulence raster, applied once, static forever. Per-sparkle SVG
+          filters would have been the expensive way to do layer 3. */}
+      <svg
+        className="absolute inset-0 h-full w-full"
+        style={{ opacity: 0.5, mixBlendMode: 'multiply' }}
+      >
+        <filter id="brisal-reviews-grain">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.8"
+            numOctaves={2}
+            stitchTiles="stitch"
+            result="noise"
+          />
+          {/* Flat warm-brown RGB with the noise carried entirely in alpha, at
+              0.07. That alpha and the 0.5 above are the calibrated restraint
+              points — raising either takes this from "fine paper" to "dirty
+              glass", which is where an earlier pass landed. */}
+          <feColorMatrix
+            in="noise"
+            type="matrix"
+            values="0 0 0 0 0.55  0 0 0 0 0.47  0 0 0 0 0.32  0 0 0 0.07 0"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#brisal-reviews-grain)" />
+      </svg>
+
+      {/* LAYER 2b — one diagonal hairline pass. Deliberately not two: crossed
+          passes read as a moiré grid rather than as woven texture. */}
+      <div className="reviews-hairline absolute inset-0" />
+
+      {/* LAYER 3 — the sparkle field. Plain absolutely-positioned spans
+          animating opacity and transform, both compositor properties, so 32 of
+          them cost the main thread nothing. */}
+      {SPARKLES.map((sparkle) => (
+        <span
+          key={sparkle.id}
+          className="reviews-sparkle absolute rounded-full"
+          style={
+            {
+              left: `${sparkle.left}%`,
+              top: `${sparkle.top}%`,
+              width: `${sparkle.size}px`,
+              height: `${sparkle.size}px`,
+              '--sparkle-duration': `${sparkle.duration}s`,
+              '--sparkle-delay': `${sparkle.delay}s`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -250,7 +302,7 @@ export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
       className="reviews-backdrop relative overflow-hidden py-16 lg:py-20"
       aria-labelledby="reviews-showcase-heading"
     >
-      <GoldBokeh />
+      <AuroraBackdrop />
 
       {/* Hairlines top and bottom tie the band to the sections around it
           without introducing another surface colour. */}
