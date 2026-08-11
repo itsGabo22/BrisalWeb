@@ -33,15 +33,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [rootCategories, newestProducts, bestSellers, heroSlides, promoPopup, showcaseReviews] =
-    await Promise.all([
-      categoryRepository.getTree(),
-      productRepository.getAll({ active: true }),
-      productRepository.getFeatured(),
-      prisma.heroSlide.findMany({ where: { active: true }, orderBy: { order: 'asc' } }),
-      prisma.promoPopup.findUnique({ where: { id: 'singleton' } }),
-      getShowcaseReviews(),
-    ]);
+  const [
+    rootCategories,
+    newestProducts,
+    bestSellers,
+    heroSlides,
+    promoPopup,
+    showcaseReviews,
+    siteConfig,
+  ] = await Promise.all([
+    categoryRepository.getTree(),
+    productRepository.getAll({ active: true }),
+    productRepository.getFeatured(),
+    prisma.heroSlide.findMany({ where: { active: true }, orderBy: { order: 'asc' } }),
+    prisma.promoPopup.findUnique({ where: { id: 'singleton' } }),
+    getShowcaseReviews(),
+    // findUnique rather than the upsert the layout does: this page only reads,
+    // and the row is guaranteed to exist by the time anything can be
+    // configured. Null simply means both parallax bands use their fallbacks.
+    prisma.siteConfig.findUnique({ where: { id: 'singleton' } }),
+  ]);
 
   // Below the threshold the band would read as an empty shelf rather than as
   // social proof, so it is not rendered at all — no sparse showcase.
@@ -58,7 +69,7 @@ export default async function HomePage() {
           brand. Mobile keeps its own path via the drawer's Categorías
           accordion, which is unaffected by this removal. */}
       <CategoryShowcase categories={rootCategories} />
-      <BrandStatement />
+      <BrandStatement backgroundUrl={siteConfig?.brandStatementImageUrl} />
       <ProductShowcaseSection
         eyebrow="Recién llegado"
         title="Novedades"
@@ -73,7 +84,7 @@ export default async function HomePage() {
         viewAllHref="/catalogo"
         tint="warm"
       />
-      <WholesaleCallout />
+      <WholesaleCallout backgroundUrl={siteConfig?.wholesaleImageUrl} />
       {/* Directly above the footer: the last thing a visitor reads before the
           page closes is someone else vouching for the brand. */}
       {showReviews && <ReviewsShowcase reviews={showcaseReviews} />}
