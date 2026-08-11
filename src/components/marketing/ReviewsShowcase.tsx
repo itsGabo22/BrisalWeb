@@ -13,33 +13,69 @@ interface ReviewsShowcaseProps {
 }
 
 /**
- * Decorative gold blooms behind the glass.
+ * Decorative gold bokeh behind the glass.
  *
- * Two low-alpha radial washes rather than one, offset from each other, so the
- * frosting has something with structure to blur — a flat tint blurs to itself
- * and the cards stop reading as glass. `pointer-events-none` and aria-hidden:
- * this layer is texture, not content.
+ * The cards' `backdrop-filter` can only diffuse what is actually behind them,
+ * so a flat cream fill defeats it: blurring one colour returns that colour and
+ * the cards read as plain white boxes. These three blooms are what the frosting
+ * has to work with, and they are deliberately positioned to sit BEHIND the card
+ * row rather than decorating the section's corners — a blob in the margin
+ * frosts nothing.
  *
- * The drift is a CSS keyframe on transform only, gated behind `motion-safe`,
- * and deliberately NOT `background-attachment: fixed` — iOS Safari ignores
- * that property and renders a backdrop that jumps on every scroll frame.
+ * Kept legible by construction: even at peak the densest blob is ~0.27 alpha
+ * gold over sand, which a 55%-white card lightens back to roughly #F3ECE2 —
+ * brand-text stays around 12:1 there, so no card ever lands on a hot spot that
+ * eats its own copy.
+ *
+ * `pointer-events-none` + aria-hidden: this layer is texture, not content.
  */
-function GoldGlow() {
+function GoldBokeh() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {/* Behind the left card. The largest and warmest of the three, so the
+          band has a clear centre of gravity instead of an even wash. */}
       <div
-        className="absolute -top-24 -left-16 h-[26rem] w-[26rem] rounded-full opacity-70 motion-safe:animate-[brisal-glow-drift_14s_ease-in-out_infinite]"
+        className={cn(
+          'reviews-bokeh absolute top-[30%] -left-12 h-[21rem] w-[21rem] rounded-full opacity-[0.26]',
+          'motion-safe:animate-[brisal-bokeh-drift-a_19s_ease-in-out_infinite]',
+        )}
         style={{
           background:
-            'radial-gradient(circle, rgba(201,169,110,0.22) 0%, rgba(201,169,110,0.08) 45%, transparent 70%)',
+            'radial-gradient(circle, rgba(201,169,110,0.9) 0%, rgba(201,169,110,0.42) 45%, transparent 72%)',
         }}
       />
+      {/* Behind the right card, dropped lower so the two large blooms sit on a
+          diagonal rather than a level line. */}
       <div
-        className="absolute -right-20 -bottom-28 h-[30rem] w-[30rem] rounded-full opacity-60 motion-safe:animate-[brisal-glow-drift_18s_ease-in-out_infinite_reverse]"
+        className={cn(
+          'reviews-bokeh absolute top-[44%] -right-16 h-[19rem] w-[19rem] rounded-full opacity-[0.22]',
+          'motion-safe:animate-[brisal-bokeh-drift-b_23s_ease-in-out_infinite]',
+        )}
         style={{
           background:
-            'radial-gradient(circle, rgba(201,169,110,0.18) 0%, rgba(240,233,224,0.35) 45%, transparent 72%)',
+            'radial-gradient(circle, rgba(212,184,132,0.85) 0%, rgba(201,169,110,0.35) 48%, transparent 74%)',
         }}
+      />
+      {/* Behind the middle card, high and pale — this one mostly exists to keep
+          the gap between the other two from reading as an empty trough. */}
+      <div
+        className={cn(
+          'reviews-bokeh absolute top-[22%] left-[38%] h-[15rem] w-[15rem] rounded-full opacity-[0.18]',
+          'motion-safe:animate-[brisal-bokeh-drift-c_26s_ease-in-out_infinite]',
+        )}
+        style={{
+          background:
+            'radial-gradient(circle, rgba(224,203,160,0.9) 0%, rgba(224,203,160,0.4) 50%, transparent 75%)',
+        }}
+      />
+      {/* The specks that make the frosting readable as frosting — see the
+          `.reviews-specks` comment for why the blooms alone could not. Drifts
+          on its own long cycle so it never tracks a bloom. */}
+      <div
+        className={cn(
+          'reviews-specks absolute inset-0 opacity-60',
+          'motion-safe:animate-[brisal-bokeh-drift-c_31s_ease-in-out_infinite]',
+        )}
       />
     </div>
   );
@@ -67,7 +103,10 @@ function ReviewCard({
         ease: [0.22, 1, 0.36, 1],
       }}
       className={cn(
-        'review-glass flex w-[85vw] shrink-0 snap-center flex-col rounded-2xl p-6 sm:w-[22rem] md:w-auto',
+        // 76vw, not the 85vw this started at: the leftover 24vw is what makes
+        // the next card visibly overhang the right edge. At 85vw the gap ate
+        // almost all of it and the strip looked like a single centred card.
+        'review-glass flex w-[76vw] shrink-0 snap-center flex-col rounded-2xl p-6 sm:w-[22rem] md:w-auto',
         // Hover lift is pointer-only: on a touch device :hover sticks after a
         // tap and leaves a card floating for no reason.
         'transition-[transform,box-shadow] duration-300 motion-safe:hover:-translate-y-1.5',
@@ -124,15 +163,94 @@ function ReviewCard({
  */
 export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
   const reducedMotion = Boolean(useReducedMotion());
+  const stripRef = React.useRef<HTMLUListElement>(null);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const [hasSwiped, setHasSwiped] = React.useState(false);
+
+  /**
+   * Derives the active dot from the strip's scroll offset.
+   *
+   * "Nearest card centre to the strip's centre" rather than
+   * `round(scrollLeft / cardWidth)`: the card width is a vw value, the gap
+   * changes at `md`, and the last card can never reach the centre because the
+   * strip runs out of scroll — a division would drift out of step at the ends,
+   * whereas measuring centres is right at every position by construction.
+   *
+   * Reads are rAF-coalesced and the listener is passive, so a fast swipe does
+   * at most one measurement per frame and never blocks scrolling. Above `md`
+   * the strip is a grid with nothing to scroll, and the guard makes this whole
+   * effect inert there.
+   */
+  React.useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
+      if (strip.scrollWidth <= strip.clientWidth + 1) return;
+
+      if (strip.scrollLeft > 8) setHasSwiped(true);
+
+      const viewportCentre = strip.scrollLeft + strip.clientWidth / 2;
+      let nearest = 0;
+      let shortest = Number.POSITIVE_INFINITY;
+
+      for (let i = 0; i < strip.children.length; i += 1) {
+        const card = strip.children[i] as HTMLElement;
+        const distance = Math.abs(card.offsetLeft + card.offsetWidth / 2 - viewportCentre);
+        if (distance < shortest) {
+          shortest = distance;
+          nearest = i;
+        }
+      }
+
+      setActiveIndex(nearest);
+    };
+
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+
+    strip.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    schedule();
+
+    return () => {
+      strip.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  /**
+   * Scrolls the strip itself rather than calling `scrollIntoView`, which also
+   * scrolls the nearest scrollable ANCESTOR — tapping a dot would have jumped
+   * the page vertically as well as moving the strip.
+   */
+  const goToCard = React.useCallback(
+    (index: number) => {
+      const strip = stripRef.current;
+      const card = strip?.children[index] as HTMLElement | undefined;
+      if (!strip || !card) return;
+
+      strip.scrollTo({
+        left: card.offsetLeft - (strip.clientWidth - card.offsetWidth) / 2,
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      });
+    },
+    [reducedMotion],
+  );
 
   if (reviews.length === 0) return null;
 
   return (
     <section
-      className="bg-brand-cream relative overflow-hidden py-16 lg:py-20"
+      className="reviews-backdrop relative overflow-hidden py-16 lg:py-20"
       aria-labelledby="reviews-showcase-heading"
     >
-      <GoldGlow />
+      <GoldBokeh />
 
       {/* Hairlines top and bottom tie the band to the sections around it
           without introducing another surface colour. */}
@@ -156,7 +274,7 @@ export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
             id="reviews-showcase-heading"
             className="text-brand-text mt-3 font-wordmark text-3xl font-normal sm:text-4xl"
           >
-            Lo que dicen nuestras clientas
+            Lo que dicen nuestros clientes
           </h2>
           <span className="bg-brand-gold mx-auto mt-5 block h-px w-16" aria-hidden="true" />
           <p className="text-brand-text-soft mx-auto mt-5 max-w-md font-body text-sm leading-relaxed">
@@ -171,8 +289,12 @@ export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
           overflow-x lives on this element, not on the body.
         */}
         <ul
+          ref={stripRef}
           className={cn(
-            'momentum-scroll-x mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4',
+            // `relative` is load-bearing, not cosmetic: it makes this element
+            // the offsetParent of the cards, so `card.offsetLeft` and
+            // `scrollLeft` above are measured in the same coordinate space.
+            'momentum-scroll-x relative mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4',
             '-mx-4 px-4 sm:-mx-6 sm:px-6',
             'md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0',
             '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
@@ -188,10 +310,63 @@ export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
           ))}
         </ul>
 
-        {/* Only meaningful while the strip is scrollable. */}
-        <p className="text-brand-text-soft/70 mt-2 text-center font-body text-[11px] md:hidden">
-          Desliza para ver más
-        </p>
+        {/*
+          Swipe affordances, mobile only — above `md` every card is already on
+          screen in the grid and both of these would be describing a gesture
+          that does nothing.
+        */}
+        {reviews.length > 1 && (
+          <div className="mt-4 md:hidden">
+            <div className="flex items-center justify-center">
+              {reviews.map((review, index) => {
+                const isActive = index === activeIndex;
+                return (
+                  <button
+                    key={review.id}
+                    type="button"
+                    onClick={() => goToCard(index)}
+                    // The dot is 6px; the button around it is 20×24 so the tap
+                    // target is a real one. Only the dot is painted.
+                    className="focus-visible:ring-brand-gold grid h-6 w-5 place-items-center rounded-full focus-visible:ring-2 focus-visible:outline-none"
+                    aria-label={`Ver reseña ${index + 1} de ${reviews.length}`}
+                    aria-current={isActive ? 'true' : undefined}
+                  >
+                    <span
+                      className={cn(
+                        'block size-1.5 rounded-full motion-safe:transition-[background-color,transform] motion-safe:duration-300',
+                        // Scale rather than width: transform composites, width
+                        // would relayout the whole row on every swipe.
+                        isActive ? 'bg-brand-gold-deep scale-125' : 'bg-brand-line',
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/*
+              A static caption, not a nudge animation on the strip. A strip that
+              slides by itself on first view is indistinguishable from a
+              mis-fired scroll or a layout bug, and it fights scroll-snap on the
+              way back; the caption says the same thing unambiguously and costs
+              no motion. It is still one-time — it fades out for good the moment
+              the strip is actually scrolled — and it fades on OPACITY, so the
+              row below it never shifts.
+            */}
+            <p
+              className={cn(
+                // The fade is motion-safe too: for a reduced-motion visitor the
+                // caption simply stops being there once it has done its job.
+                'text-brand-text-soft/70 mt-1 text-center font-body text-[11px]',
+                'motion-safe:transition-opacity motion-safe:duration-500',
+                hasSwiped ? 'opacity-0' : 'opacity-100',
+              )}
+              aria-hidden={hasSwiped}
+            >
+              Desliza para ver más <span aria-hidden="true">→</span>
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

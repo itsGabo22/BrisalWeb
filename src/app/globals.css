@@ -388,18 +388,123 @@
     }
   }
 
-  /* Decorative gold glow drift. Transform-only so it composites on the GPU
-     and never triggers layout; `background-attachment: fixed` is
-     deliberately not used anywhere here because iOS Safari ignores it and
-     produces a jumping backdrop. Wrapped in motion-safe by the component,
-     and the animation is on a pointer-events-none layer either way. */
-  @keyframes brisal-glow-drift {
+  /* ── Reviews band — gradient ground under the glass ─────────────────
+     The cards frost whatever is behind them, so a flat fill gives them
+     nothing to work with: blur a single colour and you get the same
+     colour back, and the "glass" reads as a plain white box. This is the
+     base layer of the answer — a warm cream→sand→gold wash that already
+     varies across the band before any blob is added on top. */
+  .reviews-backdrop {
+    background-image: linear-gradient(135deg, #faf7f2 0%, #f0e9e0 52%, #f5eddd 100%);
+  }
+
+  /* ── Reviews band — gold bokeh blobs ────────────────────────────────
+     The structure the frosting actually diffuses. Each blob is a radial
+     gradient that fades to transparent well inside its own box, then gets
+     blurred again, so what lands on the page is a soft bloom of light
+     rather than a circle with an edge.
+
+     `filter: blur()` is declared once and never animated: the browser
+     rasterises the blurred blob into a layer a single time, and the
+     keyframes below move that finished layer. Animating the filter
+     itself would re-run the blur every frame, which is the expensive
+     mistake this avoids.
+
+     Sizing/placement/opacity stay in the component as utilities, since
+     those are per-blob composition decisions rather than shared mechanics. */
+  .reviews-bokeh {
+    filter: blur(22px);
+    /* Promotes the blob to its own compositor layer up front, so the
+       drift below is a GPU transform on a cached texture. */
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* ── Reviews band — bokeh specks ────────────────────────────────────
+     The blooms above carry the colour, but they alone do NOT make the
+     cards frost, and this was measured rather than assumed: with only the
+     big blobs behind them, toggling `backdrop-filter` off the cards
+     produced a pixel-identical render. A 14px blur can only soften detail
+     finer than itself, and a 340px gradient has none — the "glass" was
+     coming entirely from the 55% white fill.
+
+     These specks are that missing detail, and they are also what the word
+     bokeh actually describes: small points of light thrown out of focus.
+     At 20–46px across with a 7px edge they sit right in the range a 14px
+     backdrop blur visibly smears, so a speck reads crisp out on the wash
+     and dissolves the moment it passes under a card — which is the frost
+     becoming legible as an effect rather than as a tint.
+
+     All eight live in one element as stacked radial gradients: one node,
+     one compositor layer, one blur rasterisation, one animation. */
+  .reviews-specks {
+    background-image:
+      radial-gradient(circle 30px at 14% 57%, rgba(201, 169, 110, 0.8), transparent 100%),
+      radial-gradient(circle 20px at 27% 75%, rgba(224, 203, 160, 0.82), transparent 100%),
+      radial-gradient(circle 25px at 41% 47%, rgba(201, 169, 110, 0.72), transparent 100%),
+      radial-gradient(circle 16px at 49% 84%, rgba(212, 184, 132, 0.78), transparent 100%),
+      radial-gradient(circle 27px at 58% 65%, rgba(224, 203, 160, 0.78), transparent 100%),
+      radial-gradient(circle 18px at 70% 39%, rgba(201, 169, 110, 0.78), transparent 100%),
+      radial-gradient(circle 22px at 83% 70%, rgba(212, 184, 132, 0.75), transparent 100%),
+      radial-gradient(circle 15px at 92% 53%, rgba(224, 203, 160, 0.82), transparent 100%);
+    /* Enough to round the edge into a defocused disc, little enough to
+       leave the card's own blur something to remove. */
+    filter: blur(6px);
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Three drifts rather than one. Same shape of movement, but different
+     directions, magnitudes and cycle lengths (19s / 23s / 26s, chosen so
+     they don't share a short common multiple) — blobs that move in
+     lockstep read as one sliding sheet, which is exactly the mechanical
+     look this is trying to avoid.
+
+     Transform-only, so nothing here touches layout or paint.
+     `background-attachment: fixed` is deliberately absent from this whole
+     file: iOS Safari ignores it and renders a backdrop that jumps on
+     every scroll frame.
+
+     The component applies these through Tailwind's `motion-safe:` variant,
+     so a prefers-reduced-motion visitor keeps the full backdrop — gradient
+     and blobs — with only the movement removed. */
+  @keyframes brisal-bokeh-drift-a {
     0%,
     100% {
       transform: translate3d(0, 0, 0) scale(1);
     }
+    25% {
+      transform: translate3d(22px, -16px, 0) scale(1.05);
+    }
     50% {
-      transform: translate3d(0, -18px, 0) scale(1.07);
+      transform: translate3d(30px, 12px, 0) scale(1.02);
+    }
+    75% {
+      transform: translate3d(10px, 24px, 0) scale(1.06);
+    }
+  }
+
+  @keyframes brisal-bokeh-drift-b {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1.04);
+    }
+    33% {
+      transform: translate3d(-26px, 18px, 0) scale(1);
+    }
+    66% {
+      transform: translate3d(-12px, -22px, 0) scale(1.07);
+    }
+  }
+
+  @keyframes brisal-bokeh-drift-c {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    40% {
+      transform: translate3d(16px, 20px, 0) scale(1.08);
+    }
+    70% {
+      transform: translate3d(-18px, 8px, 0) scale(1.03);
     }
   }
 

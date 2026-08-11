@@ -186,7 +186,7 @@ export function ProductReviews({
               Sé el primero en dejar una reseña
             </p>
             <p className="text-brand-text-soft mt-1 max-w-sm font-body text-sm leading-relaxed">
-              Cuéntale a otras clientas qué te pareció {productName}.
+              Cuéntale a otros clientes qué te pareció {productName}.
             </p>
             <Button
               type="button"
