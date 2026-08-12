@@ -57,7 +57,9 @@ export function AdminTopBar() {
     if (pathname === '/admin') return 'Panel General';
     if (pathname.startsWith('/admin/productos')) return 'Gestión de Productos';
     if (pathname.startsWith('/admin/categorias')) return 'Gestión de Categorías';
+    if (pathname.startsWith('/admin/materiales')) return 'Gestión de Materiales';
     if (pathname.startsWith('/admin/descuentos')) return 'Gestión de Descuentos';
+    if (pathname.startsWith('/admin/cupones')) return 'Gestión de Cupones';
     if (pathname.startsWith('/admin/mayoristas')) return 'Aprobación de Mayoristas';
     if (pathname.startsWith('/admin/pedidos')) return 'Gestión de Pedidos';
     if (pathname.startsWith('/admin/resenas')) return 'Moderación de Reseñas';

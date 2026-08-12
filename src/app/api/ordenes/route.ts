@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createOrderSchema } from '@/lib/validators';
 import { formatCOP } from '@/lib/utils/pricing';
 import { computeBackorderQty, getAvailableStock } from '@/lib/orders/backorder';
+import { computeCouponDiscount, findRedeemableCoupon, redeemCoupon } from '@/lib/coupons';
 
 interface MessageItem {
   name: string;
@@ -20,6 +21,7 @@ function buildWhatsAppMessage(
   total: number,
   customerName: string,
   customerPhone: string,
+  coupon: { code: string; discountAmount: number } | null,
 ): string {
   const orderCode = orderId.slice(-6).toUpperCase();
 
@@ -48,11 +50,21 @@ function buildWhatsAppMessage(
     })
     .join('\n');
 
+  /**
+   * The coupon gets its own line above the total: the client packs and quotes
+   * from this message, so a total that is silently lower than the line items
+   * add up to would look like a pricing error.
+   */
+  const couponLine = coupon
+    ? `Cupón ${coupon.code}: −${formatCOP(coupon.discountAmount)}\n`
+    : '';
+
   return (
     `¡Hola Brisal! Quiero hacer el siguiente pedido:\n\n` +
     `Pedido #${orderCode}\n` +
     `${itemLines}\n` +
     `─────────────────\n` +
+    `${couponLine}` +
     `TOTAL: ${formatCOP(total)}\n\n` +
     `Nombre: ${customerName}\n` +
     `Teléfono: ${customerPhone}`
@@ -75,7 +87,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, total, customerName, customerPhone, wholesaleUserId } = parsed.data;
+  const { items, customerName, customerPhone, wholesaleUserId, couponCode } = parsed.data;
 
   try {
     /**
@@ -109,6 +121,35 @@ export async function POST(request: Request) {
       };
     });
 
+    /**
+     * The line subtotal is recomputed from the posted prices rather than using
+     * the client's `total`, so the coupon is applied to a figure the server
+     * derived. The lines themselves already carry product-level discounts —
+     * the coupon composes on top of that, sequentially.
+     */
+    const lineSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    /**
+     * Redemption, not just validation. `redeemCoupon` re-checks active, dates
+     * and the usage limit and claims a use in ONE atomic statement — so two
+     * orders racing for the last redemption cannot both win. A coupon that
+     * expired or ran out since the shopper applied it simply does not apply;
+     * the order still goes through at full price rather than failing, because
+     * losing a cart over a stale code is the worse outcome.
+     */
+    let appliedCoupon: { code: string; discountAmount: number } | null = null;
+    if (couponCode) {
+      const coupon = await findRedeemableCoupon(couponCode);
+      if (coupon && (await redeemCoupon(coupon.code))) {
+        appliedCoupon = {
+          code: coupon.code,
+          discountAmount: computeCouponDiscount(lineSubtotal, coupon.percentage),
+        };
+      }
+    }
+
+    const total = Math.max(0, lineSubtotal - (appliedCoupon?.discountAmount ?? 0));
+
     const order = await prisma.order.create({
       data: {
         total,
@@ -116,6 +157,8 @@ export async function POST(request: Request) {
         customerName,
         customerPhone,
         wholesaleUserId: wholesaleUserId ?? null,
+        couponCode: appliedCoupon?.code ?? null,
+        couponDiscountAmount: appliedCoupon?.discountAmount ?? null,
         items: {
           create: linesWithBackorder.map((item) => ({
             productId: item.productId,
@@ -144,6 +187,7 @@ export async function POST(request: Request) {
       total,
       customerName,
       customerPhone,
+      appliedCoupon,
     );
     const whatsappUrl = `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''}?text=${encodeURIComponent(message)}`;
 

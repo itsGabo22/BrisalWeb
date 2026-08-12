@@ -53,6 +53,25 @@ model Tag {
   products ProductTag[]
 }
 
+/// A catalog material — "Acero", "Rodio", "Oro laminado".
+///
+/// Many-to-many because a single piece is routinely more than one thing (an
+/// steel body with a rhodium finish), which the legacy free-text
+/// `Product.material` column could never express: it forced one string and let
+/// the same material be spelled four different ways. That column is kept for
+/// now so this migration stays additive; the relation below is the source of
+/// truth and the free text is no longer written by the admin form.
+///
+/// Modelled on Tag: an implicit relation table, no explicit join model, since
+/// nothing needs to hang extra fields off the pairing.
+model Material {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  products  Product[] @relation("ProductMaterials")
+  createdAt DateTime  @default(now())
+}
+
 model Product {
   id             String       @id @default(cuid())
   name           String
@@ -63,7 +82,12 @@ model Product {
   wholesalePrice Decimal?     @db.Decimal(10, 2)
   sku            String?      @unique
   stock          Int          @default(0)
+  /// LEGACY free-text material. Superseded by the `materials` relation below and
+  /// no longer written by the admin form; retained so this change stays purely
+  /// additive and the original strings survive the backfill. Safe to drop once
+  /// the client confirms the migrated values look right.
   material       String?
+  materials      Material[]   @relation("ProductMaterials")
   /// The PRIMARY colour, which belongs to the product itself — its own
   /// imageUrls, price, stock and sku ARE that colour's. ColorVariant rows are
   /// ADDITIONAL colours on top of it, so a single-colour product needs no
@@ -76,7 +100,11 @@ model Product {
   categoryId     String
   category       Category     @relation(fields: [categoryId], references: [id])
   tags           ProductTag[]
+  /// Back-relation of the LEGACY `Discount.productId`. Nothing reads it — see
+  /// `appliedDiscounts`, which is the many-to-many that replaced it.
   discounts      Discount[]
+  /// PRODUCT-scoped discounts applying to this product, via the join table.
+  appliedDiscounts Discount[] @relation("DiscountProducts")
   // A product with NO colorVariants is a simple product and keeps using
   // `imageUrls`, `price` and `stock` above exactly as before.
   colorVariants  ColorVariant[]
@@ -146,14 +174,48 @@ model Discount {
   label      String
   percentage Decimal       @db.Decimal(5, 2)
   scope      DiscountScope
+  /// LEGACY single-product link, superseded by `products` below. One row could
+  /// only ever discount ONE product, so a 23-product promo meant 23 rows all
+  /// named the same thing — unreadable in the admin list and impossible to
+  /// renew as a unit. Kept so this migration stays additive; backfilled into
+  /// `products` and no longer read. Safe to drop once confirmed.
   productId  String?
   product    Product?      @relation(fields: [productId], references: [id])
+  /// The products a PRODUCT-scoped discount applies to. One campaign, many
+  /// products — this is what every read uses now.
+  products   Product[]     @relation("DiscountProducts")
   categoryId String?
   category   Category?     @relation(fields: [categoryId], references: [id])
   startsAt   DateTime?
   endsAt     DateTime?
   active     Boolean       @default(true)
   createdAt  DateTime      @default(now())
+}
+
+/// A manually-entered checkout code, deliberately SEPARATE from `Discount`.
+///
+/// `Discount` is automatic and scoped to products/categories; a coupon is
+/// typed by the shopper and applies one flat percentage to the whole cart
+/// subtotal. Merging the two would have meant every Discount row growing
+/// usage-limit and redemption bookkeeping it has no use for.
+///
+/// RLS on this table has NO public SELECT policy on purpose: a readable
+/// coupons table lets anyone enumerate every valid code. Validation goes
+/// through a server route that checks the code as the table owner.
+model Coupon {
+  id         String    @id @default(cuid())
+  /// Stored UPPERCASE and matched case-insensitively, so "brisal10" and
+  /// "BRISAL10" are the same coupon rather than two.
+  code       String    @unique
+  percentage Decimal   @db.Decimal(5, 2)
+  active     Boolean   @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  /// null = unlimited redemptions.
+  usageLimit Int?
+  usageCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model User {
@@ -181,6 +243,12 @@ model Order {
   customerName    String?
   customerPhone   String?
   wholesaleUserId String?
+  /// The coupon code as typed at checkout, and the peso amount it took off.
+  /// Stored as a snapshot rather than a relation: the coupon may later be
+  /// edited or deleted, and what the customer was actually charged must not
+  /// change with it.
+  couponCode           String?
+  couponDiscountAmount Decimal? @db.Decimal(10, 2)
   notes           String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt

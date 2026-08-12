@@ -20,15 +20,32 @@ export async function PATCH(
       );
     }
 
-    const { couponCode, ...rest } = result.data;
+    const { couponCode, productIds, ...rest } = result.data;
     const updateData: Prisma.DiscountUpdateInput = { ...rest };
     if ('couponCode' in result.data) {
       updateData.code = couponCode ?? null;
     }
 
+    /**
+     * `set` replaces the whole selection in one statement, which is what the
+     * picker posts. The key is only present when the form actually sent it, so
+     * a partial PATCH — the active toggle in the list, or a "Renovar" that only
+     * moves the dates — leaves the product selection untouched.
+     */
+    if ('productIds' in result.data && productIds) {
+      const scope = result.data.scope;
+      // Switching a campaign away from PRODUCT scope clears its links rather
+      // than leaving orphans that would reappear if it switched back.
+      updateData.products =
+        scope !== undefined && scope !== 'PRODUCT'
+          ? { set: [] }
+          : { set: productIds.map((productId) => ({ id: productId })) };
+    }
+
     const updated = await prisma.discount.update({
       where: { id },
       data: updateData,
+      include: { products: { select: { id: true } } },
     });
 
     return NextResponse.json(toDiscount(updated));

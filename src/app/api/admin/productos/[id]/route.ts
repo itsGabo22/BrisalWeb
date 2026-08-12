@@ -72,6 +72,7 @@ export async function PATCH(
       featured,
       active,
       tagIds,
+      materialIds,
       colorVariants,
     } = result.data;
 
@@ -101,6 +102,12 @@ export async function PATCH(
       ...(imageUrls !== undefined && { imageUrls }),
       ...(featured !== undefined && { featured }),
       ...(active !== undefined && { active }),
+      // `set` replaces the whole selection in one statement, which is what the
+      // form posts — and omitting the key entirely (form didn't send it) leaves
+      // the existing materials untouched, matching every other field here.
+      ...(materialIds !== undefined && {
+        materials: { set: materialIds.map((materialId) => ({ id: materialId })) },
+      }),
     };
 
     /**
@@ -181,8 +188,30 @@ export async function DELETE(
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
     }
 
-    // Soft delete — products stay in the DB (order history, etc.) but drop off the catalog.
-    await prisma.product.update({ where: { id }, data: { active: false } });
+    /**
+     * A real delete. This used to be a soft delete (`active: false`), which was
+     * the source of the phantom "Borrador" state: the row survived, the list
+     * relabelled it, and because `Product.categoryId` is NOT NULL with an
+     * ON DELETE RESTRICT foreign key, that invisible tombstone then blocked its
+     * category from ever being deleted — while the category guard, which only
+     * counted ACTIVE products, waved the delete through into a raw FK error.
+     *
+     * Order history is unaffected: `OrderItem` deliberately stores `productId`
+     * as a plain column with NO foreign key, and snapshots `name`, `price`,
+     * `imageUrl`, `color` and `reference` at order time, so what was shipped
+     * stays readable after the product is gone. Reviews, colour variants and
+     * tag links all cascade.
+     */
+    await prisma.$transaction(async (tx) => {
+      // PRODUCT-scoped discounts would otherwise be left with a null productId
+      // by the optional relation's SET NULL, which reads as a global discount.
+      await tx.discount.deleteMany({ where: { productId: id, scope: 'PRODUCT' } });
+      await tx.product.delete({ where: { id } });
+    });
+
+    // Frees the bandeja rows this product held so the images return to the tray
+    // rather than staying assigned to an id that no longer exists.
+    await reconcileBandejaAssignments(id, []);
 
     return NextResponse.json({ success: true });
   } catch (err) {

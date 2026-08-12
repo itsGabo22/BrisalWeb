@@ -26,6 +26,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 export const CLEARABLE_PARAMS = [
   'categoria',
   'color',
+  'material',
   'precioMin',
   'precioMax',
   'sort',
@@ -35,7 +36,13 @@ export const CLEARABLE_PARAMS = [
 ] as const;
 
 /** Params the sidebar itself owns; a sidebar write replaces exactly these. */
-export const SIDEBAR_PARAMS = ['categoria', 'color', 'precioMin', 'precioMax'] as const;
+export const SIDEBAR_PARAMS = [
+  'categoria',
+  'color',
+  'material',
+  'precioMin',
+  'precioMax',
+] as const;
 
 export interface FilterNav {
   /** Current pathname with no query at all — the unfiltered version of this page. */

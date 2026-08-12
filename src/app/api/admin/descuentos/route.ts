@@ -7,6 +7,9 @@ import { toDiscount } from '@/lib/repositories/mappers';
 export async function GET() {
   const discounts = await prisma.discount.findMany({
     orderBy: { createdAt: 'desc' },
+    // Ids only: the admin list renders a count and the form pre-checks boxes,
+    // and neither needs the full product rows it already fetched separately.
+    include: { products: { select: { id: true } } },
   });
 
   return NextResponse.json(discounts.map(toDiscount));
@@ -24,10 +27,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const { couponCode, ...rest } = result.data;
+    const { couponCode, productIds, scope, ...rest } = result.data;
 
     const newDiscount = await prisma.discount.create({
-      data: { ...rest, code: couponCode ?? null },
+      data: {
+        ...rest,
+        scope,
+        code: couponCode ?? null,
+        // Only a PRODUCT-scoped campaign links products. A GLOBAL or CATEGORY
+        // discount that somehow arrived with ids would otherwise carry a
+        // selection that nothing reads and that the form would show back.
+        ...(scope === 'PRODUCT' && productIds.length > 0
+          ? { products: { connect: productIds.map((id) => ({ id })) } }
+          : {}),
+      },
+      include: { products: { select: { id: true } } },
     });
 
     return NextResponse.json(toDiscount(newDiscount), { status: 201 });

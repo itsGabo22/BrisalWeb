@@ -12,6 +12,7 @@ export type CatalogSearchParams = Promise<{
   filter?: string | string[];
   categoria?: string | string[];
   color?: string | string[];
+  material?: string | string[];
   precioMin?: string | string[];
   precioMax?: string | string[];
   page?: string | string[];
@@ -65,6 +66,7 @@ export interface CatalogQuery {
   filter?: CatalogFilter;
   categorySlugs: string[];
   colorSlugs: string[];
+  materialSlugs: string[];
   priceMin?: number;
   priceMax?: number;
   page: number;
@@ -80,6 +82,7 @@ export function parseCatalogQuery(
     filter: normalizeFilterParam(params.filter),
     categorySlugs: slugList(params.categoria),
     colorSlugs: slugList(params.color),
+    materialSlugs: slugList(params.material),
     priceMin: positiveNumber(params.precioMin),
     priceMax: positiveNumber(params.precioMax),
     page: page && page >= 1 ? Math.floor(page) : 1,
@@ -229,6 +232,48 @@ export function buildCategoryFacets(
     .filter((facet) => facet.count > 0);
 }
 
+export interface MaterialFacet {
+  id: string;
+  slug: string;
+  name: string;
+  count: number;
+}
+
+/**
+ * Materials present in the given products, with counts.
+ *
+ * Derived from the products rather than read from the Material table so the
+ * sidebar can only ever offer a material something in scope actually has —
+ * "Oro laminado (0)" on a page with no gold-plated pieces is a dead end. A
+ * product with several materials counts once toward each, which is why the
+ * counts can sum to more than the catalog size.
+ */
+export function buildMaterialFacets(products: Product[]): MaterialFacet[] {
+  const facets = new Map<string, MaterialFacet>();
+
+  for (const product of products) {
+    for (const material of product.materials) {
+      const existing = facets.get(material.slug);
+      if (existing) existing.count += 1;
+      else
+        facets.set(material.slug, {
+          id: material.id,
+          slug: material.slug,
+          name: material.name,
+          count: 1,
+        });
+    }
+  }
+
+  return [...facets.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+function productMatchesMaterials(product: Product, slugs: string[]): boolean {
+  if (slugs.length === 0) return true;
+  // OR within the type: a product matches if it has ANY selected material.
+  return product.materials.some((material) => slugs.includes(material.slug));
+}
+
 export interface PriceBounds {
   min: number;
   max: number;
@@ -271,7 +316,14 @@ export function applyCatalogParams(
   products: Product[],
   query: Pick<
     CatalogQuery,
-    'tagSlug' | 'filter' | 'sort' | 'categorySlugs' | 'colorSlugs' | 'priceMin' | 'priceMax'
+    | 'tagSlug'
+    | 'filter'
+    | 'sort'
+    | 'categorySlugs'
+    | 'colorSlugs'
+    | 'materialSlugs'
+    | 'priceMin'
+    | 'priceMax'
   >,
   categories: Category[] = [],
 ): Product[] {
@@ -291,10 +343,22 @@ export function applyCatalogParams(
   const availableColors = new Set(buildColorFacets(products).map((c) => c.slug));
   const effectiveColors = query.colorSlugs.filter((slug) => availableColors.has(slug));
 
+  /**
+   * Materials get the same treatment, and for the same reason: a slug picked
+   * from the sidebar always exists (the facets come from these products), so
+   * only a stale or hand-typed `?material=` can miss — and that should show the
+   * catalog rather than an empty grid the shopper has no way to explain.
+   */
+  const availableMaterials = new Set(buildMaterialFacets(products).map((m) => m.slug));
+  const effectiveMaterials = query.materialSlugs.filter((slug) =>
+    availableMaterials.has(slug),
+  );
+
   let result = filterProductsByTag(products, query.tagSlug);
   result = filterProductsByDiscount(result, query.filter);
   result = result.filter((p) => productMatchesCategories(p, expanded));
   result = result.filter((p) => productMatchesColors(p, effectiveColors));
+  result = result.filter((p) => productMatchesMaterials(p, effectiveMaterials));
   result = filterProductsByPrice(result, query.priceMin, query.priceMax);
   return sortProducts(result, query.sort);
 }

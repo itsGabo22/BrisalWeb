@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       featured,
       active,
       tagIds,
+      materialIds,
       colorVariants,
     } = result.data;
     const slug = slugify(name);
@@ -84,6 +85,9 @@ export async function POST(request: Request) {
         featured,
         active,
         tags: { create: tagIds.map((tagId) => ({ tagId })) },
+        // `connect`, not `create`: materials are a shared vocabulary managed in
+        // /admin/materiales, so a product only ever links to existing rows.
+        materials: { connect: materialIds.map((materialId) => ({ id: materialId })) },
         colorVariants: {
           create: colorVariants.map((variant, index) => ({
             colorName: variant.colorName.trim(),

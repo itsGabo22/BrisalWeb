@@ -7,6 +7,7 @@ import { SubcategoryChips } from '@/components/catalog/SubcategoryChips';
 import {
   applyCatalogParams,
   buildColorFacets,
+  buildMaterialFacets,
   getPriceBounds,
   paginateProducts,
   parseCatalogQuery,
@@ -86,6 +87,7 @@ export default async function SubcategoriaPage({
         results={results}
         categories={[]}
         colors={buildColorFacets(products)}
+        materials={buildMaterialFacets(products)}
         priceBounds={getPriceBounds(products)}
       />
     </>

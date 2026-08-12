@@ -145,11 +145,17 @@ export default function AdminCategoriasPage() {
 
       if (res.ok) {
         setCategories((prev) => prev.filter((c) => c.id !== id));
-      } else {
-        alert('Error al eliminar categoría');
+        return;
       }
+
+      // Show what the server actually said. The blanket "Error al eliminar
+      // categoría" used to hide the one thing worth knowing — which products
+      // are still filed here — and left the client guessing.
+      const data = await res.json().catch(() => null);
+      alert(data?.error ?? 'Error al eliminar categoría');
     } catch (error) {
       console.error('Error deleting category:', error);
+      alert('Error de conexión al eliminar la categoría');
     }
   };
 

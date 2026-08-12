@@ -26,12 +26,15 @@ export interface IProductRepository {
 export const PRODUCT_INCLUDE = {
   category: true,
   tags: { include: { tag: true } },
-  // NOTE: this relation is `Discount.productId -> Product`, so it only ever
-  // yields PRODUCT-scoped rows. GLOBAL and CATEGORY discounts have a null
-  // productId and can never arrive this way — `attachScopedDiscounts` below
-  // is what merges them in.
-  discounts: true,
+  // The many-to-many, so it only ever yields PRODUCT-scoped rows. GLOBAL and
+  // CATEGORY discounts have no product links and can never arrive this way —
+  // `attachScopedDiscounts` below is what merges them in.
+  //
+  // This replaced the old `discounts: true`, which followed the single-product
+  // `Discount.productId` foreign key and so capped a campaign at one product.
+  appliedDiscounts: true,
   colorVariants: { orderBy: { order: 'asc' } },
+  materials: true,
 } satisfies Prisma.ProductInclude;
 
 /**
@@ -50,7 +53,11 @@ export const PRODUCT_INCLUDE = {
  * One extra query per fetch, regardless of how many products came back.
  */
 async function attachScopedDiscounts<
-  T extends { categoryId: string; category: { parentId: string | null }; discounts: PrismaDiscount[] },
+  T extends {
+    categoryId: string;
+    category: { parentId: string | null };
+    appliedDiscounts: PrismaDiscount[];
+  },
 >(products: T[]): Promise<T[]> {
   if (products.length === 0) return products;
 
@@ -78,7 +85,7 @@ async function attachScopedDiscounts<
     }
     return {
       ...product,
-      discounts: [...product.discounts, ...globals, ...own, ...inherited],
+      appliedDiscounts: [...product.appliedDiscounts, ...globals, ...own, ...inherited],
     };
   });
 }

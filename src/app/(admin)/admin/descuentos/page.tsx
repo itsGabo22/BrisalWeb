@@ -1,30 +1,59 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Edit, Trash2, Tag, Percent } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Percent, RefreshCw } from 'lucide-react';
 import type { Discount, Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { DiscountProductPicker } from '@/components/admin/DiscountProductPicker';
+import {
+  fromDateInput,
+  getDiscountState,
+  STATE_BADGE,
+  STATE_LABEL,
+  toDateInput,
+} from '@/lib/utils/discount-status';
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+function formatRange(startsAt?: string | null, endsAt?: string | null): string {
+  const from = startsAt ? DATE_FORMATTER.format(new Date(startsAt)) : null;
+  const to = endsAt ? DATE_FORMATTER.format(new Date(endsAt)) : null;
+  if (!from && !to) return 'Sin límite';
+  if (from && to) return `${from} — ${to}`;
+  return from ? `Desde ${from}` : `Hasta ${to}`;
+}
 
 export default function AdminDescuentosPage() {
   const [discounts, setDiscounts] = React.useState<Discount[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [products, setProducts] = React.useState<Product[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  /**
+   * "Now", fixed at load. Every state badge and every product age is derived
+   * from this rather than from a fresh `Date.now()` during render, so the list
+   * cannot reclassify itself halfway through a re-render.
+   */
+  const [nowMs, setNowMs] = React.useState(0);
 
-  // Modal states
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingDiscount, setEditingDiscount] = React.useState<Discount | null>(null);
+  /** True when the modal was opened by "Renovar" — changes copy and focus. */
+  const [isRenewing, setIsRenewing] = React.useState(false);
 
-  // Form states
   const [label, setLabel] = React.useState('');
   const [percentage, setPercentage] = React.useState<number>(0);
   const [scope, setScope] = React.useState<'GLOBAL' | 'CATEGORY' | 'PRODUCT'>('GLOBAL');
   const [categoryId, setCategoryId] = React.useState('');
-  const [productId, setProductId] = React.useState('');
-  const [couponCode, setCouponCode] = React.useState('');
+  const [productIds, setProductIds] = React.useState<string[]>([]);
+  const [startsAt, setStartsAt] = React.useState('');
+  const [endsAt, setEndsAt] = React.useState('');
   const [active, setActive] = React.useState(true);
-  
+
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -37,13 +66,12 @@ export default function AdminDescuentosPage() {
       ]);
 
       if (resDiscs.ok && resCats.ok && resProds.ok) {
-        const discs = await resDiscs.json();
-        const cats = await resCats.json();
-        const prods = await resProds.json();
-        setDiscounts(discs);
-        setCategories(cats);
-        setProducts(prods);
+        setDiscounts(await resDiscs.json());
+        setCategories(await resCats.json());
+        setProducts(await resProds.json());
       }
+      // Read the clock in the handler, never during render.
+      setNowMs(Date.now());
     } catch (error) {
       console.error('Error loading discounts data:', error);
     } finally {
@@ -55,29 +83,43 @@ export default function AdminDescuentosPage() {
     void Promise.resolve().then(() => loadData());
   }, [loadData]);
 
-  const openCreateModal = () => {
-    setEditingDiscount(null);
-    setLabel('');
-    setPercentage(10);
-    setScope('GLOBAL');
-    setCategoryId('');
-    setProductId('');
-    setCouponCode('');
-    setActive(true);
+  const resetForm = (d: Discount | null) => {
+    setEditingDiscount(d);
+    setLabel(d?.label ?? '');
+    setPercentage(d ? d.percentage : 10);
+    setScope(d?.scope ?? 'GLOBAL');
+    setCategoryId(d?.categoryId ?? '');
+    setProductIds(d?.productIds ?? []);
+    setStartsAt(toDateInput(d?.startsAt));
+    setEndsAt(toDateInput(d?.endsAt));
+    setActive(d?.active ?? true);
     setFormError(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm(null);
+    setIsRenewing(false);
     setIsModalOpen(true);
   };
 
   const openEditModal = (d: Discount) => {
-    setEditingDiscount(d);
-    setLabel(d.label || '');
-    setPercentage(d.percentage);
-    setScope(d.scope);
-    setCategoryId(d.categoryId || '');
-    setProductId(d.productId || '');
-    setCouponCode(d.couponCode || '');
-    setActive(d.active);
-    setFormError(null);
+    resetForm(d);
+    setIsRenewing(false);
+    setIsModalOpen(true);
+  };
+
+  /**
+   * Renewal reopens the SAME row with its selection and percentage intact and
+   * only the dates cleared, so saving updates it in place. Creating a copy
+   * would leave the expired original behind to be cleaned up by hand, and the
+   * client's ask was explicitly "renew rather than recreate".
+   */
+  const openRenewModal = (d: Discount) => {
+    resetForm(d);
+    setStartsAt('');
+    setEndsAt('');
+    setActive(true);
+    setIsRenewing(true);
     setIsModalOpen(true);
   };
 
@@ -87,17 +129,16 @@ export default function AdminDescuentosPage() {
     }
 
     try {
-      const res = await fetch(`/api/admin/descuentos/${id}`, {
-        method: 'DELETE',
-      });
-
+      const res = await fetch(`/api/admin/descuentos/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setDiscounts((prev) => prev.filter((d) => d.id !== id));
-      } else {
-        alert('Error al eliminar descuento');
+        return;
       }
+      const data = await res.json().catch(() => null);
+      alert(data?.error ?? 'Error al eliminar descuento');
     } catch (error) {
       console.error('Error deleting discount:', error);
+      alert('Error de conexión al eliminar el descuento');
     }
   };
 
@@ -111,7 +152,7 @@ export default function AdminDescuentosPage() {
 
       if (res.ok) {
         setDiscounts((prev) =>
-          prev.map((item) => (item.id === d.id ? { ...item, active: !d.active } : item))
+          prev.map((item) => (item.id === d.id ? { ...item, active: !d.active } : item)),
         );
       }
     } catch (error) {
@@ -121,6 +162,16 @@ export default function AdminDescuentosPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (scope === 'PRODUCT' && productIds.length === 0) {
+      setFormError('Selecciona al menos un producto para una campaña por producto.');
+      return;
+    }
+    if (startsAt && endsAt && startsAt > endsAt) {
+      setFormError('La fecha de inicio no puede ser posterior a la de fin.');
+      return;
+    }
+
     setIsSubmitting(true);
     setFormError(null);
 
@@ -129,24 +180,26 @@ export default function AdminDescuentosPage() {
       percentage: Number(percentage),
       scope,
       categoryId: scope === 'CATEGORY' ? categoryId : null,
-      productId: scope === 'PRODUCT' ? productId : null,
-      couponCode: couponCode.trim() || null,
+      productIds: scope === 'PRODUCT' ? productIds : [],
+      startsAt: fromDateInput(startsAt, 'start'),
+      endsAt: fromDateInput(endsAt, 'end'),
       active,
     };
 
     try {
-      const url = editingDiscount ? `/api/admin/descuentos/${editingDiscount.id}` : '/api/admin/descuentos';
-      const method = editingDiscount ? 'PATCH' : 'POST';
+      const url = editingDiscount
+        ? `/api/admin/descuentos/${editingDiscount.id}`
+        : '/api/admin/descuentos';
 
       const res = await fetch(url, {
-        method,
+        method: editingDiscount ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Error al guardar descuento');
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Error al guardar descuento');
       }
 
       await loadData();
@@ -160,10 +213,14 @@ export default function AdminDescuentosPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top section */}
       <div className="flex items-center justify-between">
         <p className="font-sans text-sm text-brand-neutral-500">
-          Crea y administra promociones, cupones globales o descuentos sobre categorías y productos específicos.
+          Promociones automáticas sobre el catálogo, una categoría o varios productos.
+          Los códigos de cupón se administran en{' '}
+          <a href="/admin/cupones" className="text-brand-gold-deep hover:underline">
+            Cupones
+          </a>
+          .
         </p>
         <Button onClick={openCreateModal} className="flex items-center gap-2">
           <Plus className="size-4" />
@@ -171,7 +228,6 @@ export default function AdminDescuentosPage() {
         </Button>
       </div>
 
-      {/* Grid List */}
       <div className="rounded-xl border border-brand-neutral-200 bg-white overflow-hidden shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900 transition-colors">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
@@ -188,127 +244,149 @@ export default function AdminDescuentosPage() {
                 <tr className="border-b border-brand-neutral-100 dark:border-brand-neutral-800 bg-brand-neutral-50 dark:bg-brand-neutral-950 text-xs font-semibold uppercase tracking-wider text-brand-neutral-500 dark:text-brand-neutral-400">
                   <th className="px-6 py-4">Campaña</th>
                   <th className="px-6 py-4">Porcentaje</th>
-                  <th className="px-6 py-4">Alcance (Scope)</th>
-                  <th className="px-6 py-4">Cupón</th>
+                  <th className="px-6 py-4">Alcance</th>
+                  <th className="px-6 py-4">Vigencia</th>
                   <th className="px-6 py-4">Estado</th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-neutral-100 dark:divide-brand-neutral-800">
-                {discounts.map((discount) => (
-                  <tr key={discount.id} className="hover:bg-brand-neutral-50/50 dark:hover:bg-brand-neutral-800/20 transition-colors">
-                    {/* Label */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Tag className="size-4 text-brand-gold" />
-                        <span className="font-semibold text-brand-neutral-800 dark:text-brand-neutral-250 text-sm">
-                          {discount.label || 'Descuento Sin Nombre'}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Percentage */}
-                    <td className="px-6 py-4 text-sm font-semibold text-brand-neutral-800 dark:text-brand-neutral-200">
-                      <span className="flex items-center gap-1">
-                        <Percent className="size-3 text-brand-gold" />
-                        {discount.percentage}% OFF
-                      </span>
-                    </td>
-
-                    {/* Scope */}
-                    <td className="px-6 py-4 text-sm text-brand-neutral-600 dark:text-brand-neutral-400">
-                      <span className="px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-brand-neutral-100 dark:bg-brand-neutral-950 text-brand-neutral-500">
-                        {discount.scope}
-                      </span>
-                      {discount.scope === 'CATEGORY' && (
-                        <span className="block text-xs text-brand-neutral-400">
-                          Cat: {categories.find((c) => c.id === discount.categoryId)?.name || 'Desconocida'}
-                        </span>
-                      )}
-                      {discount.scope === 'PRODUCT' && (
-                        <span className="block text-xs text-brand-neutral-400">
-                          Prod: {products.find((p) => p.id === discount.productId)?.name || 'Desconocido'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Coupon */}
-                    <td className="px-6 py-4 text-sm font-mono text-brand-neutral-500">
-                      {discount.couponCode ? (
-                        <span className="border border-dashed border-brand-neutral-300 rounded px-2 py-0.5 bg-brand-neutral-50 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 text-brand-neutral-700 dark:text-brand-neutral-300">
-                          {discount.couponCode}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-
-                    {/* State Toggle */}
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => toggleActiveStatus(discount)}
-                        className="flex items-center gap-2 text-left"
-                      >
-                        {discount.active ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-emerald-950/30 dark:text-emerald-400">
-                            Activo
+                {discounts.map((discount) => {
+                  const state = getDiscountState(discount, nowMs);
+                  return (
+                    <tr
+                      key={discount.id}
+                      className="hover:bg-brand-neutral-50/50 dark:hover:bg-brand-neutral-800/20 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Tag className="size-4 text-brand-gold" />
+                          <span className="font-semibold text-brand-neutral-800 dark:text-brand-neutral-250 text-sm">
+                            {discount.label || 'Descuento Sin Nombre'}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-brand-neutral-500 bg-brand-neutral-100 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-brand-neutral-950 dark:text-brand-neutral-400">
-                            Inactivo
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-semibold text-brand-neutral-800 dark:text-brand-neutral-200">
+                        <span className="flex items-center gap-1">
+                          <Percent className="size-3 text-brand-gold" />
+                          {discount.percentage}% OFF
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-brand-neutral-600 dark:text-brand-neutral-400">
+                        <span className="px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-brand-neutral-100 dark:bg-brand-neutral-950 text-brand-neutral-500">
+                          {discount.scope}
+                        </span>
+                        {discount.scope === 'CATEGORY' && (
+                          <span className="block text-xs text-brand-neutral-400">
+                            {categories.find((c) => c.id === discount.categoryId)?.name ??
+                              'Desconocida'}
                           </span>
                         )}
-                      </button>
-                    </td>
+                        {discount.scope === 'PRODUCT' && (
+                          <span className="block text-xs text-brand-neutral-400">
+                            {discount.productIds.length}{' '}
+                            {discount.productIds.length === 1 ? 'producto' : 'productos'}
+                          </span>
+                        )}
+                      </td>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4 text-right text-sm">
-                      <div className="flex items-center justify-end gap-2">
+                      <td className="px-6 py-4 text-xs whitespace-nowrap text-brand-neutral-600 dark:text-brand-neutral-400">
+                        {formatRange(discount.startsAt, discount.endsAt)}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm">
                         <button
-                          onClick={() => openEditModal(discount)}
-                          className="p-1 text-brand-neutral-500 hover:text-brand-gold transition-colors"
-                          aria-label="Editar descuento"
+                          onClick={() => toggleActiveStatus(discount)}
+                          className="text-left"
+                          title="Activar / desactivar"
                         >
-                          <Edit className="size-4" />
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATE_BADGE[state]}`}
+                          >
+                            {STATE_LABEL[state]}
+                          </span>
                         </button>
-                        <button
-                          onClick={() => handleDelete(discount.id, discount.label || '')}
-                          className="p-1 text-brand-neutral-500 hover:text-red-500 transition-colors"
-                          aria-label="Eliminar descuento"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+
+                      <td className="px-6 py-4 text-right text-sm">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Only an expired campaign can be renewed — on any
+                              other state the button would be a confusing
+                              synonym for Editar. */}
+                          {state === 'EXPIRADO' && (
+                            <button
+                              onClick={() => openRenewModal(discount)}
+                              className="inline-flex items-center gap-1 rounded border border-brand-gold/50 bg-brand-gold/10 px-2 py-1 text-xs font-medium text-brand-gold-deep transition-colors hover:bg-brand-gold/20"
+                            >
+                              <RefreshCw className="size-3" />
+                              Renovar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openEditModal(discount)}
+                            className="p-1 text-brand-neutral-500 hover:text-brand-gold transition-colors"
+                            aria-label="Editar descuento"
+                          >
+                            <Edit className="size-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(discount.id, discount.label || '')}
+                            className="p-1 text-brand-neutral-500 hover:text-red-500 transition-colors"
+                            aria-label="Eliminar descuento"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Modal Editor */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingDiscount ? 'Editar Descuento' : 'Nuevo Descuento'}
-        description={editingDiscount ? 'Modifica los valores del descuento.' : 'Crea una nueva campaña promocional.'}
+        className="max-w-2xl"
+        title={
+          isRenewing
+            ? 'Renovar Descuento'
+            : editingDiscount
+              ? 'Editar Descuento'
+              : 'Nuevo Descuento'
+        }
+        description={
+          isRenewing
+            ? 'Se conservan el porcentaje y la selección. Define las nuevas fechas de vigencia.'
+            : editingDiscount
+              ? 'Modifica los valores del descuento.'
+              : 'Crea una nueva campaña promocional.'
+        }
         footer={
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" form="discount-form" disabled={isSubmitting || !label}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
+              {isSubmitting ? 'Guardando...' : isRenewing ? 'Renovar' : 'Guardar'}
             </Button>
           </div>
         }
       >
         <form id="discount-form" onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
           {formError && (
-            <div className="rounded bg-red-50 p-3 text-red-700 text-xs">
-              {formError}
+            <div className="rounded bg-red-50 p-3 text-red-700 text-xs">{formError}</div>
+          )}
+
+          {isRenewing && (
+            <div className="rounded bg-amber-50 p-3 text-xs text-amber-800">
+              Renovando «{editingDiscount?.label}». Se actualizará la campaña existente,
+              no se creará una nueva.
             </div>
           )}
 
@@ -322,7 +400,7 @@ export default function AdminDescuentosPage() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Ej. Black Friday, Descuento Aretes..."
-              className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
             />
           </div>
 
@@ -338,42 +416,54 @@ export default function AdminDescuentosPage() {
                 max={100}
                 value={percentage}
                 onChange={(e) => setPercentage(Number(e.target.value))}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
               />
             </div>
 
             <div>
               <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
-                Código Cupón (Opcional)
+                Alcance *
               </label>
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Ej. PROMO20"
-                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
-              />
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value as Discount['scope'])}
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              >
+                <option value="GLOBAL">Global (todo el catálogo)</option>
+                <option value="CATEGORY">Por Categoría</option>
+                <option value="PRODUCT">Por Productos</option>
+              </select>
             </div>
           </div>
 
-          <div>
-            <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
-              Alcance de la Campaña *
-            </label>
-            <select
-              value={scope}
-              onChange={(e) =>
-                setScope(e.target.value as Discount['scope'])
-              }
-              className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
-            >
-              <option value="GLOBAL">Global (Aplica a todo el catálogo)</option>
-              <option value="CATEGORY">Por Categoría</option>
-              <option value="PRODUCT">Por Producto Específico</option>
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Inicio (opcional)
+              </label>
+              <input
+                type="date"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Fin (opcional)
+              </label>
+              <input
+                type="date"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              />
+            </div>
           </div>
+          <p className="-mt-2 text-xs text-brand-neutral-400">
+            Deja una fecha en blanco para que no tenga límite por ese lado.
+          </p>
 
-          {/* Conditional dropdown based on Scope */}
           {scope === 'CATEGORY' && (
             <div>
               <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
@@ -383,12 +473,12 @@ export default function AdminDescuentosPage() {
                 required
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
               >
                 <option value="">Selecciona una categoría</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.parentId ? `└─ ${c.name}` : c.name}
                   </option>
                 ))}
               </select>
@@ -398,25 +488,18 @@ export default function AdminDescuentosPage() {
           {scope === 'PRODUCT' && (
             <div>
               <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
-                Seleccionar Producto *
+                Productos incluidos *
               </label>
-              <select
-                required
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
-              >
-                <option value="">Selecciona un producto</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <DiscountProductPicker
+                products={products}
+                selectedIds={productIds}
+                onChange={setProductIds}
+                nowMs={nowMs}
+              />
             </div>
           )}
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
               id="active"
@@ -424,11 +507,13 @@ export default function AdminDescuentosPage() {
               onChange={(e) => setActive(e.target.checked)}
               className="rounded text-brand-gold focus:ring-brand-gold size-4 border-brand-neutral-300"
             />
-            <label htmlFor="active" className="text-sm text-brand-neutral-700 dark:text-brand-neutral-300">
+            <label
+              htmlFor="active"
+              className="text-sm text-brand-neutral-700 dark:text-brand-neutral-300"
+            >
               Descuento activo
             </label>
           </div>
-
         </form>
       </Modal>
     </div>

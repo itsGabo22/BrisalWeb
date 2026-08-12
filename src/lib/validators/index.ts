@@ -109,10 +109,23 @@ export const productAdminSchema = z.object({
   active: z.boolean().default(true),
   description: z.string().optional().nullable(),
   tagIds: z.array(z.string()).default([]),
+  /** Ids of every Material this product is made of. A piece can be several. */
+  materialIds: z.array(z.string()).default([]),
   colorVariants: z.array(colorVariantSchema).default([]),
 });
 
 export type ProductAdminFormData = z.infer<typeof productAdminSchema>;
+
+/**
+ * Slug is optional on input: the routes derive it from the name when the admin
+ * leaves it alone, and accept an override when they edit it.
+ */
+export const materialAdminSchema = z.object({
+  name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  slug: z.string().trim().optional().nullable(),
+});
+
+export type MaterialAdminFormData = z.infer<typeof materialAdminSchema>;
 
 export const categoryAdminSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -123,17 +136,67 @@ export const categoryAdminSchema = z.object({
 
 export type CategoryAdminFormData = z.infer<typeof categoryAdminSchema>;
 
+/**
+ * Accepts an ISO datetime, a plain `YYYY-MM-DD`, or empty/null meaning
+ * "unbounded on this side" — which is how the admin's blank date inputs are
+ * meant to read, and what `isDiscountActive` already interprets.
+ */
+const optionalDate = z
+  .union([z.string(), z.date(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  });
+
 export const discountAdminSchema = z.object({
   label: z.string().min(2, 'La etiqueta debe tener al menos 2 caracteres'),
   percentage: z.number().min(1, 'El porcentaje debe ser al menos 1').max(100, 'El porcentaje no puede superar 100'),
   scope: z.enum(['GLOBAL', 'CATEGORY', 'PRODUCT']),
   categoryId: z.string().optional().nullable(),
-  productId: z.string().optional().nullable(),
+  /** Every product a PRODUCT-scoped campaign covers. One campaign, many products. */
+  productIds: z.array(z.string()).default([]),
   couponCode: z.string().optional().nullable(),
+  startsAt: optionalDate,
+  endsAt: optionalDate,
   active: z.boolean().default(true),
 });
 
 export type DiscountAdminFormData = z.infer<typeof discountAdminSchema>;
+
+export const couponAdminSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(3, 'El código debe tener al menos 3 caracteres')
+    .max(32, 'El código no puede superar 32 caracteres')
+    // Stored uppercase so lookups can be case-insensitive without a functional
+    // index, and so the admin list never shows the same code twice in
+    // different casing.
+    .transform((value) => value.toUpperCase())
+    .refine((value) => /^[A-Z0-9-]+$/.test(value), {
+      message: 'Usa solo letras, números y guiones',
+    }),
+  percentage: z
+    .number()
+    .min(1, 'El porcentaje debe ser al menos 1')
+    .max(100, 'El porcentaje no puede superar 100'),
+  active: z.boolean().default(true),
+  startsAt: optionalDate,
+  endsAt: optionalDate,
+  /** null = unlimited. */
+  usageLimit: z.number().int().min(1, 'El límite debe ser al menos 1').optional().nullable(),
+});
+
+export type CouponAdminFormData = z.infer<typeof couponAdminSchema>;
+
+/** What the cart posts to /api/cupones/validar. */
+export const couponValidateSchema = z.object({
+  code: z.string().trim().min(1, 'Escribe un código').max(32),
+  /** Cart subtotal AFTER product-level discounts, in whole pesos. */
+  subtotal: z.number().nonnegative(),
+});
 
 // ─── Órdenes ──────────────────────────────────────────────────────────────────
 export const orderItemSchema = z.object({
@@ -168,6 +231,12 @@ export const createOrderSchema = z.object({
     .min(7, 'El teléfono debe tener al menos 7 dígitos')
     .max(20, 'El teléfono no puede superar 20 caracteres'),
   wholesaleUserId: z.string().optional().nullable(),
+  /**
+   * The coupon CODE only — never the amount. The route re-validates the code
+   * and recomputes the discount from the line prices, so a tampered client
+   * cannot award itself a bigger saving.
+   */
+  couponCode: z.string().trim().max(32).optional().nullable(),
 });
 
 export type CreateOrderData = z.infer<typeof createOrderSchema>;
