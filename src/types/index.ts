@@ -27,6 +27,17 @@ export interface Tag {
   slug: string;
 }
 
+// ─── Material ─────────────────────────────────────────────────────────────────
+/**
+ * A catalog material ("Acero", "Rodio"). A product carries several, which is
+ * why this replaced the old single free-text `Product.material` string.
+ */
+export interface Material {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 // ─── Discount ─────────────────────────────────────────────────────────────────
 export interface Discount {
   id: string;
@@ -35,11 +46,38 @@ export interface Discount {
   percentage: number;
   scope: 'GLOBAL' | 'CATEGORY' | 'PRODUCT';
   categoryId?: string | null;
+  /** @deprecated Legacy single-product link. Read `productIds` instead. */
   productId?: string | null;
+  /**
+   * Every product a PRODUCT-scoped campaign covers. Empty for GLOBAL and
+   * CATEGORY scopes, and empty on payloads assembled without the relation
+   * loaded (the storefront never needs it — it only asks whether a discount
+   * reached the product, which the repository already resolved).
+   */
+  productIds: string[];
   couponCode?: string | null;
-  startsAt?: Date | null;
-  endsAt?: Date | null;
+  /** ISO strings — these cross the server/client boundary. */
+  startsAt?: string | null;
+  endsAt?: string | null;
   active: boolean;
+}
+
+// ─── Coupon ───────────────────────────────────────────────────────────────────
+/**
+ * A checkout code. Never sent to the storefront in bulk — only the admin lists
+ * these, and the cart learns about one code at a time by asking the server to
+ * validate it.
+ */
+export interface Coupon {
+  id: string;
+  code: string;
+  percentage: number;
+  active: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  usageLimit?: number | null;
+  usageCount: number;
+  createdAt: string;
 }
 
 // ─── ColorVariant ─────────────────────────────────────────────────────────────
@@ -81,7 +119,10 @@ export interface Product {
   wholesalePrice?: number | null;
   sku?: string | null;
   stock: number;
+  /** @deprecated Legacy free text. Read `materials` instead. */
   material?: string | null;
+  /** Every material this piece is made of. Empty when none are assigned. */
+  materials: Material[];
   /**
    * The PRIMARY colour, owned by the product itself. Its images, price and
    * stock are the product's own — no ColorVariant row is needed for it.
@@ -101,6 +142,11 @@ export interface Product {
    * keeps using the product-level `imageUrls`, `price` and `stock`.
    */
   colorVariants: ColorVariant[];
+  /**
+   * ISO string — this crosses the server/client boundary, where a Date would
+   * arrive as a string anyway. The admin list sorts and filters on it.
+   */
+  createdAt: string;
   /**
    * Aggregate over APPROVED reviews, attached by the repository in one extra
    * query per fetch — see `attachRatingSummaries`. Optional because a product

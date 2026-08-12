@@ -6,12 +6,22 @@
 import type {
   Category as PrismaCategory,
   ColorVariant as PrismaColorVariant,
+  Coupon as PrismaCoupon,
   Discount as PrismaDiscount,
+  Material as PrismaMaterial,
   Product as PrismaProduct,
   ProductTag,
   Tag as PrismaTag,
 } from '@prisma/client';
-import type { Category, ColorVariant, Discount, Product, Tag } from '@/types';
+import type {
+  Category,
+  ColorVariant,
+  Coupon,
+  Discount,
+  Material,
+  Product,
+  Tag,
+} from '@/types';
 
 export function toCategory(
   category: PrismaCategory & { children?: PrismaCategory[] },
@@ -35,7 +45,17 @@ export function toTag(tag: PrismaTag): Tag {
   };
 }
 
-export function toDiscount(discount: PrismaDiscount): Discount {
+export function toMaterial(material: PrismaMaterial): Material {
+  return {
+    id: material.id,
+    name: material.name,
+    slug: material.slug,
+  };
+}
+
+export function toDiscount(
+  discount: PrismaDiscount & { products?: { id: string }[] },
+): Discount {
   return {
     id: discount.id,
     label: discount.label,
@@ -43,18 +63,39 @@ export function toDiscount(discount: PrismaDiscount): Discount {
     scope: discount.scope,
     categoryId: discount.categoryId,
     productId: discount.productId,
+    // Absent relation reads as "not loaded", which for every storefront caller
+    // is the same as "not needed" — only the admin form asks for it.
+    productIds: (discount.products ?? []).map((product) => product.id),
     couponCode: discount.code,
-    startsAt: discount.startsAt,
-    endsAt: discount.endsAt,
+    startsAt: discount.startsAt?.toISOString() ?? null,
+    endsAt: discount.endsAt?.toISOString() ?? null,
     active: discount.active,
+  };
+}
+
+export function toCoupon(coupon: PrismaCoupon): Coupon {
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    percentage: coupon.percentage.toNumber(),
+    active: coupon.active,
+    startsAt: coupon.startsAt?.toISOString() ?? null,
+    endsAt: coupon.endsAt?.toISOString() ?? null,
+    usageLimit: coupon.usageLimit,
+    usageCount: coupon.usageCount,
+    createdAt: coupon.createdAt.toISOString(),
   };
 }
 
 type ProductWithRelations = PrismaProduct & {
   category: PrismaCategory;
   tags: (ProductTag & { tag: PrismaTag })[];
-  discounts: PrismaDiscount[];
+  /** PRODUCT-scoped discounts via the join table, plus whatever
+   *  `attachScopedDiscounts` merged in. Named for the relation it comes from;
+   *  it becomes plain `discounts` on the client type. */
+  appliedDiscounts: PrismaDiscount[];
   colorVariants?: PrismaColorVariant[];
+  materials?: PrismaMaterial[];
 };
 
 export function toProduct(product: ProductWithRelations): Product {
@@ -79,12 +120,18 @@ export function toProduct(product: ProductWithRelations): Product {
     categoryId: product.categoryId,
     category: toCategory(product.category),
     tags: product.tags.map((productTag) => toTag(productTag.tag)),
-    discounts: product.discounts.map(toDiscount),
+    // Alphabetical so a product's materials read the same everywhere — the
+    // implicit m2m table has no ordering column to rely on.
+    materials: (product.materials ?? [])
+      .map(toMaterial)
+      .sort((a, b) => a.name.localeCompare(b.name, 'es')),
+    discounts: product.appliedDiscounts.map(toDiscount),
     // Sorted here rather than relying on every caller's include to specify an
     // orderBy, so the product page's "first variant" default is deterministic.
     colorVariants: (product.colorVariants ?? [])
       .map(toColorVariant)
       .sort((a, b) => a.order - b.order),
+    createdAt: product.createdAt.toISOString(),
   };
 }
 
