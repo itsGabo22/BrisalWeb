@@ -4,6 +4,7 @@ import {
   applyCatalogParams,
   buildCategoryFacets,
   buildColorFacets,
+  buildMaterialFacets,
   getPriceBounds,
   paginateProducts,
   parseCatalogQuery,
@@ -46,6 +47,7 @@ export default async function CatalogoPage({ searchParams }: CatalogoPageProps) 
   // collapsing toward zero.
   const categoryFacets = buildCategoryFacets(categories, allProducts);
   const colorFacets = buildColorFacets(allProducts);
+  const materialFacets = buildMaterialFacets(allProducts);
   const priceBounds = getPriceBounds(allProducts);
 
   const filtered = applyCatalogParams(allProducts, query, categories);
@@ -68,6 +70,7 @@ export default async function CatalogoPage({ searchParams }: CatalogoPageProps) 
         results={results}
         categories={categoryFacets}
         colors={colorFacets}
+        materials={materialFacets}
         priceBounds={priceBounds}
       />
     </>

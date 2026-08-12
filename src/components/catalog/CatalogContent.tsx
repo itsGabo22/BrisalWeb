@@ -12,6 +12,7 @@ import { ClearFiltersButton } from '@/components/shop/ClearFiltersButton';
 import type {
   CategoryFacet,
   ColorFacet,
+  MaterialFacet,
   PaginatedProducts,
   PriceBounds,
 } from '@/lib/catalog';
@@ -22,6 +23,7 @@ export interface CatalogContentProps {
   results: PaginatedProducts;
   categories: CategoryFacet[];
   colors: ColorFacet[];
+  materials: MaterialFacet[];
   priceBounds: PriceBounds | null;
 }
 
@@ -35,6 +37,7 @@ export function CatalogContent({
   results,
   categories,
   colors,
+  materials,
   priceBounds,
 }: CatalogContentProps) {
   return (
@@ -43,6 +46,7 @@ export function CatalogContent({
         <CatalogFilters
           categories={categories}
           colors={colors}
+          materials={materials}
           priceBounds={priceBounds}
         />
 
@@ -60,12 +64,17 @@ export function CatalogContent({
             <CatalogFilterDrawer
               categories={categories}
               colors={colors}
+              materials={materials}
               priceBounds={priceBounds}
               resultCount={results.total}
             />
           </div>
 
-          <ActiveFilterChips categories={categories} colors={colors} />
+          <ActiveFilterChips
+            categories={categories}
+            colors={colors}
+            materials={materials}
+          />
 
           {results.items.length > 0 ? (
             <>

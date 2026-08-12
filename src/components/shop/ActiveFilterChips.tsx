@@ -5,12 +5,13 @@ import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 
 import { formatCOP } from '@/lib/utils/pricing';
-import type { CategoryFacet, ColorFacet } from '@/lib/catalog';
+import type { CategoryFacet, ColorFacet, MaterialFacet } from '@/lib/catalog';
 import { useFilterNav } from './useFilterNav';
 
 export interface ActiveFilterChipsProps {
   categories: CategoryFacet[];
   colors: ColorFacet[];
+  materials: MaterialFacet[];
 }
 
 interface Chip {
@@ -31,7 +32,11 @@ interface Chip {
  * ("Novedades", "Descuentos"), not a filter they added on top of it. Letting
  * them be dismissed here would silently change which page they are on.
  */
-export function ActiveFilterChips({ categories, colors }: ActiveFilterChipsProps) {
+export function ActiveFilterChips({
+  categories,
+  colors,
+  materials,
+}: ActiveFilterChipsProps) {
   const searchParams = useSearchParams();
   const { setParams, clearAll } = useFilterNav();
 
@@ -63,6 +68,7 @@ export function ActiveFilterChips({ categories, colors }: ActiveFilterChipsProps
 
     multi('categoria', (slug) => categories.find((c) => c.slug === slug)?.name);
     multi('color', (slug) => colors.find((c) => c.slug === slug)?.name);
+    multi('material', (slug) => materials.find((m) => m.slug === slug)?.name);
 
     const min = params.get('precioMin');
     const max = params.get('precioMax');
@@ -78,7 +84,7 @@ export function ActiveFilterChips({ categories, colors }: ActiveFilterChipsProps
     }
 
     return result;
-  }, [searchParams, categories, colors]);
+  }, [searchParams, categories, colors, materials]);
 
   if (chips.length === 0) return null;
 

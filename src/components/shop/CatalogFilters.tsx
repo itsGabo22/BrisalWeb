@@ -7,12 +7,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import { formatCOP } from '@/lib/utils/pricing';
-import type { CategoryFacet, ColorFacet, PriceBounds } from '@/lib/catalog';
+import type {
+  CategoryFacet,
+  ColorFacet,
+  MaterialFacet,
+  PriceBounds,
+} from '@/lib/catalog';
 import { useFilterNav } from './useFilterNav';
 
 export interface CatalogFiltersProps {
   categories: CategoryFacet[];
   colors: ColorFacet[];
+  materials: MaterialFacet[];
   priceBounds: PriceBounds | null;
 }
 
@@ -24,6 +30,7 @@ export interface CatalogFilterDrawerProps extends CatalogFiltersProps {
 interface Draft {
   categoria: string[];
   color: string[];
+  material: string[];
   precioMin?: number;
   precioMax?: number;
 }
@@ -40,6 +47,7 @@ function readDraft(params: URLSearchParams): Draft {
   return {
     categoria: list('categoria'),
     color: list('color'),
+    material: list('material'),
     precioMin: num('precioMin'),
     precioMax: num('precioMax'),
   };
@@ -81,6 +89,7 @@ function useFilterDraft() {
       setParams({
         categoria: next.categoria.length ? next.categoria.join(',') : null,
         color: next.color.length ? next.color.join(',') : null,
+        material: next.material.length ? next.material.join(',') : null,
         precioMin: next.precioMin !== undefined ? String(next.precioMin) : null,
         precioMax: next.precioMax !== undefined ? String(next.precioMax) : null,
       });
@@ -91,6 +100,7 @@ function useFilterDraft() {
   const activeCount =
     applied.categoria.length +
     applied.color.length +
+    applied.material.length +
     (applied.precioMin !== undefined || applied.precioMax !== undefined ? 1 : 0);
 
   return { draft, setDraft, commit, clearAll, activeCount };
@@ -103,6 +113,7 @@ function useFilterDraft() {
 export function CatalogFilters({
   categories,
   colors,
+  materials,
   priceBounds,
 }: CatalogFiltersProps) {
   const { draft, setDraft, commit, clearAll } = useFilterDraft();
@@ -121,6 +132,7 @@ export function CatalogFilters({
         <FilterPanel
           categories={categories}
           colors={colors}
+          materials={materials}
           priceBounds={priceBounds}
           draft={draft}
           onChange={update}
@@ -146,6 +158,7 @@ export function CatalogFilters({
 export function CatalogFilterDrawer({
   categories,
   colors,
+  materials,
   priceBounds,
   resultCount,
 }: CatalogFilterDrawerProps) {
@@ -212,6 +225,7 @@ export function CatalogFilterDrawer({
                 <FilterPanel
                   categories={categories}
                   colors={colors}
+                  materials={materials}
                   priceBounds={priceBounds}
                   draft={draft}
                   onChange={setDraft}
@@ -254,6 +268,7 @@ export function CatalogFilterDrawer({
 function FilterPanel({
   categories,
   colors,
+  materials,
   priceBounds,
   draft,
   onChange,
@@ -261,6 +276,7 @@ function FilterPanel({
 }: {
   categories: CategoryFacet[];
   colors: ColorFacet[];
+  materials: MaterialFacet[];
   priceBounds: PriceBounds | null;
   draft: Draft;
   onChange: (next: Draft) => void;
@@ -269,6 +285,7 @@ function FilterPanel({
   const hasAny =
     draft.categoria.length > 0 ||
     draft.color.length > 0 ||
+    draft.material.length > 0 ||
     draft.precioMin !== undefined ||
     draft.precioMax !== undefined;
 
@@ -312,6 +329,30 @@ function FilterPanel({
                     onChange({ ...draft, color: toggle(draft.color, color.slug) })
                   }
                   swatch={color.swatch}
+                />
+              </li>
+            ))}
+          </ul>
+        </FilterSection>
+      )}
+
+      {/* Same rule as Color: hidden until something in scope carries a
+          material, so the section can never render as an empty heading. */}
+      {materials.length > 0 && (
+        <FilterSection title="Material">
+          <ul className="space-y-2.5" role="list">
+            {materials.map((material) => (
+              <li key={material.slug}>
+                <CheckboxRow
+                  label={material.name}
+                  count={material.count}
+                  checked={draft.material.includes(material.slug)}
+                  onChange={() =>
+                    onChange({
+                      ...draft,
+                      material: toggle(draft.material, material.slug),
+                    })
+                  }
                 />
               </li>
             ))}

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Category } from '@/types';
+import type { Category, Material } from '@/types';
 import {
   ColorVariantsSection,
   makeVariantDraft,
@@ -52,7 +52,11 @@ export default function AdminProductFormPage() {
   const [categoryId, setCategoryId] = React.useState('');
   const [sku, setSku] = React.useState('');
   const [stock, setStock] = React.useState<number>(0);
-  const [material, setMaterial] = React.useState('');
+  // The material vocabulary from /admin/materiales, plus this product's picks.
+  // Replaces the old free-text box, which could only hold one value and let the
+  // same material be spelled a different way on every product.
+  const [availableMaterials, setAvailableMaterials] = React.useState<Material[]>([]);
+  const [materialIds, setMaterialIds] = React.useState<string[]>([]);
   const [imageUrls, setImageUrls] = React.useState<string[]>([]);
   const [colorName, setColorName] = React.useState('');
   const [colorHex, setColorHex] = React.useState('#C9A96E');
@@ -73,11 +77,19 @@ export default function AdminProductFormPage() {
   React.useEffect(() => {
     async function loadData() {
       try {
-        // Fetch categories first
-        const catsRes = await fetch('/api/admin/categorias');
+        // Categories and the material vocabulary are both needed before the
+        // form can render its pickers, and neither depends on the other.
+        const [catsRes, matsRes] = await Promise.all([
+          fetch('/api/admin/categorias'),
+          fetch('/api/admin/materiales'),
+        ]);
         if (catsRes.ok) {
           const catsData = await catsRes.json();
           setCategories(catsData);
+        }
+        if (matsRes.ok) {
+          const matsData = await matsRes.json();
+          setAvailableMaterials(matsData);
         }
 
         if (!isNew) {
@@ -91,7 +103,9 @@ export default function AdminProductFormPage() {
             setCategoryId(prod.categoryId);
             setSku(prod.sku || '');
             setStock(prod.stock);
-            setMaterial(prod.material || '');
+            setMaterialIds(
+              (prod.materials ?? []).map((mat: { id: string }) => mat.id),
+            );
             setColorName(prod.colorName || '');
             setColorHex(prod.colorHex || '#C9A96E');
             setImageUrls(prod.imageUrls || []);
@@ -241,7 +255,7 @@ export default function AdminProductFormPage() {
       categoryId,
       sku: sku.trim() || null,
       stock: Number(stock),
-      material: material.trim() || null,
+      materialIds,
       colorName: colorName.trim() || null,
       colorHex: colorName.trim() ? colorHex : null,
       description: description.trim() || null,
@@ -417,13 +431,48 @@ export default function AdminProductFormPage() {
               <label className="block text-sm font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
                 Materiales
               </label>
-              <input
-                type="text"
-                value={material}
-                onChange={(e) => setMaterial(e.target.value)}
-                placeholder="Ej. Baño de oro 24k"
-                className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
-              />
+              <p className="mb-2 text-xs text-brand-neutral-400">
+                Puedes elegir varios. Se administran en{' '}
+                <Link href="/admin/materiales" className="text-brand-gold-deep hover:underline">
+                  Materiales
+                </Link>
+                .
+              </p>
+              {availableMaterials.length === 0 ? (
+                <p className="rounded-md border border-dashed border-brand-neutral-200 px-4 py-3 text-xs text-brand-neutral-400 dark:border-brand-neutral-800">
+                  Todavía no hay materiales.{' '}
+                  <Link href="/admin/materiales" className="text-brand-gold-deep hover:underline">
+                    Crea el primero
+                  </Link>
+                  .
+                </p>
+              ) : (
+                // Capped height with its own scroll: the vocabulary grows over
+                // time and this sits inside a two-column grid row whose other
+                // cell must not stretch to match it.
+                <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border border-brand-neutral-200 px-3 py-2.5 dark:border-brand-neutral-800">
+                  {availableMaterials.map((mat) => (
+                    <label
+                      key={mat.id}
+                      className="flex cursor-pointer select-none items-center gap-2 text-sm text-brand-neutral-700 dark:text-brand-neutral-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={materialIds.includes(mat.id)}
+                        onChange={(e) =>
+                          setMaterialIds((prev) =>
+                            e.target.checked
+                              ? [...prev, mat.id]
+                              : prev.filter((x) => x !== mat.id),
+                          )
+                        }
+                        className="size-4 rounded border-brand-neutral-300 text-brand-gold focus:ring-brand-gold"
+                      />
+                      <span>{mat.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="sm:col-span-2">

@@ -8,6 +8,7 @@ import {
   applyCatalogParams,
   buildCategoryFacets,
   buildColorFacets,
+  buildMaterialFacets,
   getPriceBounds,
   paginateProducts,
   parseCatalogQuery,
@@ -62,6 +63,7 @@ export default async function CategoriaPage({
     (facet) => facet.children,
   );
   const colorFacets = buildColorFacets(products);
+  const materialFacets = buildMaterialFacets(products);
   const priceBounds = getPriceBounds(products);
 
   const filtered = applyCatalogParams(products, query, scopedTree);
@@ -86,6 +88,7 @@ export default async function CategoriaPage({
         results={results}
         categories={categoryFacets}
         colors={colorFacets}
+        materials={materialFacets}
         priceBounds={priceBounds}
       />
     </>
