@@ -126,22 +126,36 @@ export async function DELETE(
       return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
     }
 
-    const [childCount, activeProductCount] = await Promise.all([
+    /**
+     * Counts EVERY product in the category, not just the active ones.
+     *
+     * `Product.categoryId` is NOT NULL behind an ON DELETE RESTRICT foreign
+     * key, so an inactive product blocks the delete in Postgres exactly as hard
+     * as an active one does. The old guard filtered on `active: true`, which
+     * meant a hidden product let the check pass and the delete then died on a
+     * raw FK violation reported as a generic 500 — the category stayed, and so
+     * did its parent, with nothing on screen explaining why.
+     */
+    const [childCount, productCount] = await Promise.all([
       prisma.category.count({ where: { parentId: id } }),
-      prisma.product.count({ where: { categoryId: id, active: true } }),
+      prisma.product.count({ where: { categoryId: id } }),
     ]);
+
+    const label = existing.parentId ? 'subcategoría' : 'categoría';
 
     if (childCount > 0) {
       return NextResponse.json(
-        { error: 'Esta categoría tiene subcategorías. Elimínalas primero.' },
+        {
+          error: `No se puede eliminar «${existing.name}» porque tiene ${childCount} subcategoría(s). Elimínalas primero.`,
+        },
         { status: 409 },
       );
     }
 
-    if (activeProductCount > 0) {
+    if (productCount > 0) {
       return NextResponse.json(
         {
-          error: `Esta categoría tiene ${activeProductCount} producto(s) activo(s). Reasígnalos o desactívalos primero.`,
+          error: `No se puede eliminar la ${label} «${existing.name}» porque tiene ${productCount} producto(s) asociado(s). Reasígnalos a otra ${label} o elimínalos primero.`,
         },
         { status: 409 },
       );
@@ -156,6 +170,23 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    // Backstop for anything the guards above cannot see — a row written between
+    // the count and the delete, or a relation added later. Without this, a
+    // foreign-key refusal surfaces as an opaque 500 rather than as the
+    // actionable "something still points at this" that it actually is.
+    if (
+      typeof err === 'object' &&
+      err !== null &&
+      (err as { code?: string }).code === 'P2003'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No se puede eliminar porque todavía hay elementos asociados a esta categoría.',
+        },
+        { status: 409 },
+      );
+    }
     console.error('[admin/categorias/[id]] Error al eliminar categoría:', err);
     return NextResponse.json(
       { error: 'Error al eliminar categoría' },
