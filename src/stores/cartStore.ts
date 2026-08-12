@@ -6,7 +6,19 @@ import { persist } from 'zustand/middleware';
 export interface CartItem {
   productId: string;
   name: string;
+  /** What the shopper pays per unit — already discounted. */
   price: number;
+  /**
+   * The pre-discount unit price, when this line is discounted; null/absent
+   * otherwise.
+   *
+   * The cart previously stored only the final price, so it had no way to show
+   * what the piece used to cost and the saving was invisible at exactly the
+   * moment it matters most. Optional because carts persisted in localStorage
+   * before this field existed must keep working — absent simply reads as "no
+   * discount", which is what those lines looked like anyway.
+   */
+  originalPrice?: number | null;
   imageUrl: string;
   quantity: number;
   slug: string;
@@ -44,6 +56,10 @@ interface CartStore {
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
+  /** Sum of the pre-discount prices — the "before" figure. */
+  getOriginalTotal: () => number;
+  /** What the product-level discounts take off, in pesos. 0 when none apply. */
+  getSavings: () => number;
 }
 
 function normalizeQuantity(quantity: number): number {
@@ -113,6 +129,19 @@ export const useCartStore = create<CartStore>()(
         ),
       getItemCount: () =>
         get().items.reduce((total, item) => total + item.quantity, 0),
+      getOriginalTotal: () =>
+        get().items.reduce(
+          // A line with no originalPrice was never discounted, so its own
+          // price IS its "before" figure.
+          (total, item) => total + (item.originalPrice ?? item.price) * item.quantity,
+          0,
+        ),
+      getSavings: () =>
+        get().items.reduce(
+          (total, item) =>
+            total + ((item.originalPrice ?? item.price) - item.price) * item.quantity,
+          0,
+        ),
     }),
     {
       name: 'brisal-cart',

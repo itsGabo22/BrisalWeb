@@ -120,6 +120,9 @@ export function ProductInfo({
         // This previously used the pre-discount base, which is now a real
         // difference rather than a no-op.
         price: price.final,
+        // Carried so the cart can strike it through. Null when nothing was
+        // discounted, which is what `original` already means here.
+        originalPrice: price.original,
         // The chosen colour's own first image, so the cart line shows what
         // the shopper actually picked.
         imageUrl:

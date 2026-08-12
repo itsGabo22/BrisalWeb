@@ -12,19 +12,85 @@ import { Input } from '@/components/ui/input';
 import { formatCOP } from '@/lib/utils/pricing';
 import { cartLineId, useCartStore } from '@/stores/cartStore';
 
+/** A coupon the shopper has applied. `percentage` drives the live recompute. */
+interface AppliedCoupon {
+  code: string;
+  percentage: number;
+}
+
 export default function CartPage() {
   const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
-  const total = useCartStore((state) => state.getTotal());
+  /** Subtotal AFTER product-level discounts — the cart lines hold final prices. */
+  const subtotal = useCartStore((state) => state.getTotal());
+  const originalTotal = useCartStore((state) => state.getOriginalTotal());
+  const productSavings = useCartStore((state) => state.getSavings());
 
   const [customerName, setCustomerName] = React.useState('');
   const [customerPhone, setCustomerPhone] = React.useState('');
   const [wholesaleUserId, setWholesaleUserId] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  // ── Coupon ────────────────────────────────────────────────────────────────
+  const [couponInput, setCouponInput] = React.useState('');
+  const [appliedCoupon, setAppliedCoupon] = React.useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = React.useState<string | null>(null);
+  const [isCheckingCoupon, setIsCheckingCoupon] = React.useState(false);
+
+  /**
+   * The coupon applies to the ALREADY-discounted subtotal — sequential, not
+   * additive. A 20%-off item with a 10% coupon comes to 0.9 × 0.8 = 28% off,
+   * not 30%. Recomputed here rather than trusting the amount the validate
+   * route quoted, so editing quantities after applying a code keeps the figure
+   * honest. The order route recomputes it again server-side.
+   */
+  const couponDiscount = appliedCoupon
+    ? Math.round(subtotal * (appliedCoupon.percentage / 100))
+    : 0;
+  const total = Math.max(0, subtotal - couponDiscount);
+  const totalSavings = productSavings + couponDiscount;
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+
+    setIsCheckingCoupon(true);
+    setCouponError(null);
+
+    try {
+      // Server-side only: the Coupon table denies public reads precisely so a
+      // browser cannot check codes for itself.
+      const res = await fetch('/api/cupones/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setAppliedCoupon(null);
+        setCouponError(data?.error ?? 'Cupón no válido o expirado.');
+        return;
+      }
+
+      setAppliedCoupon({ code: data.code, percentage: data.percentage });
+      setCouponInput('');
+    } catch {
+      setCouponError('No se pudo validar el cupón. Intenta de nuevo.');
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  };
 
   React.useEffect(() => {
     void Promise.resolve().then(async () => {
@@ -81,6 +147,9 @@ export default function CartPage() {
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           wholesaleUserId,
+          // The server re-validates and re-prices this — the amount above is
+          // never trusted. Sending the code is what lets it do so.
+          couponCode: appliedCoupon?.code ?? null,
         }),
       });
 
@@ -163,9 +232,31 @@ export default function CartPage() {
                           Color: {item.color}
                         </p>
                       )}
-                      <p className="text-brand-neutral-600 mt-1 font-body text-sm">
-                        {formatCOP(item.price)} unidad
-                      </p>
+                      {/* Struck original + final + badge, matching the
+                          product card treatment. `originalPrice` is only set
+                          when the line is actually discounted. */}
+                      {item.originalPrice && item.originalPrice > item.price ? (
+                        <p className="mt-1 flex flex-wrap items-center gap-1.5 font-body text-sm">
+                          <span className="text-brand-text-soft line-through">
+                            {formatCOP(item.originalPrice)}
+                          </span>
+                          <span className="text-brand-neutral-900 font-medium">
+                            {formatCOP(item.price)}
+                          </span>
+                          <span className="bg-brand-gold/15 text-brand-gold-deep rounded-full px-1.5 py-0.5 text-[11px] font-medium">
+                            -
+                            {Math.round(
+                              ((item.originalPrice - item.price) / item.originalPrice) * 100,
+                            )}
+                            %
+                          </span>
+                          <span className="text-brand-neutral-500">unidad</span>
+                        </p>
+                      ) : (
+                        <p className="text-brand-neutral-600 mt-1 font-body text-sm">
+                          {formatCOP(item.price)} unidad
+                        </p>
+                      )}
 
                       <div className="mt-4 flex items-center gap-3">
                         <div
@@ -213,6 +304,11 @@ export default function CartPage() {
                       <p className="text-brand-neutral-500 font-body text-sm">
                         Subtotal
                       </p>
+                      {item.originalPrice && item.originalPrice > item.price && (
+                        <p className="text-brand-text-soft font-body text-sm line-through">
+                          {formatCOP(item.originalPrice * item.quantity)}
+                        </p>
+                      )}
                       <p className="text-brand-neutral-900 font-body text-lg font-medium">
                         {formatCOP(item.price * item.quantity)}
                       </p>
@@ -255,6 +351,108 @@ export default function CartPage() {
                   className="bg-brand-gold/35 my-5 h-px"
                   aria-hidden="true"
                 />
+
+                {/* ── Coupon ─────────────────────────────────────────────── */}
+                <div className="mb-4">
+                  {appliedCoupon ? (
+                    <div className="border-brand-gold/40 bg-brand-gold/10 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                      <span className="min-w-0 font-body text-sm">
+                        <span className="text-brand-gold-deep font-medium">
+                          {appliedCoupon.code}
+                        </span>
+                        <span className="text-brand-neutral-600">
+                          {' '}
+                          — {appliedCoupon.percentage}% aplicado
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-brand-neutral-500 shrink-0 rounded font-body text-xs underline underline-offset-2 transition-colors hover:text-red-600"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label
+                        htmlFor="coupon-code"
+                        className="text-brand-neutral-700 mb-1.5 block font-body text-sm"
+                      >
+                        ¿Tienes un cupón?
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="coupon-code"
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          // Enter must not submit the order form below it.
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void applyCoupon();
+                            }
+                          }}
+                          placeholder="BRISAL10"
+                          className="border-brand-neutral-200 text-brand-neutral-900 placeholder-brand-neutral-400 focus:border-brand-gold focus:ring-brand-gold min-w-0 flex-1 rounded-md border bg-white px-3 py-2 font-body text-sm uppercase focus:ring-1 focus:outline-none"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => void applyCoupon()}
+                          disabled={isCheckingCoupon || !couponInput.trim()}
+                        >
+                          {isCheckingCoupon ? '…' : 'Aplicar'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+
+                  {couponError && (
+                    <p className="mt-1.5 font-body text-xs text-red-600" role="alert">
+                      {couponError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Savings, itemised so the shopper can see where each part
+                    came from — the automatic discount and the coupon are two
+                    different offers and reading as one total hides both. */}
+                {(productSavings > 0 || couponDiscount > 0) && (
+                  <div className="mb-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-4 font-body text-sm">
+                      <span className="text-brand-neutral-600">Subtotal</span>
+                      <span className="text-brand-neutral-700">
+                        {formatCOP(productSavings > 0 ? originalTotal : subtotal)}
+                      </span>
+                    </div>
+                    {productSavings > 0 && (
+                      <div className="flex items-center justify-between gap-4 font-body text-sm">
+                        <span className="text-brand-neutral-600">Descuentos</span>
+                        <span className="text-brand-gold-deep">
+                          −{formatCOP(productSavings)}
+                        </span>
+                      </div>
+                    )}
+                    {couponDiscount > 0 && appliedCoupon && (
+                      <div className="flex items-center justify-between gap-4 font-body text-sm">
+                        <span className="text-brand-neutral-600">
+                          Cupón {appliedCoupon.code}
+                        </span>
+                        <span className="text-brand-gold-deep">
+                          −{formatCOP(couponDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-4 font-body text-sm font-medium">
+                      <span className="text-brand-gold-deep">Ahorras</span>
+                      <span className="text-brand-gold-deep">
+                        {formatCOP(totalSavings)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-brand-neutral-900 font-body text-base font-medium">
