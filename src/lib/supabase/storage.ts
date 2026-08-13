@@ -85,16 +85,45 @@ export async function processAndUploadImage(
   return data.publicUrl;
 }
 
-/** Uploads a video file as-is (no processing) to Supabase Storage. Returns the public URL. */
+/**
+ * Uploads a video as-is to Supabase Storage. Returns the public URL.
+ *
+ * sharp cannot process video, so there is no encode step — but the Blob wrap
+ * below is NOT part of that step and must not be skipped with it. The undici
+ * corruption this guards against is a property of using a raw Buffer as a
+ * fetch body on Node 24, so it applies to ANY binary upload; video is if
+ * anything the worse case, because a corrupted frame in a 30MB file will not
+ * fail loudly the way a broken image does — it just plays wrong.
+ *
+ * This path was passing the Buffer straight through, which is exactly the bug
+ * AGENTS.md documents for images.
+ */
 export async function uploadVideo(
   buffer: Buffer,
-  { bucket, path }: { bucket: string; path: string },
+  { bucket, path, upsert = false }: { bucket: string; path: string; upsert?: boolean },
   contentType: string,
 ): Promise<string> {
   const supabase = createAdminClient();
+
+  /**
+   * A zero-copy view, rather than passing the Buffer straight to Blob.
+   *
+   * Node's `Buffer` is typed as possibly SharedArrayBuffer-backed, which is not
+   * a valid `BlobPart`. Every buffer reaching this function comes from
+   * `File.arrayBuffer()`, which is always plain-ArrayBuffer-backed, so the
+   * narrowing is safe — and a view avoids copying tens of megabytes of video
+   * just to satisfy the type.
+   */
+  const bytes = new Uint8Array(
+    buffer.buffer as ArrayBuffer,
+    buffer.byteOffset,
+    buffer.byteLength,
+  );
+  const uploadBody = new Blob([bytes], { type: contentType });
+
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, buffer, { contentType, upsert: false });
+    .upload(path, uploadBody, { contentType, upsert });
 
   if (error) throw error;
 

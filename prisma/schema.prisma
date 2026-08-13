@@ -304,6 +304,20 @@ model SiteConfig {
   /// shipped with, which is a valid finished look rather than a broken one.
   brandStatementImageUrl String?
   wholesaleImageUrl      String?
+  /// The video+text band that replaced the flat "Cada pieza, una historia."
+  /// statement. Named after the SECTION rather than the copy, matching the
+  /// convention above, so rewording it doesn't strand the columns.
+  ///
+  /// All three nullable and independent: the section falls back to its
+  /// original centred statement when the title/body are unset, and to a still
+  /// frame treatment when only the video is missing. A half-configured section
+  /// is a valid state, not a broken one.
+  videoSectionTitle    String?
+  videoSectionBody     String?
+  videoSectionVideoUrl String?
+  /// Optional background video for the wholesale band. Null keeps whatever
+  /// `wholesaleImageUrl` (or the flat gradient) already provides.
+  wholesaleVideoUrl    String?
   updatedAt          DateTime @updatedAt
 }
 

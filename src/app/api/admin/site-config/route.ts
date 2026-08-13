@@ -1,14 +1,44 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { deleteFromStorageByUrl, processAndUploadImage } from '@/lib/supabase/storage';
+import {
+  deleteFromStorageByUrl,
+  processAndUploadImage,
+  uploadVideo,
+} from '@/lib/supabase/storage';
 
 interface SiteConfigFields {
   announcementText?: string;
   announcementActive?: boolean;
   brandStatementImageUrl?: string;
   wholesaleImageUrl?: string;
+  videoSectionTitle?: string;
+  videoSectionBody?: string;
+  videoSectionVideoUrl?: string;
+  wholesaleVideoUrl?: string;
 }
+
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
+
+/**
+ * 40MB per section video.
+ *
+ * Lower than the hero's 100MB on purpose. The hero is a single, expected,
+ * above-the-fold asset; these are decorative loops and there can be TWO of them
+ * on the homepage at once, so the cap is what stops the page from shipping
+ * 200MB of video. 40MB still comfortably holds a 15-25s 1080p H.264 loop at a
+ * good bitrate, which is the length these sections are for.
+ */
+const MAX_SECTION_VIDEO_BYTES = 40 * 1024 * 1024;
+
+/**
+ * The two admin-uploadable section videos, as data rather than duplicated
+ * blocks — the same shape `PARALLAX_SLOTS` uses for the backdrops.
+ */
+const VIDEO_SLOTS = [
+  { column: 'videoSectionVideoUrl', formKey: 'videoSectionFile', slug: 'video-section' },
+  { column: 'wholesaleVideoUrl', formKey: 'wholesaleVideoFile', slug: 'wholesale' },
+] as const;
 
 /**
  * The two parallax backdrops, as data rather than as two copy-pasted blocks.
@@ -78,6 +108,53 @@ export async function PATCH(request: Request) {
           maxWidth: 1920,
           quality: 82,
         });
+
+        const previous = existing?.[slot.column];
+        if (previous) await deleteFromStorageByUrl('hero-media', previous);
+
+        data[slot.column] = url;
+      }
+
+      // Section copy. Only assigned when the field was actually sent, so
+      // uploading a video cannot blank a title the client already wrote.
+      for (const key of ['videoSectionTitle', 'videoSectionBody'] as const) {
+        const value = formData.get(key);
+        if (typeof value === 'string') data[key] = value.trim();
+      }
+
+      /**
+       * Section videos. No sharp step — sharp cannot process video — but
+       * `uploadVideo` still Blob-wraps the buffer, which is the part that
+       * matters: the undici corruption is about using a raw Buffer as a fetch
+       * body, not about image encoding.
+       */
+      for (const slot of VIDEO_SLOTS) {
+        const file = formData.get(slot.formKey);
+        if (!(file instanceof File) || file.size === 0) continue;
+
+        if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+          return NextResponse.json(
+            { error: 'El video debe ser MP4 o WebM' },
+            { status: 400 },
+          );
+        }
+        if (file.size > MAX_SECTION_VIDEO_BYTES) {
+          return NextResponse.json(
+            { error: 'El video no puede superar 40MB' },
+            { status: 400 },
+          );
+        }
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const ext = file.type === 'video/webm' ? 'webm' : 'mp4';
+        // Timestamped rather than overwritten in place, for the same reason
+        // the backdrops are: these sit behind a CDN and reusing the path means
+        // uploading a new video and still seeing the old one.
+        const url = await uploadVideo(
+          buffer,
+          { bucket: 'hero-media', path: `sections/${slot.slug}-${Date.now()}.${ext}` },
+          file.type,
+        );
 
         const previous = existing?.[slot.column];
         if (previous) await deleteFromStorageByUrl('hero-media', previous);
