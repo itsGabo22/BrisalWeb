@@ -435,6 +435,18 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
+  /* ── Copy sitting directly on client media ───────────────────────────
+     Carries legibility on the TEXT rather than by washing the picture
+     behind it. A shadow costs nothing visually where the backdrop is
+     already dark, and does the work where it happens to be bright — the
+     opposite trade-off to a flat scrim, which pays everywhere and mutes
+     the whole image to protect a few lines. */
+  .ink-on-media {
+    text-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.55),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+
   /* Reduced motion shortens the crossfade; it does NOT remove it. The
      state change carries meaning — it is the signal that the header has
      left the hero — so suppressing it entirely would lose information,
