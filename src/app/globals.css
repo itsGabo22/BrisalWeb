@@ -92,6 +92,10 @@
   --font-wordmark: var(--font-playfair);
   --font-sans: var(--font-jost);
   --font-serif: var(--font-playfair);
+  /* Decorative script, used by exactly one line (the wholesale banner's
+     "Somos mayoristas"). Registered so `font-script` exists as a utility, not
+     as an invitation to reach for a third typeface elsewhere. */
+  --font-script: var(--font-great-vibes);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
