@@ -33,8 +33,8 @@ interface FocalFrameProps {
 }
 
 /**
- * One device frame showing the real media cropped exactly as the live hero will
- * crop it, with a draggable focal marker on top.
+ * One device frame showing the real media cropped exactly as the live section
+ * will crop it, with a draggable focal marker on top.
  *
  * The marker means "keep THIS part of the picture": it maps 1:1 to
  * `object-position`, where `70% 30%` lines the point 70% across / 30% down the
@@ -151,7 +151,7 @@ function FocalFrame({
         {url ? (
           <>
             {kind === 'video' ? (
-              /* autoplay + muted + loop + playsInline mirrors the live hero, so
+              /* autoplay + muted + loop + playsInline mirrors the live site, so
                  the admin frames the video on the same moment shoppers see. The
                  poster covers the gap before the first frame decodes. */
               <video
@@ -223,12 +223,12 @@ function FocalFrame({
   );
 }
 
-export interface HeroFocalPreviewProps {
+export interface MediaFocalPreviewProps {
   /** Media the desktop frame shows — the desktop image, or the video. */
   desktopUrl: string | null;
   /**
    * Media the mobile frame shows. Pass the desktop media when no dedicated
-   * mobile file exists, exactly as the live hero falls back.
+   * mobile file exists, exactly as the live section falls back.
    */
   mobileUrl: string | null;
   kind: 'image' | 'video';
@@ -239,14 +239,26 @@ export interface HeroFocalPreviewProps {
   mobile: FocalPoint;
   onDesktopChange: (next: FocalPoint) => void;
   onMobileChange: (next: FocalPoint) => void;
+  /**
+   * Frame shapes, defaulting to the full-bleed hero's. A preview is only
+   * trustworthy if it crops at the ratio the real section crops at, and not
+   * every band is full-screen — the wholesale band is a short content strip,
+   * so it passes its own.
+   */
+  desktopAspectClassName?: string;
+  mobileAspectClassName?: string;
 }
 
 /**
  * The two device frames, side by side, each with its own independent focal
  * point — which is the whole point: a portrait phone crop of a landscape photo
  * usually has to keep a different part of it than the desktop crop does.
+ *
+ * Deliberately shared rather than copied per section: this is ~200 lines of
+ * pointer-capture, keyboard-nudge and reticle behaviour, and a second copy
+ * would drift from the first the moment either is touched.
  */
-export function HeroFocalPreview({
+export function MediaFocalPreview({
   desktopUrl,
   mobileUrl,
   kind,
@@ -256,7 +268,9 @@ export function HeroFocalPreview({
   mobile,
   onDesktopChange,
   onMobileChange,
-}: HeroFocalPreviewProps) {
+  desktopAspectClassName = 'aspect-video',
+  mobileAspectClassName = 'aspect-[9/16]',
+}: MediaFocalPreviewProps) {
   return (
     <div className="rounded-lg border border-brand-neutral-100 bg-brand-neutral-50/60 p-4 dark:border-brand-neutral-800 dark:bg-brand-neutral-950/40">
       <div className="flex items-center gap-1.5">
@@ -276,7 +290,7 @@ export function HeroFocalPreview({
           label="Escritorio"
           hint="Sin archivo"
           icon={Monitor}
-          aspectClassName="aspect-video"
+          aspectClassName={desktopAspectClassName}
           kind={kind}
           url={desktopUrl}
           posterUrl={posterUrl}
@@ -288,7 +302,7 @@ export function HeroFocalPreview({
           label="Móvil"
           hint="Sin archivo"
           icon={Smartphone}
-          aspectClassName="aspect-[9/16]"
+          aspectClassName={mobileAspectClassName}
           kind={kind}
           url={mobileUrl}
           posterUrl={posterUrl}

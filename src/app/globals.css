@@ -488,6 +488,25 @@
     }
   }
 
+  /* ── Section media focal point ──────────────────────────────────────
+     The same mechanism as `.hero-focal` above, for bands other than the
+     hero — currently the wholesale strip, whose background is likewise
+     admin-uploaded and cropped differently on each breakpoint.
+
+     A separate class with its own custom properties rather than reusing
+     `.hero-focal`: the hero's rule is consumed by HeroSection, which is
+     signed off and off-limits, and a shared name would mean editing it
+     to rename its variables. Six lines of CSS is the cheaper price. */
+  .media-focal {
+    object-position: var(--media-pos-mobile, 50% 50%);
+  }
+
+  @media (min-width: 640px) {
+    .media-focal {
+      object-position: var(--media-pos-desktop, 50% 50%);
+    }
+  }
+
   /* ── Hero CTA — frosted glass ───────────────────────────────────────
      Written by hand rather than assembled from utilities for three
      reasons the utility classes can't cover:

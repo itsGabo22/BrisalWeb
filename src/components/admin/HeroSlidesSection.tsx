@@ -21,9 +21,9 @@ import { Modal } from '@/components/ui/modal';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
 import {
   CENTER,
-  HeroFocalPreview,
+  MediaFocalPreview,
   type FocalPoint,
-} from '@/components/admin/HeroFocalPreview';
+} from '@/components/admin/MediaFocalPreview';
 import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface HeroSlide {
@@ -474,7 +474,7 @@ export function HeroSlidesSection() {
           {/* Sits directly under the upload cards: the admin picks a file, then
               immediately sees and adjusts how it will be cropped, without
               having to save and go look at the homepage. */}
-          <HeroFocalPreview
+          <MediaFocalPreview
             kind={previewKind}
             desktopUrl={previewDesktopUrl}
             mobileUrl={previewMobileUrl}

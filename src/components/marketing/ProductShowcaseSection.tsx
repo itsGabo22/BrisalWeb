@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 
 import { ProductGrid } from '@/components/catalog/ProductGrid';
+import { ProductCarousel } from '@/components/catalog/ProductCarousel';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
 
@@ -16,6 +17,15 @@ export interface ProductShowcaseSectionProps {
   viewAllHref: string;
   /** Alternates the subtle background tint so sections read as distinct zones. */
   tint?: 'pearl' | 'warm';
+  /**
+   * How the products are laid out.
+   *
+   * A prop on the existing section rather than a second component, so both
+   * showcases keep exactly one definition of the eyebrow/heading/rule/"Ver
+   * todos" chrome and cannot drift apart. Defaults to 'grid', which is what
+   * Novedades passes — that section is byte-for-byte unchanged.
+   */
+  layout?: 'grid' | 'carousel';
 }
 
 export function ProductShowcaseSection({
@@ -24,6 +34,7 @@ export function ProductShowcaseSection({
   products,
   viewAllHref,
   tint = 'pearl',
+  layout = 'grid',
 }: ProductShowcaseSectionProps) {
   const sectionRef = React.useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: '-60px' });
@@ -69,7 +80,11 @@ export function ProductShowcaseSection({
           </div>
         </div>
 
-        <ProductGrid products={products} />
+        {layout === 'carousel' ? (
+          <ProductCarousel products={products} />
+        ) : (
+          <ProductGrid products={products} />
+        )}
 
         <div className="mt-12 flex justify-center">
           <Link

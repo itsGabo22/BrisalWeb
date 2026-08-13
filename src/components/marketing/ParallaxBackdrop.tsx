@@ -28,6 +28,14 @@ const TRAVEL_PERCENT = 9;
 interface ParallaxBackdropProps {
   src: string;
   /**
+   * Phone-specific crop of the same backdrop. Null falls back to `src`, which
+   * is then framed by the MOBILE focal point rather than the desktop one.
+   */
+  mobileSrc?: string | null;
+  /** `object-position` per breakpoint, e.g. `"70% 30%"`. Defaults to centre. */
+  desktopPosition?: string;
+  mobilePosition?: string;
+  /**
    * Scrim laid over the photo. Required in practice, not decoration: every
    * band using this puts dark copy on top, and the photo is client-uploaded
    * and therefore of unknown brightness.
@@ -51,9 +59,24 @@ interface ParallaxBackdropProps {
  * it is absolutely inset into the band it decorates, so its own box already is
  * the band, and self-measuring keeps the call site to a single line.
  */
-export function ParallaxBackdrop({ src, overlayClassName, priority }: ParallaxBackdropProps) {
+export function ParallaxBackdrop({
+  src,
+  mobileSrc,
+  desktopPosition,
+  mobilePosition,
+  overlayClassName,
+  priority,
+}: ParallaxBackdropProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+
+  // `.media-focal` reads these and switches at 640px — the same breakpoint the
+  // sm: classes below swap the two <Image> elements on. The cast is needed
+  // because React.CSSProperties has no index signature for `--*` names.
+  const focalVars = {
+    '--media-pos-desktop': desktopPosition ?? '50% 50%',
+    '--media-pos-mobile': mobilePosition ?? '50% 50%',
+  } as React.CSSProperties;
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -82,7 +105,27 @@ export function ParallaxBackdrop({ src, overlayClassName, priority }: ParallaxBa
           ...(reducedMotion ? null : { y }),
         }}
       >
-        <NextImage src={src} alt="" fill sizes="100vw" priority={priority} className="object-cover" />
+        {/* Two elements rather than one, so a phone downloads only the phone
+            file when a dedicated one exists. With no mobile asset both render
+            the same `src`, and the only difference is the focal point. */}
+        <NextImage
+          src={src}
+          alt=""
+          fill
+          sizes="100vw"
+          priority={priority}
+          className="media-focal hidden object-cover sm:block"
+          style={focalVars}
+        />
+        <NextImage
+          src={mobileSrc || src}
+          alt=""
+          fill
+          sizes="100vw"
+          priority={priority}
+          className="media-focal object-cover sm:hidden"
+          style={focalVars}
+        />
       </motion.div>
 
       {overlayClassName && <div className={cn('absolute inset-0', overlayClassName)} />}

@@ -94,10 +94,21 @@ export default async function HomePage() {
         products={bestSellers.slice(0, SHOWCASE_LIMIT)}
         viewAllHref="/catalogo"
         tint="warm"
+        // Only this showcase slides. Novedades stays a static grid — two
+        // auto-moving rails stacked on one page compete for attention and
+        // neither reads as the highlight.
+        layout="carousel"
       />
       <WholesaleCallout
+        bgType={siteConfig?.wholesaleBgType}
         backgroundUrl={siteConfig?.wholesaleImageUrl}
+        backgroundUrlMobile={siteConfig?.wholesaleImageUrlMobile}
         videoUrl={siteConfig?.wholesaleVideoUrl}
+        videoUrlMobile={siteConfig?.wholesaleVideoUrlMobile}
+        posX={siteConfig?.wholesaleBgPosX}
+        posY={siteConfig?.wholesaleBgPosY}
+        posXMobile={siteConfig?.wholesaleBgPosXMobile}
+        posYMobile={siteConfig?.wholesaleBgPosYMobile}
       />
       {/* Directly above the footer: the last thing a visitor reads before the
           page closes is someone else vouching for the brand. */}

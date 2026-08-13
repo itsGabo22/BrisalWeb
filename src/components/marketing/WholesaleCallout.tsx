@@ -6,28 +6,64 @@ import { motion, useInView, useReducedMotion } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { ParallaxBackdrop } from '@/components/marketing/ParallaxBackdrop';
+import { objectPositionOf } from '@/lib/utils/hero-focal';
 import { cn } from '@/lib/utils';
 
 interface WholesaleCalloutProps {
-  /** Admin parallax backdrop. Null keeps the flat cream→sand gradient. */
+  /**
+   * Which background the admin chose: 'VIDEO', 'IMAGE', or anything else for
+   * none. This is the single source of truth now — the band no longer infers
+   * it from which URLs happen to be set, because that made an uploaded image
+   * silently invisible behind a video nobody remembered uploading.
+   */
+  bgType?: string | null;
+  /** Admin parallax backdrop, used when bgType is 'IMAGE'. */
   backgroundUrl?: string | null;
-  /** Optional background loop. Takes precedence over the image when set. */
+  backgroundUrlMobile?: string | null;
+  /** Background loop, used when bgType is 'VIDEO'. */
   videoUrl?: string | null;
+  videoUrlMobile?: string | null;
+  /** Focal point per breakpoint, 0-100. Centre when unset. */
+  posX?: number | null;
+  posY?: number | null;
+  posXMobile?: number | null;
+  posYMobile?: number | null;
 }
 
-export function WholesaleCallout({ backgroundUrl, videoUrl }: WholesaleCalloutProps) {
+export function WholesaleCallout({
+  bgType,
+  backgroundUrl,
+  backgroundUrlMobile,
+  videoUrl,
+  videoUrlMobile,
+  posX,
+  posY,
+  posXMobile,
+  posYMobile,
+}: WholesaleCalloutProps) {
   const ref = React.useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-60px' });
   const reducedMotion = useReducedMotion();
 
-  const hasVideo = Boolean(videoUrl);
+  /**
+   * The chosen type AND a file to go with it. Type alone isn't enough: an
+   * admin can select «Video» and save before uploading, and the band has to
+   * fall back to its gradient rather than render an empty <video>.
+   */
+  const hasVideo = bgType === 'VIDEO' && Boolean(videoUrl);
+  const hasImage = bgType === 'IMAGE' && Boolean(backgroundUrl);
   /**
    * Whether real client media is behind the copy, which decides BOTH the scrim
    * and the ink. The two cannot be chosen independently: dark copy needs a
    * light ground, and a light ground over a photograph is exactly the wash
    * that was hiding it.
    */
-  const hasMedia = hasVideo || Boolean(backgroundUrl);
+  const hasMedia = hasVideo || hasImage;
+
+  const focalVars = {
+    '--media-pos-desktop': objectPositionOf(posX, posY),
+    '--media-pos-mobile': objectPositionOf(posXMobile, posYMobile),
+  } as React.CSSProperties;
 
   /**
    * Scrim over client media.
@@ -55,24 +91,47 @@ export function WholesaleCallout({ backgroundUrl, videoUrl }: WholesaleCalloutPr
       aria-labelledby="wholesale-heading"
       className="relative overflow-hidden bg-brand-sand px-6 py-24 md:py-32"
     >
-      {/* Three grounds, in priority order: video, then photo, then the flat
-          gradient this band shipped with. Each is a finished look on its own,
-          so an unconfigured section never reads as missing. */}
+      {/* Three grounds, chosen by the admin's `bgType` rather than by implicit
+          precedence. Each is a finished look on its own, so an unconfigured
+          section never reads as missing. */}
       {hasVideo ? (
-        <video
-          src={videoUrl as string}
-          // muted + playsInline are both required for iOS to autoplay at all.
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          aria-hidden="true"
-        />
-      ) : backgroundUrl ? (
+        /* Two <video> elements so a phone downloads only the phone file when
+           one exists. With no mobile cut both point at the desktop file and
+           `.media-focal` alone re-frames it — which is why the fallback is a
+           second element rather than a single shared one. */
+        <>
+          <video
+            src={videoUrl as string}
+            // muted + playsInline are both required for iOS to autoplay at all.
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="media-focal pointer-events-none absolute inset-0 hidden h-full w-full object-cover sm:block"
+            style={focalVars}
+            aria-hidden="true"
+          />
+          <video
+            key={videoUrlMobile || videoUrl}
+            src={videoUrlMobile || (videoUrl as string)}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="media-focal pointer-events-none absolute inset-0 h-full w-full object-cover sm:hidden"
+            style={focalVars}
+            aria-hidden="true"
+          />
+        </>
+      ) : hasImage ? (
         // No overlay prop: the shared scrim below covers both media paths, so
         // there is one place that decides how much of the picture shows.
-        <ParallaxBackdrop src={backgroundUrl} />
+        <ParallaxBackdrop
+          src={backgroundUrl as string}
+          mobileSrc={backgroundUrlMobile}
+          desktopPosition={objectPositionOf(posX, posY)}
+          mobilePosition={objectPositionOf(posXMobile, posYMobile)}
+        />
       ) : (
         <div
           className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-cream via-brand-sand to-brand-sand"
