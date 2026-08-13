@@ -75,7 +75,12 @@ export default async function HomePage() {
         <TrustBar />
         <CategoryShowcase categories={rootCategories} />
       </HeroRevealStage>
-      <BrandStatement backgroundUrl={siteConfig?.brandStatementImageUrl} />
+      <BrandStatement
+        title={siteConfig?.videoSectionTitle}
+        body={siteConfig?.videoSectionBody}
+        videoUrl={siteConfig?.videoSectionVideoUrl}
+        backgroundUrl={siteConfig?.brandStatementImageUrl}
+      />
       <ProductShowcaseSection
         eyebrow="Recién llegado"
         title="Novedades"
@@ -90,7 +95,10 @@ export default async function HomePage() {
         viewAllHref="/catalogo"
         tint="warm"
       />
-      <WholesaleCallout backgroundUrl={siteConfig?.wholesaleImageUrl} />
+      <WholesaleCallout
+        backgroundUrl={siteConfig?.wholesaleImageUrl}
+        videoUrl={siteConfig?.wholesaleVideoUrl}
+      />
       {/* Directly above the footer: the last thing a visitor reads before the
           page closes is someone else vouching for the brand. */}
       {showReviews && <ReviewsShowcase reviews={showcaseReviews} />}
