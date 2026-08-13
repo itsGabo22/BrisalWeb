@@ -79,7 +79,7 @@ export default async function HomePage() {
         title={siteConfig?.videoSectionTitle}
         body={siteConfig?.videoSectionBody}
         videoUrl={siteConfig?.videoSectionVideoUrl}
-        backgroundUrl={siteConfig?.brandStatementImageUrl}
+        linkUrl={siteConfig?.videoSectionLinkUrl}
       />
       <ProductShowcaseSection
         eyebrow="Recién llegado"

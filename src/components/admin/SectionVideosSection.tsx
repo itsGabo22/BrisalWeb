@@ -10,6 +10,7 @@ interface SiteConfigData {
   videoSectionTitle: string | null;
   videoSectionBody: string | null;
   videoSectionVideoUrl: string | null;
+  videoSectionLinkUrl: string | null;
   wholesaleVideoUrl: string | null;
 }
 
@@ -22,6 +23,7 @@ export function SectionVideosSection() {
   const [wholesaleVideoFile, setWholesaleVideoFile] = React.useState<File | null>(null);
   const [title, setTitle] = React.useState('');
   const [body, setBody] = React.useState('');
+  const [linkUrl, setLinkUrl] = React.useState('');
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -32,6 +34,7 @@ export function SectionVideosSection() {
     setConfig(next);
     setTitle(next.videoSectionTitle ?? '');
     setBody(next.videoSectionBody ?? '');
+    setLinkUrl(next.videoSectionLinkUrl ?? '');
   }, []);
 
   const loadConfig = React.useCallback(async () => {
@@ -63,6 +66,7 @@ export function SectionVideosSection() {
     const formData = new FormData();
     formData.append('videoSectionTitle', title);
     formData.append('videoSectionBody', body);
+    formData.append('videoSectionLinkUrl', linkUrl);
     if (videoSectionFile) formData.append('videoSectionFile', videoSectionFile);
     if (wholesaleVideoFile) formData.append('wholesaleVideoFile', wholesaleVideoFile);
 
@@ -87,7 +91,8 @@ export function SectionVideosSection() {
   const hasChanges =
     Boolean(videoSectionFile || wholesaleVideoFile) ||
     title !== (config?.videoSectionTitle ?? '') ||
-    body !== (config?.videoSectionBody ?? '');
+    body !== (config?.videoSectionBody ?? '') ||
+    linkUrl !== (config?.videoSectionLinkUrl ?? '');
 
   return (
     <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900">
@@ -157,6 +162,30 @@ export function SectionVideosSection() {
                 />
                 <p className="mt-1 text-[11px] text-brand-neutral-400">
                   Si dejas estos campos vacíos, se muestran los textos por defecto.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="video-section-link"
+                  className="mb-1 block font-medium text-brand-neutral-700 dark:text-brand-neutral-300"
+                >
+                  Enlace de la sección (opcional)
+                </label>
+                <input
+                  id="video-section-link"
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="/catalogo/aretes"
+                  className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 font-mono text-brand-neutral-850 focus:ring-1 focus:ring-brand-gold focus:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+                />
+                <p className="mt-1 text-[11px] text-brand-neutral-400">
+                  Ruta interna del sitio. Ejemplos:{' '}
+                  <code className="text-brand-neutral-500">/catalogo</code>,{' '}
+                  <code className="text-brand-neutral-500">/catalogo/aretes</code>,{' '}
+                  <code className="text-brand-neutral-500">/catalogo?tag=nuevo</code>.
+                  Si lo dejas vacío, la sección no será clicable.
                 </p>
               </div>
             </div>
