@@ -39,6 +39,56 @@ function useIsSectionActive() {
   );
 }
 
+/**
+ * The homepage hero, which the header sits over until it is scrolled past.
+ * Matched by id rather than by a ref handed down, because the two live in
+ * different subtrees — the header comes from SiteChrome in the root layout,
+ * the hero from the page itself.
+ */
+const HERO_ELEMENT_ID = 'home-hero';
+
+/** Header height in px at each breakpoint — mirrors `h-16` / `md:h-20`. */
+const HEADER_H_MOBILE = 64;
+const HEADER_H_DESKTOP = 80;
+
+/**
+ * Where `.hero-blend-bottom` begins fading the hero to cream. MUST match the
+ * first stop of that gradient in globals.css.
+ */
+const HERO_BLEND_START = 0.82;
+
+/**
+ * The scroll offset at which the header must stop being transparent.
+ *
+ * NOT the hero's bottom edge. The hero's final 18% is the gradient dissolving
+ * it into brand-cream, so a header that stayed transparent until the very
+ * bottom would spend that whole stretch rendering white text over cream —
+ * unreadable, and precisely the region the blend makes lightest. The trigger is
+ * therefore the moment the header's own bottom edge reaches the START of the
+ * blend, which is the last instant it is still over unambiguously dark
+ * photography.
+ *
+ * Measured from the live DOM rather than assumed from the viewport height: the
+ * hero is `max(600px, 100svh)`, and the announcement bar above it may or may
+ * not be present, so arithmetic on window.innerHeight alone would be wrong on
+ * short viewports and whenever the client switches the bar off.
+ */
+function measureHeroThreshold(headerEl: HTMLElement | null): number | null {
+  if (typeof document === 'undefined') return null;
+
+  const hero = document.getElementById(HERO_ELEMENT_ID);
+  if (!hero) return null;
+
+  const rect = hero.getBoundingClientRect();
+  const heroTop = rect.top + window.scrollY;
+  const blendStart = heroTop + rect.height * HERO_BLEND_START;
+  const headerHeight =
+    headerEl?.offsetHeight ??
+    (window.innerWidth >= 768 ? HEADER_H_DESKTOP : HEADER_H_MOBILE);
+
+  return Math.max(0, blendStart - headerHeight);
+}
+
 interface HeaderProps {
   categories: Category[];
   announcementText: string;
@@ -47,7 +97,16 @@ interface HeaderProps {
 
 export function Header({ categories, announcementText, announcementActive }: HeaderProps) {
   const isSectionActive = useIsSectionActive();
+  const pathname = usePathname();
   const { scrollY } = usePageScroll();
+
+  /**
+   * The merged transparent-over-hero treatment is HOMEPAGE ONLY. Every other
+   * route keeps the header it already had, unchanged — there is no hero to sit
+   * over, and a transparent bar would leave white-on-cream text unreadable.
+   */
+  const isHome = pathname === '/';
+
   // Lazily read the CURRENT scroll position instead of hardcoding `false`.
   // Header remounts fresh every time SiteChrome swaps between a chrome-less
   // auth route (e.g. /login) and a route with chrome — on back-navigation to
@@ -56,14 +115,96 @@ export function Header({ categories, announcementText, announcementActive }: Hea
   // the next scroll `change` event corrected it, producing a visible
   // flash/seam of page content behind the sticky header.
   const [scrolled, setScrolled] = React.useState(() => scrollY.get() > 20);
+  /**
+   * Same reasoning, same bug: initialised from the real scroll position and the
+   * real hero geometry, never from a hardcoded default. Coming back to an
+   * already-scrolled homepage must paint the glass header on the first frame,
+   * not flash a transparent one with white text over cream content.
+   */
+  const [pastHero, setPastHero] = React.useState(() => {
+    if (!isHome) return false;
+    const threshold = measureHeroThreshold(null);
+    return threshold !== null && scrollY.get() >= threshold;
+  });
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
+  // Held in a ref, not state: the scroll handler below has to read the CURRENT
+  // threshold on every frame, and a state value would be captured stale.
+  const heroThresholdRef = React.useRef<number | null>(null);
+
+  /**
+   * Navigating into or out of the homepage resets the state, because Next
+   * scrolls to the top on route change. Adjusted DURING RENDER rather than in
+   * an effect — the same pattern `CatalogFilters` uses to re-sync its draft —
+   * so React re-runs this component immediately with the corrected value and
+   * never commits a wrong header state to the DOM.
+   */
+  const [syncedIsHome, setSyncedIsHome] = React.useState(isHome);
+  if (syncedIsHome !== isHome) {
+    setSyncedIsHome(isHome);
+    setPastHero(false);
+  }
+
+  /**
+   * Keeps the threshold in step with the hero's actual height. It changes on
+   * rotation, on desktop resize, and when a `100svh` hero settles after the
+   * mobile browser chrome finishes collapsing.
+   *
+   * The effect body only writes the REF. `pastHero` is already correct on
+   * mount from the lazy initialiser above, and is thereafter updated only from
+   * external-system callbacks (scroll, resize, ResizeObserver) — never
+   * synchronously from here, which would cascade an extra render on every
+   * mount.
+   */
+  React.useEffect(() => {
+    if (!isHome) {
+      heroThresholdRef.current = null;
+      return;
+    }
+
+    const measure = () => {
+      heroThresholdRef.current = measureHeroThreshold(headerRef.current);
+    };
+
+    const remeasure = () => {
+      measure();
+      const threshold = heroThresholdRef.current;
+      if (threshold !== null) setPastHero(scrollY.get() >= threshold);
+    };
+
+    measure();
+
+    const hero = document.getElementById(HERO_ELEMENT_ID);
+    const observer = hero ? new ResizeObserver(remeasure) : null;
+    if (hero && observer) observer.observe(hero);
+    window.addEventListener('resize', remeasure);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', remeasure);
+    };
+  }, [isHome, scrollY]);
 
   useMotionValueEvent(scrollY, 'change', (latest) => {
     setScrolled(latest > 20);
+    const threshold = heroThresholdRef.current;
+    if (threshold !== null) setPastHero(latest >= threshold);
   });
+
+  /** Transparent, white-ink state: homepage, still within the hero. */
+  const overHero = isHome && !pastHero;
+
+  // Ink pairs. Over photography the nav goes white with a soft shadow; hover
+  // moves to gold-LIGHT rather than gold-deep, which would be near-invisible
+  // against a dark image.
+  const inkPrimary = overHero
+    ? 'text-white site-header__ink-over-hero hover:text-brand-gold-light'
+    : 'text-brand-text hover:text-brand-gold-deep';
+  const inkAccent = overHero
+    ? 'text-white/90 site-header__ink-over-hero'
+    : 'text-brand-gold-deep';
 
   React.useEffect(() => {
     const unsubscribe = useCartStore.persist.onFinishHydration(() => {
@@ -82,17 +223,38 @@ export function Header({ categories, announcementText, announcementActive }: Hea
     <>
       <AnnouncementBar text={announcementText} active={announcementActive} />
 
+      {/*
+        Two visual systems, deliberately kept apart.
+
+        On the HOMEPAGE the header is driven entirely by CSS classes, because
+        the frosted state needs `backdrop-filter` with its `-webkit-` prefix, an
+        `@supports` fallback and a `prefers-reduced-motion` override — none of
+        which a Framer `animate` on backgroundColor can express.
+
+        Everywhere else it keeps the exact Framer-animated treatment it already
+        had. That is the point: no other route changes.
+      */}
       <motion.header
         ref={headerRef}
         animate={
-          scrolled
-            ? { backgroundColor: 'rgba(250, 247, 242, 0.9)' }
-            : { backgroundColor: 'rgba(250, 247, 242, 0)' }
+          isHome
+            ? undefined
+            : scrolled
+              ? { backgroundColor: 'rgba(250, 247, 242, 0.9)' }
+              : { backgroundColor: 'rgba(250, 247, 242, 0)' }
         }
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={cn(
-          'sticky top-0 z-30 w-full transition-shadow',
-          scrolled && 'border-brand-line border-b shadow-sm backdrop-blur-lg',
+          'sticky top-0 z-30 w-full',
+          isHome
+            ? [
+                'site-header border-b',
+                pastHero ? 'site-header--glass' : 'site-header--over-hero',
+              ]
+            : [
+                'transition-shadow',
+                scrolled && 'border-brand-line border-b shadow-sm backdrop-blur-lg',
+              ],
         )}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
         aria-label="Navegación principal"
@@ -104,7 +266,10 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 md:h-20 lg:px-8">
           {/* Mobile: hamburger left */}
           <button
-            className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
+            className={cn(
+              'hover:bg-brand-gold/10 focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none md:hidden',
+              inkPrimary,
+            )}
             onClick={() => setMobileNavOpen(true)}
             aria-label="Abrir menú"
             aria-expanded={mobileNavOpen}
@@ -146,12 +311,22 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-wordmark text-2xl font-normal lg:text-3xl"
+              className={cn(
+                'font-wordmark text-2xl font-normal transition-colors duration-300 lg:text-3xl',
+                overHero
+                  ? 'text-white site-header__ink-over-hero'
+                  : 'text-brand-text',
+              )}
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold-deep mt-1 font-body text-[10px] font-normal tracking-[0.3em] uppercase lg:text-[11px]">
+            <span
+              className={cn(
+                'mt-1 font-body text-[10px] font-normal tracking-[0.3em] uppercase transition-colors duration-300 lg:text-[11px]',
+                inkAccent,
+              )}
+            >
               BY SALVADOR
             </span>
           </Link>
@@ -165,12 +340,22 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             aria-label="Brisal by Salvador - Inicio"
           >
             <span
-              className="text-brand-text font-wordmark text-xl font-normal"
+              className={cn(
+                'font-wordmark text-xl font-normal transition-colors duration-300',
+                overHero
+                  ? 'text-white site-header__ink-over-hero'
+                  : 'text-brand-text',
+              )}
               style={{ letterSpacing: '0.2em' }}
             >
               BRISAL
             </span>
-            <span className="text-brand-gold-deep mt-0.5 font-body text-[9px] font-normal tracking-[0.3em] uppercase">
+            <span
+              className={cn(
+                'mt-0.5 font-body text-[9px] font-normal tracking-[0.3em] uppercase transition-colors duration-300',
+                inkAccent,
+              )}
+            >
               BY SALVADOR
             </span>
           </Link>
@@ -196,11 +381,16 @@ export function Header({ categories, announcementText, announcementActive }: Hea
                   href={href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'focus-visible:ring-brand-gold relative rounded-sm py-1 font-body text-[15px] font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+                    'focus-visible:ring-brand-gold relative rounded-sm py-1 font-body text-[15px] font-normal whitespace-nowrap transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                     'after:bg-brand-gold after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-300 after:content-[""]',
                     active
-                      ? 'text-brand-gold-deep after:scale-x-100'
-                      : 'text-brand-text hover:text-brand-gold-deep after:scale-x-0 hover:after:scale-x-100',
+                      ? cn(
+                          'after:scale-x-100',
+                          overHero
+                            ? 'text-brand-gold-light site-header__ink-over-hero'
+                            : 'text-brand-gold-deep',
+                        )
+                      : cn(inkPrimary, 'after:scale-x-0 hover:after:scale-x-100'),
                   )}
                 >
                   {label}
@@ -209,7 +399,15 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             })}
             <Link
               href={WHOLESALE_SECTION.href}
-              className="border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold/12 hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-sm font-normal whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className={cn(
+                'focus-visible:ring-brand-gold rounded-full border px-4 py-1.5 font-body text-sm font-normal whitespace-nowrap transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none',
+                overHero
+                  ? // Over photography the pill borrows the hero CTA's glass
+                    // treatment rather than going flat white, so the two read
+                    // as the same material.
+                    'border-white/50 bg-white/10 text-white site-header__ink-over-hero hover:border-white/80 hover:bg-white/20'
+                  : 'border-brand-gold/50 text-brand-gold-deep hover:bg-brand-gold/12 hover:border-brand-gold hover:text-brand-gold-deep',
+              )}
             >
               {WHOLESALE_SECTION.label}
             </Link>
@@ -221,20 +419,25 @@ export function Header({ categories, announcementText, announcementActive }: Hea
               label="Buscar"
               icon={<Search size={18} />}
               className="md:hidden"
+              ink={inkPrimary}
             />
             <div className="hidden items-center gap-1 lg:flex">
               <HeaderIconButton
                 onClick={() => setSearchOpen(true)}
                 label="Buscar"
                 icon={<Search size={18} />}
+                ink={inkPrimary}
               />
-              <WholesaleNavIndicator />
+              <WholesaleNavIndicator overHero={overHero} />
             </div>
 
             <Link
               href="/carrito"
               aria-label={`Carrito (${cartItemCount} artículos)`}
-              className="text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold active:scale-95 relative flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 focus-visible:ring-2 focus-visible:outline-none"
+              className={cn(
+                'hover:bg-brand-gold/10 focus-visible:ring-brand-gold active:scale-95 relative flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-300 focus-visible:ring-2 focus-visible:outline-none',
+                inkPrimary,
+              )}
             >
               <ShoppingBag size={18} />
               {cartItemCount > 0 && (
@@ -273,15 +476,19 @@ function HeaderIconButton({
   label,
   icon,
   className,
+  ink,
 }: {
   href?: string;
   onClick?: () => void;
   label: string;
   icon: React.ReactNode;
   className?: string;
+  /** Colour pair for the current header state; defaults to the solid one. */
+  ink?: string;
 }) {
   const sharedClassName = cn(
-    'text-brand-text hover:bg-brand-gold/10 hover:text-brand-gold-deep focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-200 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
+    'hover:bg-brand-gold/10 focus-visible:ring-brand-gold flex h-11 w-11 items-center justify-center rounded-full transition-colors transition-transform duration-300 hover:scale-110 focus-visible:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:outline-none',
+    ink ?? 'text-brand-text hover:text-brand-gold-deep',
     className,
   );
 
