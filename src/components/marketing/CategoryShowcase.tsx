@@ -162,24 +162,26 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
 
   return (
     /*
-      Section-level entrance, so the band arrives as the hero dissolves into
-      it rather than being revealed as already-finished content.
+      Section-level entrance. Opacity ONLY — no y-translation.
+
+      The band now arrives by sliding up over the pinned hero (see
+      HeroRevealStage), and that IS its entrance. Adding a rise on top pulled
+      the section away from the trust bar above it mid-animation, and because
+      the thing behind the overlay is a live photograph rather than the page
+      background, the gap showed the hero straight through the middle of the
+      overlay. The fade survives because it costs nothing and softens the
+      first paint of the images.
 
       Deliberately on the SECTION and not on the panels: the filmstrip has its
       own hover/scroll/arrow choreography, and animating each panel in would
       both compete with that and fight the horizontal scroller, whose
       ResizeObserver would be measuring mid-transform.
-
-      `once` so it doesn't replay every time the band scrolls back into view,
-      and a low `amount` so it has finished by the time the band is properly
-      on screen. Reduced motion drops the translation and keeps a near-instant
-      fade — matching the pattern in ReviewsShowcase.
     */
     <m.section
       aria-labelledby="categories-heading"
       className="bg-brand-cream py-14 md:py-20"
-      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{
         duration: reducedMotion ? 0.01 : 0.6,

@@ -1,4 +1,5 @@
 export { HeroSection } from './HeroSection';
+export { HeroRevealStage } from './HeroRevealStage';
 export { TrustBar } from './TrustBar';
 export { BrandStatement } from './BrandStatement';
 export { ProductShowcaseSection } from './ProductShowcaseSection';

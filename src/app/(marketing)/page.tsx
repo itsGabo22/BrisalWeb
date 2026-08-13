@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import {
   HeroSection,
+  HeroRevealStage,
   TrustBar,
   CategoryShowcase,
   BrandStatement,
@@ -60,15 +61,20 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection slides={heroSlides} />
-      <TrustBar />
-      {/* Categorías is now the single category entry point on the homepage —
-          the old CategoryBar icon strip that used to sit here was showing the
-          same list twice. It rides directly under the hero, matching the
-          reference, so the shape of the catalog is the first thing after the
-          brand. Mobile keeps its own path via the drawer's Categorías
-          accordion, which is unaffected by this removal. */}
-      <CategoryShowcase categories={rootCategories} />
+      {/* The hero pins and these two slide up over it — see HeroRevealStage.
+          Both live INSIDE the stage on purpose: the stage is the sticky
+          containing block, so its height is what releases the pin, and it has
+          to be tall enough to cover the hero before it ends.
+
+          Categorías is the single category entry point on the homepage — the
+          old CategoryBar icon strip that used to sit here was showing the same
+          list twice. It rides directly under the hero, matching the reference,
+          so the shape of the catalog is the first thing after the brand.
+          Mobile keeps its own path via the drawer's Categorías accordion. */}
+      <HeroRevealStage hero={<HeroSection slides={heroSlides} />}>
+        <TrustBar />
+        <CategoryShowcase categories={rootCategories} />
+      </HeroRevealStage>
       <BrandStatement backgroundUrl={siteConfig?.brandStatementImageUrl} />
       <ProductShowcaseSection
         eyebrow="Recién llegado"

@@ -266,50 +266,114 @@
     min-height: max(600px, 100svh);
   }
 
-  /* ── Hero merges with the header (homepage only) ─────────────────────
-     Pulls the hero up by exactly the header's own height so the header
-     sits OVER the photograph instead of on a band above it — the merged
-     nav from the reference. The values mirror the header's `h-16`
-     (4rem) / `md:h-20` (5rem) plus the same safe-area inset it pads
-     itself with, so the two stay locked together; changing one without
-     the other would leave a cream sliver or clip the hero.
+  /* ── Hero → categories: sticky overlay reveal ────────────────────────
+     The hero pins while the sections below slide up OVER it, so the
+     boundary is a real layer lifting past a fixed backdrop rather than a
+     colour trick.
 
-     Only the hero moves. The header keeps its existing sticky position,
-     which is what lets it detach cleanly once the hero scrolls away. */
-  .hero-under-header {
-    margin-top: calc(-1 * (4rem + env(safe-area-inset-top, 0px)));
+     This replaced a gradient that faded the hero's bottom into cream. On
+     real photography that read as a whitish smudge across the image
+     instead of as a transition — the fade had to be wide enough to avoid
+     banding, which meant washing out a fifth of the picture.
+
+     `.hero-reveal-stage` is the sticky CONTAINING BLOCK, and its height
+     is what bounds the pin: the hero stays stuck only while this element
+     is in view, then releases with normal flow. That is the entire
+     unpinning mechanism — no scroll listener decides it. */
+  .hero-reveal-stage {
+    position: relative;
   }
 
-  @media (min-width: 768px) {
-    .hero-under-header {
-      margin-top: calc(-1 * (5rem + env(safe-area-inset-top, 0px)));
-    }
+  /* The overlay's own surface. A straight top edge, deliberately not
+     rounded — the client rejected the "sheet" look. The upward shadow is
+     what sells it as a distinct layer lifting over the hero, doing the
+     job the old gradient did but with depth rather than colour. */
+  .hero-reveal-overlay {
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 -12px 28px rgba(42, 37, 33, 0.13);
+    /* Opaque in its own right, not merely because its children happen to be.
+       This layer slides over a live photograph, so any gap between the
+       sections inside it — a child mid-entrance, a sub-pixel rounding seam —
+       would show the hero through the middle of the overlay. */
+    background-color: var(--color-brand-cream, #faf7f2);
   }
 
-  /* ── Hero → categories blend ─────────────────────────────────────────
-     Dissolves the bottom of the hero into brand-cream so the boundary
-     with the categories band reads as a designed transition rather than
-     a cut.
+  /* ── Top chrome (announcement bar + header) ──────────────────────────
+     On the homepage these two are ONE unit: same trigger, same duration,
+     same easing, so they read as a single piece of chrome changing state
+     rather than two elements changing near each other. */
+  .top-chrome {
+    transition-property: background-color, box-shadow, border-color,
+      backdrop-filter, -webkit-backdrop-filter;
+    transition-duration: 360ms;
+    transition-timing-function: ease;
+  }
 
-     Five stops, not two. A straight `transparent → cream` ramp bands
-     visibly over a photograph, because the eye tracks the linear alpha
-     as a series of steps; easing the alpha (0 / .12 / .45 / .82 / 1)
-     over the final 18% spreads the change unevenly enough that no single
-     step is large enough to read as an edge. The last stop is the exact
-     categories background, so the two surfaces meet at the same value
-     and there is no seam.
-
-     Percentages, not pixels: the hero is 100svh, so a fixed height would
-     be most of a short viewport and a thin strip on a tall one. */
-  .hero-blend-bottom {
+  /* A single soft scrim behind the WHOLE top chrome while it sits on
+     photography, rather than a fill on either element. It carries the
+     announcement text and the nav together, and fades out downward so it
+     never reads as a bar with an edge of its own. */
+  .top-chrome--over-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     background-image: linear-gradient(
       to bottom,
-      rgba(250, 247, 242, 0) 82%,
-      rgba(250, 247, 242, 0.12) 88%,
-      rgba(250, 247, 242, 0.45) 93%,
-      rgba(250, 247, 242, 0.82) 97%,
-      rgb(250, 247, 242) 100%
+      rgba(0, 0, 0, 0.4),
+      rgba(0, 0, 0, 0.18) 62%,
+      rgba(0, 0, 0, 0)
     );
+  }
+
+  /* Announcement bar: transparent over the hero, its normal sand strip
+     everywhere else. Same timing as the header so both settle together. */
+  .announcement-bar {
+    transition-property: background-color, border-color, color;
+    transition-duration: 360ms;
+    transition-timing-function: ease;
+  }
+
+  .announcement-bar--over-hero {
+    background-color: transparent;
+    border-bottom-color: transparent;
+  }
+
+  /* ── Hero slide indicators — frosted glass ───────────────────────────
+     Were solid gold pills. Now the same glass language as the hero CTA
+     and the reviews cards: translucent white over a blur, the active one
+     brighter rather than a different hue, so "which slide" is carried by
+     luminance instead of by a second colour on the photograph. */
+  .hero-dot {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    background-color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .hero-dot:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .hero-dot--active {
+    background-color: rgba(255, 255, 255, 0.6);
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+
+  /* No blur available: fall back to flat semi-opaque white. 25% white
+     with nothing blurred behind it would vanish on a light photograph,
+     so both states are pushed up until they read on their own. */
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .hero-dot {
+      background-color: rgba(255, 255, 255, 0.45);
+    }
+
+    .hero-dot--active {
+      background-color: rgba(255, 255, 255, 0.85);
+    }
   }
 
   /* ── Site header: transparent over hero → frosted glass ──────────────
@@ -371,8 +435,14 @@
      state change carries meaning — it is the signal that the header has
      left the hero — so suppressing it entirely would lose information,
      whereas 150ms is fast enough not to read as motion. */
+  /* Reduced motion shortens every top-chrome crossfade; it does NOT
+     remove them. The state change carries meaning — it is the signal
+     that the chrome has left the hero — so suppressing it would lose
+     information, whereas 150ms is fast enough not to read as motion. */
   @media (prefers-reduced-motion: reduce) {
-    .site-header {
+    .site-header,
+    .top-chrome,
+    .announcement-bar {
       transition-duration: 150ms;
       transition-timing-function: linear;
     }
