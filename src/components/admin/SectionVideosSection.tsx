@@ -11,7 +11,6 @@ interface SiteConfigData {
   videoSectionBody: string | null;
   videoSectionVideoUrl: string | null;
   videoSectionLinkUrl: string | null;
-  wholesaleVideoUrl: string | null;
 }
 
 const VIDEO_HELP =
@@ -20,7 +19,6 @@ const VIDEO_HELP =
 export function SectionVideosSection() {
   const [config, setConfig] = React.useState<SiteConfigData | null>(null);
   const [videoSectionFile, setVideoSectionFile] = React.useState<File | null>(null);
-  const [wholesaleVideoFile, setWholesaleVideoFile] = React.useState<File | null>(null);
   const [title, setTitle] = React.useState('');
   const [body, setBody] = React.useState('');
   const [linkUrl, setLinkUrl] = React.useState('');
@@ -68,7 +66,6 @@ export function SectionVideosSection() {
     formData.append('videoSectionBody', body);
     formData.append('videoSectionLinkUrl', linkUrl);
     if (videoSectionFile) formData.append('videoSectionFile', videoSectionFile);
-    if (wholesaleVideoFile) formData.append('wholesaleVideoFile', wholesaleVideoFile);
 
     try {
       const res = await fetch('/api/admin/site-config', { method: 'PATCH', body: formData });
@@ -78,7 +75,6 @@ export function SectionVideosSection() {
       }
       applyConfig((await res.json()) as SiteConfigData);
       setVideoSectionFile(null);
-      setWholesaleVideoFile(null);
       setSavedMsg('Guardado correctamente.');
       setTimeout(() => setSavedMsg(null), 2500);
     } catch (err) {
@@ -89,7 +85,7 @@ export function SectionVideosSection() {
   };
 
   const hasChanges =
-    Boolean(videoSectionFile || wholesaleVideoFile) ||
+    Boolean(videoSectionFile) ||
     title !== (config?.videoSectionTitle ?? '') ||
     body !== (config?.videoSectionBody ?? '') ||
     linkUrl !== (config?.videoSectionLinkUrl ?? '');
@@ -101,8 +97,8 @@ export function SectionVideosSection() {
         <span>Videos de sección</span>
       </h2>
       <p className="mt-1 font-sans text-xs text-brand-neutral-400">
-        Los videos se reproducen automáticamente, en bucle y sin sonido. Si dejas
-        una sección sin video, conserva su diseño actual — no se ve rota.
+        El video se reproduce automáticamente, en bucle y sin sonido. Si dejas la
+        sección sin video, conserva su diseño actual — no se ve rota.
       </p>
 
       {isLoading ? (
@@ -111,8 +107,10 @@ export function SectionVideosSection() {
         </div>
       ) : (
         <div className="mt-6 space-y-6 font-sans text-sm">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* ── Video + texto ─────────────────────────────────────── */}
+          {/* One section, not two. The wholesale background moved to its own
+              panel, where the video sits alongside the image alternative and a
+              selector says which of them the site actually renders. */}
+          <div className="grid gap-6 md:max-w-xl">
             <div className="space-y-4">
               <MediaFrameCard
                 label="Sección video + texto"
@@ -188,26 +186,6 @@ export function SectionVideosSection() {
                   Si lo dejas vacío, la sección no será clicable.
                 </p>
               </div>
-            </div>
-
-            {/* ── Mayoristas ────────────────────────────────────────── */}
-            <div className="space-y-4">
-              <MediaFrameCard
-                label="Sección de mayoristas"
-                sublabel="Video de fondo (opcional)"
-                helperText={VIDEO_HELP}
-                aspectClassName="aspect-video"
-                icon={Film}
-                kind="video"
-                file={wholesaleVideoFile}
-                existingUrl={config?.wholesaleVideoUrl}
-                onChange={setWholesaleVideoFile}
-                accept="video/mp4,video/webm"
-              />
-              <p className="text-[11px] text-brand-neutral-400">
-                El video tiene prioridad sobre la imagen de fondo de esa sección.
-                Si no subes ninguno, se usa la imagen (o el degradado) actual.
-              </p>
             </div>
           </div>
 

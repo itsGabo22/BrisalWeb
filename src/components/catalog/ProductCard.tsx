@@ -4,9 +4,16 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Check, ShoppingBag } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { getEffectivePrice, hasWholesalePrice, formatCOP } from '@/lib/utils/pricing';
+import { useCartStore } from '@/stores/cartStore';
+import { getProductReference } from '@/lib/utils/product-reference';
+import {
+  getEffectivePrice,
+  hasWholesalePrice,
+  formatCOP,
+} from '@/lib/utils/pricing';
 import {
   PRODUCT_IMAGE_PLACEHOLDER,
   resolveListingImageUrl,
@@ -61,87 +68,186 @@ export function ProductCard({ product, className }: ProductCardProps) {
     product.imageUrls.length > 0 ||
     product.colorVariants.some((variant) => variant.imageUrls.length > 0);
 
+  /**
+   * Quick add — the product's PRIMARY colour, quantity 1.
+   *
+   * The card deliberately does not offer a colour picker. Choosing between
+   * finishes is what the product page is for, and a second control on a card
+   * this size competes with the card's own job. The primary colour is the one
+   * whose photo the card is already showing, so the piece that lands in the
+   * cart is the piece the shopper clicked.
+   */
+  const addItem = useCartStore((state) => state.addItem);
+  const [added, setAdded] = React.useState(false);
+  const addedTimeoutRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (addedTimeoutRef.current) window.clearTimeout(addedTimeoutRef.current);
+    };
+  }, []);
+
+  // Phase 5: no stock is "sobre pedido", not "unavailable". The primary
+  // colour's stock IS the product's own — see the colour model in AGENTS.md.
+  const isBackorder = product.stock <= 0;
+
+  const handleQuickAdd = () => {
+    addItem({
+      productId: product.id,
+      name: product.name,
+      // The same discounted/wholesale figure the card is displaying, so the
+      // cart charges what the grid advertised.
+      price: price.final,
+      originalPrice: price.original,
+      // The card's OWN resolved image, not `imageUrls[0]`: for a product whose
+      // photos all live on its colour variants the latter is undefined, and
+      // the cart line would show nothing the shopper had just been looking at.
+      imageUrl: resolveListingImageUrl(product),
+      slug: product.slug,
+      // Null colour + null variant is exactly how the cart and the order route
+      // already encode "the primary colour", so this needs no special case
+      // downstream — `resolveLineVariant` reads that null the same way.
+      color: null,
+      colorVariantId: null,
+      reference: getProductReference(product),
+    });
+
+    setAdded(true);
+    if (addedTimeoutRef.current) window.clearTimeout(addedTimeoutRef.current);
+    addedTimeoutRef.current = window.setTimeout(() => setAdded(false), 1500);
+  };
+
   return (
     <article
       className={cn('group relative flex flex-col', className)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* ── Image wrapper ───────────────────────────────── */}
-      <Link
-        href={href}
-        aria-label={`Ver producto: ${product.name}`}
-        tabIndex={0}
-        className="relative block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
-        style={{ aspectRatio: '3 / 4' }}
-      >
-        {hasAnyImage ? (
-          <Image
-            src={imageSrc}
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          // Placeholder when no image is available
-          <div className="absolute inset-0 flex items-center justify-center bg-brand-sand">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-brand-text-soft/60"
-              aria-hidden="true"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </div>
-        )}
-
-        {/* Hover overlay */}
-        <motion.div
-          animate={{ opacity: hovered ? 1 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="absolute inset-0 bg-brand-cream/25 pointer-events-none"
-          aria-hidden="true"
-        />
-
-        {/* "Ver producto" CTA */}
-        <motion.div
-          animate={hovered ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="absolute bottom-0 inset-x-0 flex justify-center pb-4 pointer-events-none"
-          aria-hidden="true"
+      {/* ── Image wrapper ─────────────────────────────────
+          The quick-add button is a sibling of this Link, not a child of it.
+          Nesting a <button> inside an <a> is invalid HTML, and — the reason it
+          matters here — the click would bubble to the anchor and navigate to
+          the product page, which is exactly what quick-add exists to avoid. */}
+      <div className="relative">
+        <Link
+          href={href}
+          aria-label={`Ver producto: ${product.name}`}
+          tabIndex={0}
+          className="focus-visible:ring-brand-gold relative block overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          style={{ aspectRatio: '3 / 4' }}
         >
-          <span className="pointer-events-none rounded-full bg-brand-pearl/90 backdrop-blur-sm px-5 py-2 font-body text-xs font-medium tracking-wide text-brand-text shadow-md">
-            Ver producto
-          </span>
-        </motion.div>
+          {hasAnyImage ? (
+            <Image
+              src={imageSrc}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            // Placeholder when no image is available
+            <div className="bg-brand-sand absolute inset-0 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-brand-text-soft/60"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </div>
+          )}
 
-        {/* Tag badges */}
-        {product.tags.length > 0 && (
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {product.tags.map((tag) => {
-              const variant = tagVariant(tag);
-              if (!variant) return null;
-              return (
-                <Badge key={tag.id} variant={variant}>
-                  {tag.name}
-                </Badge>
-              );
-            })}
-          </div>
-        )}
-      </Link>
+          {/* Hover overlay */}
+          <motion.div
+            animate={{ opacity: hovered ? 1 : 0 }}
+            transition={{ duration: 0.25 }}
+            className="bg-brand-cream/25 pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          />
+
+          {/* Tag badges */}
+          {product.tags.length > 0 && (
+            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+              {product.tags.map((tag) => {
+                const variant = tagVariant(tag);
+                if (!variant) return null;
+                return (
+                  <Badge key={tag.id} variant={variant}>
+                    {tag.name}
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+        </Link>
+
+        {/*
+        Quick add. Replaces the old "Ver producto" chip, which duplicated what
+        clicking the card already did — the whole card was a link to the same
+        page — and so spent the card's only CTA slot on nothing.
+
+        Always visible on touch, revealed on hover on pointer devices: a hover
+        reveal is unreachable on a phone, and this is the primary action.
+      */}
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-3',
+            'transition-all duration-200 ease-out motion-reduce:transition-none',
+            // Plain CSS rather than Framer here: the reveal has to be OFF below
+            // `sm` (a hover state is unreachable on a phone, and this is the
+            // card's primary action), and a breakpoint is something CSS knows
+            // about at paint time while an animated inline style is not.
+            'sm:translate-y-2 sm:opacity-0',
+            'sm:group-hover:translate-y-0 sm:group-hover:opacity-100',
+            // Keyboard users never fire hover, so focus reveals it too —
+            // otherwise the button is tabbable while invisible.
+            'sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100',
+          )}
+        >
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            // Deliberately never disabled. Phase 5's rule is that no stock means
+            // "sobre pedido", not "unavailable" — the client makes or restocks
+            // the difference — so the add always goes through and the label says
+            // what the shopper is agreeing to.
+            aria-label={`Agregar ${product.name} al carrito${isBackorder ? ' (sobre pedido)' : ''}`}
+            className={cn(
+              'hero-glass-cta font-body pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium tracking-wide text-white',
+              'focus-visible:ring-brand-gold transition-transform focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95',
+            )}
+          >
+            {added ? (
+              <>
+                <Check className="size-3.5" aria-hidden="true" />
+                Agregado
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="size-3.5" aria-hidden="true" />
+                {isBackorder ? 'Sobre pedido' : 'Agregar al carrito'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Announced separately from the button so the confirmation reaches a
+          screen reader even though the button's own label never changes. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {added ? `${product.name} agregado al carrito` : ''}
+      </span>
 
       {/* ── Info ────────────────────────────────────────── */}
       <div className="mt-3 flex flex-col gap-1 px-1">
@@ -151,7 +257,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           aria-hidden="true"
           className="focus-visible:outline-none"
         >
-          <h3 className="font-heading text-sm font-medium leading-snug text-brand-text line-clamp-2">
+          <h3 className="font-heading text-brand-text line-clamp-2 text-sm leading-snug font-medium">
             {product.name}
           </h3>
         </Link>
@@ -159,14 +265,16 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Rating, only once something has actually been approved. A product
             nobody has reviewed shows nothing at all — five empty stars read as
             "rated zero", which is worse than saying nothing. */}
-        {product.rating && product.rating.count > 0 && product.rating.average !== null && (
-          <div className="flex items-center gap-1.5">
-            <Stars value={product.rating.average} size="sm" />
-            <span className="text-brand-text-soft/80 font-body text-[11px] tabular-nums">
-              {product.rating.average.toFixed(1)} ({product.rating.count})
-            </span>
-          </div>
-        )}
+        {product.rating &&
+          product.rating.count > 0 &&
+          product.rating.average !== null && (
+            <div className="flex items-center gap-1.5">
+              <Stars value={product.rating.average} size="sm" />
+              <span className="text-brand-text-soft/80 font-body text-[11px] tabular-nums">
+                {product.rating.average.toFixed(1)} ({product.rating.count})
+              </span>
+            </div>
+          )}
 
         {/* Colour dots, so a shopper scanning the grid can see a piece comes
             in several finishes. Capped at four with a "+N" so a product with
@@ -200,10 +308,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {showWholesalePrice ? (
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-2">
-              <span className="font-body text-sm font-medium text-brand-gold-deep">
+              <span className="font-body text-brand-gold-deep text-sm font-medium">
                 {formatCOP(product.wholesalePrice as number)}
               </span>
-              <span className="font-body text-xs text-brand-text-soft/70 line-through">
+              <span className="font-body text-brand-text-soft/70 text-xs line-through">
                 {formatCOP(product.price)}
               </span>
             </div>
@@ -216,7 +324,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <span
               className={cn(
                 'font-body text-sm font-medium',
-                price.original !== null ? 'text-brand-gold-deep' : 'text-brand-text',
+                price.original !== null
+                  ? 'text-brand-gold-deep'
+                  : 'text-brand-text',
               )}
             >
               {formatCOP(price.final)}
@@ -224,11 +334,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
 
             {price.original !== null && (
               <>
-                <span className="font-body text-xs text-brand-text-soft/70 line-through">
+                <span className="font-body text-brand-text-soft/70 text-xs line-through">
                   {formatCOP(price.original)}
                 </span>
                 {price.percentOff !== null && price.percentOff > 0 && (
-                  <span className="border-brand-gold/40 bg-brand-gold/12 text-brand-gold-deep rounded-full border px-1.5 py-0.5 font-body text-[10px] font-medium tabular-nums">
+                  <span className="border-brand-gold/40 bg-brand-gold/12 text-brand-gold-deep font-body rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
                     -{price.percentOff}%
                   </span>
                 )}

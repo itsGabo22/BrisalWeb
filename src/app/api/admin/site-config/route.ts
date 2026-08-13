@@ -10,12 +10,36 @@ import {
 interface SiteConfigFields {
   announcementText?: string;
   announcementActive?: boolean;
-  wholesaleImageUrl?: string;
   videoSectionTitle?: string;
   videoSectionBody?: string;
   videoSectionVideoUrl?: string;
   videoSectionLinkUrl?: string;
-  wholesaleVideoUrl?: string;
+  /**
+   * Wholesale background. Nullable rather than merely optional: "no media" is a
+   * state the admin can now choose explicitly ("Quitar video/imagen"), and
+   * `undefined` already means "don't touch this column", so clearing needs its
+   * own value.
+   */
+  wholesaleImageUrl?: string | null;
+  wholesaleImageUrlMobile?: string | null;
+  wholesaleVideoUrl?: string | null;
+  wholesaleVideoUrlMobile?: string | null;
+  wholesaleBgType?: string;
+  wholesaleBgPosX?: number;
+  wholesaleBgPosY?: number;
+  wholesaleBgPosXMobile?: number;
+  wholesaleBgPosYMobile?: number;
+}
+
+/** The only three values the band knows how to render. */
+const WHOLESALE_BG_TYPES = ['NONE', 'VIDEO', 'IMAGE'];
+
+/** Focal percentages, clamped to what `object-position` can use. */
+function parsePercent(value: FormDataEntryValue | null): number | undefined {
+  if (typeof value !== 'string' || value.trim() === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(100, Math.max(0, Math.round(n)));
 }
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
@@ -38,6 +62,13 @@ const MAX_SECTION_VIDEO_BYTES = 40 * 1024 * 1024;
 const VIDEO_SLOTS = [
   { column: 'videoSectionVideoUrl', formKey: 'videoSectionFile', slug: 'video-section' },
   { column: 'wholesaleVideoUrl', formKey: 'wholesaleVideoFile', slug: 'wholesale' },
+  // Phone-specific cut of the wholesale loop. Optional — null falls back to the
+  // desktop file at the MOBILE focal point, exactly as the hero behaves.
+  {
+    column: 'wholesaleVideoUrlMobile',
+    formKey: 'wholesaleVideoMobileFile',
+    slug: 'wholesale-mobile',
+  },
 ] as const;
 
 /**
@@ -52,6 +83,17 @@ const PARALLAX_SLOTS = [
   // video+text now and reads no image. Its column survives as deprecated —
   // see the schema — but nothing writes it any more either.
   { column: 'wholesaleImageUrl', formKey: 'wholesaleFile', slug: 'wholesale' },
+  { column: 'wholesaleImageUrlMobile', formKey: 'wholesaleMobileFile', slug: 'wholesale-mobile' },
+] as const;
+
+/**
+ * "Quitar video" / "Quitar imagen": each clear drops the desktop asset AND its
+ * mobile companion, because a mobile override with no desktop original is a
+ * half-configured state the band has no sensible way to render.
+ */
+const WHOLESALE_CLEARS = [
+  { formKey: 'clearWholesaleVideo', columns: ['wholesaleVideoUrl', 'wholesaleVideoUrlMobile'] },
+  { formKey: 'clearWholesaleImage', columns: ['wholesaleImageUrl', 'wholesaleImageUrlMobile'] },
 ] as const;
 
 // sharp needs the Node runtime; the edge runtime cannot process the upload.
@@ -166,6 +208,41 @@ export async function PATCH(request: Request) {
         if (previous) await deleteFromStorageByUrl('hero-media', previous);
 
         data[slot.column] = url;
+      }
+
+      /**
+       * Which background the band renders. Validated against the known set
+       * rather than trusted: this string is read straight back out and switched
+       * on, and an unrecognised value would silently render nothing.
+       */
+      const bgType = formData.get('wholesaleBgType');
+      if (typeof bgType === 'string' && WHOLESALE_BG_TYPES.includes(bgType)) {
+        data.wholesaleBgType = bgType;
+      }
+
+      for (const key of [
+        'wholesaleBgPosX',
+        'wholesaleBgPosY',
+        'wholesaleBgPosXMobile',
+        'wholesaleBgPosYMobile',
+      ] as const) {
+        const pct = parsePercent(formData.get(key));
+        if (pct !== undefined) data[key] = pct;
+      }
+
+      /**
+       * Clears run AFTER the uploads so that a request which somehow carries
+       * both a new file and a clear flag for the same slot ends up cleared —
+       * the destructive intent is the more explicit one. In practice the panel
+       * never sends both.
+       */
+      for (const clear of WHOLESALE_CLEARS) {
+        if (formData.get(clear.formKey) !== 'true') continue;
+        for (const column of clear.columns) {
+          const previous = existing?.[column];
+          if (previous) await deleteFromStorageByUrl('hero-media', previous);
+          data[column] = null;
+        }
       }
     } else {
       const body = (await request.json()) as {

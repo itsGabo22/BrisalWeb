@@ -325,8 +325,32 @@ model SiteConfig {
   /// "/catalogo/aretes" or "/catalogo?tag=nuevo". Null means the section is
   /// not clickable at all, which is the state it shipped in.
   videoSectionLinkUrl  String?
-  /// Optional background video for the wholesale band. Null keeps whatever
-  /// `wholesaleImageUrl` (or the flat gradient) already provides.
+  /// ── Wholesale band background ──────────────────────────────────────
+  /// Which media the band actually renders: "NONE" | "VIDEO" | "IMAGE".
+  ///
+  /// Before this existed, `wholesaleVideoUrl` and `wholesaleImageUrl` could
+  /// both be set from two different admin panels, with video silently winning
+  /// and no way to fall back to the image short of deleting the video. The
+  /// type is now the single source of truth, so toggling to "NONE" or back
+  /// never destroys an uploaded asset — it just stops pointing at it.
+  ///
+  /// A String rather than an enum: three values on a singleton row, and the
+  /// admin writes it from a plain select. Parsed at the edge.
+  wholesaleBgType         String  @default("NONE")
+  /// Focal points as whole percentages (0-100), stored per breakpoint for the
+  /// same reason HeroSlide does: a 16:9 desktop band and a tall phone band
+  /// almost never keep the same part of a picture. 50/50 is what
+  /// `object-cover` does unaided, so an unset background is unchanged.
+  wholesaleBgPosX         Int     @default(50)
+  wholesaleBgPosY         Int     @default(50)
+  wholesaleBgPosXMobile   Int     @default(50)
+  wholesaleBgPosYMobile   Int     @default(50)
+  /// Optional phone-specific assets. Null means "use the desktop file with
+  /// the MOBILE focal point", exactly as the hero falls back.
+  wholesaleVideoUrlMobile String?
+  wholesaleImageUrlMobile String?
+  /// Desktop/primary assets for their respective types. Names kept as-is so
+  /// nothing already uploaded is stranded.
   wholesaleVideoUrl    String?
   updatedAt          DateTime @updatedAt
 }
