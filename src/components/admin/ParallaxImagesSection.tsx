@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
 
 interface SiteConfigData {
-  brandStatementImageUrl: string | null;
   wholesaleImageUrl: string | null;
 }
 
@@ -15,7 +14,6 @@ const HELPER_TEXT =
 
 export function ParallaxImagesSection() {
   const [config, setConfig] = React.useState<SiteConfigData | null>(null);
-  const [brandStatementFile, setBrandStatementFile] = React.useState<File | null>(null);
   const [wholesaleFile, setWholesaleFile] = React.useState<File | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
@@ -47,7 +45,6 @@ export function ParallaxImagesSection() {
     // this form cannot overwrite them — the route treats a missing field as
     // "leave it alone".
     const formData = new FormData();
-    if (brandStatementFile) formData.append('brandStatementFile', brandStatementFile);
     if (wholesaleFile) formData.append('wholesaleFile', wholesaleFile);
 
     try {
@@ -57,7 +54,6 @@ export function ParallaxImagesSection() {
         throw new Error(body.error ?? 'Error al guardar las imágenes');
       }
       setConfig((await res.json()) as SiteConfigData);
-      setBrandStatementFile(null);
       setWholesaleFile(null);
       setSavedMsg('Guardado correctamente.');
       setTimeout(() => setSavedMsg(null), 2500);
@@ -68,7 +64,7 @@ export function ParallaxImagesSection() {
     }
   };
 
-  const hasChanges = Boolean(brandStatementFile || wholesaleFile);
+  const hasChanges = Boolean(wholesaleFile);
 
   return (
     <div className="rounded-xl border border-brand-neutral-200 bg-white p-6 shadow-sm dark:border-brand-neutral-800 dark:bg-brand-neutral-900">
@@ -90,20 +86,10 @@ export function ParallaxImagesSection() {
         <div className="mt-6 space-y-5 font-sans text-sm">
           {/* Labelled with the section's own on-site copy, so there is no
               guessing which upload lands where. */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <MediaFrameCard
-              label="«Cada pieza, una historia.»"
-              sublabel="Sección de declaración de marca"
-              helperText={HELPER_TEXT}
-              aspectClassName="aspect-video"
-              icon={ImageIcon}
-              kind="image"
-              file={brandStatementFile}
-              existingUrl={config?.brandStatementImageUrl}
-              onChange={setBrandStatementFile}
-              accept="image/*"
-            />
-
+          {/* One slot, not two. The «Cada pieza, una historia.» upload was
+              removed when that band became video+text — it reads no image, so
+              an upload there configured nothing. */}
+          <div className="grid gap-5 sm:max-w-md">
             <MediaFrameCard
               label="«¿Tienes un negocio?»"
               sublabel="Sección de mayoristas"

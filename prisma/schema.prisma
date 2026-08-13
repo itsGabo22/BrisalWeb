@@ -302,6 +302,12 @@ model SiteConfig {
   /// change doesn't strand the column. Nullable on purpose — null means "no
   /// backdrop", and each section falls back to the flat gradient treatment it
   /// shipped with, which is a valid finished look rather than a broken one.
+  /// DEPRECATED. The brand-statement band is video+text now and reads no
+  /// image at all — the admin control was removed with it. Kept rather than
+  /// dropped, matching the convention `Product.material` and
+  /// `Discount.productId` set: the column holds a real URL the client
+  /// uploaded, and dropping it is the one change that cannot be undone if the
+  /// section ever wants a still again. Nothing reads it.
   brandStatementImageUrl String?
   wholesaleImageUrl      String?
   /// The video+text band that replaced the flat "Cada pieza, una historia."
@@ -315,6 +321,10 @@ model SiteConfig {
   videoSectionTitle    String?
   videoSectionBody     String?
   videoSectionVideoUrl String?
+  /// Where the band links to — any internal path the admin types, e.g.
+  /// "/catalogo/aretes" or "/catalogo?tag=nuevo". Null means the section is
+  /// not clickable at all, which is the state it shipped in.
+  videoSectionLinkUrl  String?
   /// Optional background video for the wholesale band. Null keeps whatever
   /// `wholesaleImageUrl` (or the flat gradient) already provides.
   wholesaleVideoUrl    String?

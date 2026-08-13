@@ -10,11 +10,11 @@ import {
 interface SiteConfigFields {
   announcementText?: string;
   announcementActive?: boolean;
-  brandStatementImageUrl?: string;
   wholesaleImageUrl?: string;
   videoSectionTitle?: string;
   videoSectionBody?: string;
   videoSectionVideoUrl?: string;
+  videoSectionLinkUrl?: string;
   wholesaleVideoUrl?: string;
 }
 
@@ -48,7 +48,9 @@ const VIDEO_SLOTS = [
  * prefix in the same place rather than a new bucket to configure and secure.
  */
 const PARALLAX_SLOTS = [
-  { column: 'brandStatementImageUrl', formKey: 'brandStatementFile', slug: 'brand-statement' },
+  // The brand-statement slot was removed with its admin control: that band is
+  // video+text now and reads no image. Its column survives as deprecated —
+  // see the schema — but nothing writes it any more either.
   { column: 'wholesaleImageUrl', formKey: 'wholesaleFile', slug: 'wholesale' },
 ] as const;
 
@@ -117,7 +119,11 @@ export async function PATCH(request: Request) {
 
       // Section copy. Only assigned when the field was actually sent, so
       // uploading a video cannot blank a title the client already wrote.
-      for (const key of ['videoSectionTitle', 'videoSectionBody'] as const) {
+      for (const key of [
+        'videoSectionTitle',
+        'videoSectionBody',
+        'videoSectionLinkUrl',
+      ] as const) {
         const value = formData.get(key);
         if (typeof value === 'string') data[key] = value.trim();
       }

@@ -93,17 +93,25 @@ export function WholesaleCallout({ backgroundUrl, videoUrl }: WholesaleCalloutPr
           Programa mayorista
         </p>
 
+        {/* One heading only, as on the reference — their wholesale band leads
+            straight into the offer with no question line above it. */}
         <h2 id="wholesale-heading" className="mt-5">
-          <span className="block font-heading text-3xl font-medium text-brand-text md:text-4xl">
-            ¿Tienes un negocio?
-          </span>
           {/*
             The reference's emphasis line: Playfair Display, ITALIC. Addressed
             through `font-wordmark`, which is the role token pinned to Playfair
             — this does NOT touch the BRISAL wordmark itself, which lives in
             HeroSection and is unaffected by anything here.
           */}
-          <span className="mt-2 block font-wordmark text-[clamp(2.25rem,6vw,3.75rem)] leading-[1.1] font-normal italic text-brand-gold-deep">
+          {/*
+            Metrics taken from cornalinaaccesorios.com's own italic emphasis
+            (`<strong>DIFERENCIA</strong>`): weight 700, letter-spacing normal,
+            line-height 1.0. Their site is Poppins throughout and has no
+            heading in its wholesale band at all, so this borrows the
+            TREATMENT — heavy, tight-leaded, untracked italic — rather than
+            the typeface, which stays Playfair per this project's own type
+            roles. The size remains fluid so it survives a 320px viewport.
+          */}
+          <span className="block font-wordmark text-[clamp(2.25rem,6vw,3.75rem)] leading-none font-bold tracking-normal italic text-brand-gold-deep">
             Aumenta tus ingresos
           </span>
         </h2>
@@ -118,10 +126,13 @@ export function WholesaleCallout({ backgroundUrl, videoUrl }: WholesaleCalloutPr
         <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-4">
           {HIGHLIGHTS.map((item) => (
             <div key={item.value} className="flex flex-col items-center">
-              <dt className="font-wordmark text-2xl font-normal italic text-brand-gold-deep md:text-[28px]">
+              {/* Cornalina's stat grid measures 24px/700 with a 1.4 leading
+                  on the value and 14px/400 with 1.6 on the label. Those are
+                  their real numbers, applied here. */}
+              <dt className="font-wordmark text-2xl leading-[1.4] font-bold tracking-normal italic text-brand-gold-deep">
                 {item.value}
               </dt>
-              <dd className="mt-1 max-w-[16rem] font-body text-sm leading-snug text-brand-text-soft text-balance">
+              <dd className="mt-1 max-w-[16rem] font-body text-sm leading-[1.6] font-normal text-brand-text-soft text-balance">
                 {item.label}
               </dd>
             </div>

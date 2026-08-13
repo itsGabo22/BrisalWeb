@@ -35,6 +35,18 @@ const playfair = Playfair_Display({
   variable: '--font-playfair',
   subsets: ['latin'],
   display: 'swap',
+  /**
+   * The ITALIC face is loaded explicitly. `next/font` defaults to
+   * `['normal']`, so the wholesale band's italic emphasis was being rendered
+   * as a browser-synthesized oblique — a mechanically slanted roman. Playfair
+   * Display's real italic is a different design (single-storey `a`,
+   * calligraphic `e` and `g`), which is the whole reason to set that line in a
+   * serif at all.
+   *
+   * Weight is left unrestricted so the variable range (400-900) stays
+   * available; the BRISAL wordmark keeps using 400 and is unaffected.
+   */
+  style: ['normal', 'italic'],
 });
 
 const geistMono = Geist_Mono({
