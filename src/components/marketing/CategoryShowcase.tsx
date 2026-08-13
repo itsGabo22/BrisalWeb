@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, ChevronRight } from 'lucide-react';
-import { useReducedMotion } from 'framer-motion';
+import { m, useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
@@ -161,7 +161,31 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
   if (categories.length === 0) return null;
 
   return (
-    <section aria-labelledby="categories-heading" className="bg-brand-cream py-14 md:py-20">
+    /*
+      Section-level entrance, so the band arrives as the hero dissolves into
+      it rather than being revealed as already-finished content.
+
+      Deliberately on the SECTION and not on the panels: the filmstrip has its
+      own hover/scroll/arrow choreography, and animating each panel in would
+      both compete with that and fight the horizontal scroller, whose
+      ResizeObserver would be measuring mid-transform.
+
+      `once` so it doesn't replay every time the band scrolls back into view,
+      and a low `amount` so it has finished by the time the band is properly
+      on screen. Reduced motion drops the translation and keeps a near-instant
+      fade — matching the pattern in ReviewsShowcase.
+    */
+    <m.section
+      aria-labelledby="categories-heading"
+      className="bg-brand-cream py-14 md:py-20"
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{
+        duration: reducedMotion ? 0.01 : 0.6,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
       <div className="mx-auto mb-6 flex max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 md:mb-8 lg:px-8">
         <h2
           id="categories-heading"
@@ -221,6 +245,6 @@ export function CategoryShowcase({ categories }: CategoryShowcaseProps) {
           </button>
         )}
       </div>
-    </section>
+    </m.section>
   );
 }

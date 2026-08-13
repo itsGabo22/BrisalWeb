@@ -32,7 +32,12 @@ async function logoutWholesaler(router: ReturnType<typeof useRouter>) {
 /** Desktop header icon: routes to login, pending review, or the wholesale
  * account depending on session state. Approved wholesalers get a dropdown
  * with a logout option instead of a plain link. */
-export function WholesaleNavIndicator() {
+export function WholesaleNavIndicator({
+  /** True while the header sits transparent over the homepage hero. */
+  overHero = false,
+}: {
+  overHero?: boolean;
+} = {}) {
   const status = useWholesaleSession();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -58,7 +63,12 @@ export function WholesaleNavIndicator() {
       <Link
         href={href}
         aria-label={label}
-        className="text-brand-neutral-700 hover:bg-brand-gold/10 hover:text-brand-gold focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        className={cn(
+          'hover:bg-brand-gold/10 focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none',
+          overHero
+            ? 'text-white site-header__ink-over-hero hover:text-brand-gold-light'
+            : 'text-brand-neutral-700 hover:text-brand-gold',
+        )}
       >
         <Icon size={18} />
       </Link>
@@ -74,7 +84,10 @@ export function WholesaleNavIndicator() {
         aria-haspopup="true"
         aria-expanded={menuOpen}
         className={cn(
-          'text-brand-gold hover:bg-brand-gold/10 flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none',
+          'hover:bg-brand-gold/10 flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none',
+          overHero
+            ? 'text-brand-gold-light site-header__ink-over-hero'
+            : 'text-brand-gold',
         )}
       >
         <Icon size={18} />

@@ -266,6 +266,118 @@
     min-height: max(600px, 100svh);
   }
 
+  /* ── Hero merges with the header (homepage only) ─────────────────────
+     Pulls the hero up by exactly the header's own height so the header
+     sits OVER the photograph instead of on a band above it — the merged
+     nav from the reference. The values mirror the header's `h-16`
+     (4rem) / `md:h-20` (5rem) plus the same safe-area inset it pads
+     itself with, so the two stay locked together; changing one without
+     the other would leave a cream sliver or clip the hero.
+
+     Only the hero moves. The header keeps its existing sticky position,
+     which is what lets it detach cleanly once the hero scrolls away. */
+  .hero-under-header {
+    margin-top: calc(-1 * (4rem + env(safe-area-inset-top, 0px)));
+  }
+
+  @media (min-width: 768px) {
+    .hero-under-header {
+      margin-top: calc(-1 * (5rem + env(safe-area-inset-top, 0px)));
+    }
+  }
+
+  /* ── Hero → categories blend ─────────────────────────────────────────
+     Dissolves the bottom of the hero into brand-cream so the boundary
+     with the categories band reads as a designed transition rather than
+     a cut.
+
+     Five stops, not two. A straight `transparent → cream` ramp bands
+     visibly over a photograph, because the eye tracks the linear alpha
+     as a series of steps; easing the alpha (0 / .12 / .45 / .82 / 1)
+     over the final 18% spreads the change unevenly enough that no single
+     step is large enough to read as an edge. The last stop is the exact
+     categories background, so the two surfaces meet at the same value
+     and there is no seam.
+
+     Percentages, not pixels: the hero is 100svh, so a fixed height would
+     be most of a short viewport and a thin strip on a tall one. */
+  .hero-blend-bottom {
+    background-image: linear-gradient(
+      to bottom,
+      rgba(250, 247, 242, 0) 82%,
+      rgba(250, 247, 242, 0.12) 88%,
+      rgba(250, 247, 242, 0.45) 93%,
+      rgba(250, 247, 242, 0.82) 97%,
+      rgb(250, 247, 242) 100%
+    );
+  }
+
+  /* ── Site header: transparent over hero → frosted glass ──────────────
+     The state change itself is driven by React (see Header.tsx); this is
+     only how each state looks and how it eases between them.
+
+     Transitions are enumerated rather than `all`: `all` would also
+     animate layout-affecting properties on every class change, and the
+     header carries a lot of them. */
+  .site-header {
+    transition-property: background-color, box-shadow, border-color,
+      backdrop-filter, -webkit-backdrop-filter;
+    transition-duration: 360ms;
+    transition-timing-function: ease;
+  }
+
+  /* Over the hero: nothing at all, so the photograph runs unbroken to
+     the top of the viewport. */
+  .site-header--over-hero {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* Past the hero: the same frosted-glass language as the hero CTA and
+     the reviews cards — semi-transparent cream over a blur, never a flat
+     opaque bar. The shadow is warm-tinted (brand-gold-deep at low alpha)
+     rather than neutral black, which is what makes it read as depth
+     under a cream surface instead of as a grey line. */
+  .site-header--glass {
+    background-color: rgba(250, 247, 242, 0.75);
+    border-bottom-color: rgba(229, 221, 210, 0.7);
+    -webkit-backdrop-filter: blur(16px) saturate(1.05);
+    backdrop-filter: blur(16px) saturate(1.05);
+    box-shadow: 0 8px 28px -12px rgba(138, 106, 47, 0.28);
+  }
+
+  /* Without backdrop-filter there is nothing behind the header to blur,
+     so 75% cream would just show the page sliding through it. Falls back
+     to the solid palette cream — less pretty, still legible. Both the
+     prefixed and unprefixed forms are tested because iOS Safari shipped
+     only the prefixed one for years. */
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .site-header--glass {
+      background-color: rgb(250, 247, 242);
+    }
+  }
+
+  /* Legibility for white nav text sitting directly on photography. */
+  .site-header__ink-over-hero {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Reduced motion shortens the crossfade; it does NOT remove it. The
+     state change carries meaning — it is the signal that the header has
+     left the hero — so suppressing it entirely would lose information,
+     whereas 150ms is fast enough not to read as motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition-duration: 150ms;
+      transition-timing-function: linear;
+    }
+  }
+
   /* ── Hero focal point ───────────────────────────────────────────────
      The admin sets an object-position per breakpoint, because the same
      media almost never crops well both in a 16:9 desktop frame and in a
