@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Jost, Playfair_Display } from 'next/font/google';
+import { Great_Vibes, Jost, Playfair_Display } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -26,6 +26,33 @@ import { prisma } from '@/lib/prisma';
 const jost = Jost({
   variable: '--font-jost',
   subsets: ['latin'],
+  display: 'swap',
+  /**
+   * The ITALIC face, for the wholesale banner's obliqued last word. Same
+   * reasoning as Playfair below: `next/font` defaults to `['normal']`, so
+   * asking for italic without this gets a synthesized slant rather than
+   * Jost's drawn italic.
+   */
+  style: ['normal', 'italic'],
+});
+
+/**
+ * Script accent — ONE line, on the wholesale banner.
+ *
+ * cornalinaaccesorios.com's equivalent line is baked into a JPEG, so there
+ * were no computed styles to copy; this is a visual match for the delicate,
+ * high-contrast signature hand in that image (swashed cap, long looped
+ * descenders). Great Vibes ships a single 400 weight, which is all a script
+ * of this kind needs.
+ *
+ * Deliberately NOT added to the `@theme` type roles as a general-purpose
+ * face: it is a decorative accent for one element, and making it addressable
+ * everywhere is how a third typeface quietly spreads across a site.
+ */
+const greatVibes = Great_Vibes({
+  variable: '--font-great-vibes',
+  subsets: ['latin'],
+  weight: '400',
   display: 'swap',
 });
 
@@ -113,7 +140,7 @@ export default async function RootLayout({
   return (
     <html
       lang="es"
-      className={`${jost.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
+      className={`${jost.variable} ${playfair.variable} ${greatVibes.variable} ${geistMono.variable} h-full antialiased overflow-x-clip`}
     >
       {/*
         Layout decision — MobileNav state lives inside Header via local useState.

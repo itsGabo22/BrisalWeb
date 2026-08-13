@@ -7,22 +7,6 @@ import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ParallaxBackdrop } from '@/components/marketing/ParallaxBackdrop';
 
-/**
- * Framing points, not invented metrics.
- *
- * The client has not supplied real wholesale figures — no client count, no
- * margin data — so this adapts the reference's three-up highlight grid while
- * stating only things that are true of the programme as built. Inventing
- * "+1200 clientes" would put a number on the homepage that nobody could stand
- * behind, and it is the kind of claim a customer repeats back. Swap these for
- * real figures the moment there are any.
- */
-const HIGHLIGHTS = [
-  { value: 'Precios', label: 'exclusivos por volumen' },
-  { value: 'Catálogo', label: 'completo en acero y rodio' },
-  { value: 'Atención', label: 'directa por WhatsApp' },
-] as const;
-
 interface WholesaleCalloutProps {
   /** Admin parallax backdrop. Null keeps the flat cream→sand gradient. */
   backgroundUrl?: string | null;
@@ -89,57 +73,37 @@ export function WholesaleCallout({ backgroundUrl, videoUrl }: WholesaleCalloutPr
         transition={{ duration: reducedMotion ? 0 : 0.6, ease: 'easeOut' }}
         className="relative mx-auto max-w-3xl text-center"
       >
-        <p className="font-body text-xs tracking-[0.28em] text-brand-gold-deep uppercase">
-          Programa mayorista
+        {/*
+          Structure taken from the reference banner: script line, then heavy
+          caps with ONLY the last word obliqued, then one short subtitle. No
+          kicker and no stat row — neither exists in it.
+
+          The reference is a flat JPEG, so none of this could be measured; the
+          typefaces are Brisal's own (Jost for the caps, matching the geometric
+          sans in the image) plus one script for the accent line.
+        */}
+        <p className="font-script text-[clamp(1.75rem,4.5vw,2.5rem)] leading-none font-normal text-brand-gold-deep">
+          Somos mayoristas
         </p>
 
-        {/* One heading only, as on the reference — their wholesale band leads
-            straight into the offer with no question line above it. */}
-        <h2 id="wholesale-heading" className="mt-5">
-          {/*
-            The reference's emphasis line: Playfair Display, ITALIC. Addressed
-            through `font-wordmark`, which is the role token pinned to Playfair
-            — this does NOT touch the BRISAL wordmark itself, which lives in
-            HeroSection and is unaffected by anything here.
-          */}
-          {/*
-            Metrics taken from cornalinaaccesorios.com's own italic emphasis
-            (`<strong>DIFERENCIA</strong>`): weight 700, letter-spacing normal,
-            line-height 1.0. Their site is Poppins throughout and has no
-            heading in its wholesale band at all, so this borrows the
-            TREATMENT — heavy, tight-leaded, untracked italic — rather than
-            the typeface, which stays Playfair per this project's own type
-            roles. The size remains fluid so it survives a 320px viewport.
-          */}
-          <span className="block font-wordmark text-[clamp(2.25rem,6vw,3.75rem)] leading-none font-bold tracking-normal italic text-brand-gold-deep">
-            Aumenta tus ingresos
-          </span>
+        <h2
+          id="wholesale-heading"
+          // Tight leading and no tracking, as in the reference, where the two
+          // lines almost touch. Fluid size so it survives a 320px viewport.
+          className="mt-3 font-heading text-[clamp(2.25rem,7vw,4.25rem)] leading-[0.95] font-bold tracking-tight text-brand-text uppercase"
+        >
+          Aumenta tus{' '}
+          {/* ONLY the last word is italic — the whole point of the reference's
+              treatment. `block` puts it on its own line from `sm`, matching the
+              two-line lockup; on the narrowest screens it wraps naturally. */}
+          <span className="italic sm:block">Ingresos</span>
         </h2>
 
-        <p className="mx-auto mt-6 max-w-xl font-body text-base leading-relaxed text-brand-text-soft md:text-lg">
-          Accede a precios exclusivos y haz crecer tu negocio con nuestra
-          colección completa.
+        <p className="mx-auto mt-5 max-w-lg font-body text-base leading-relaxed text-brand-text-soft md:text-lg">
+          Accede a precios especiales y beneficios exclusivos.
         </p>
 
-        {/* Highlight grid, adapting the reference's stat row. Three columns
-            from `sm`, stacked below it — no horizontal overflow at 320px. */}
-        <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-4">
-          {HIGHLIGHTS.map((item) => (
-            <div key={item.value} className="flex flex-col items-center">
-              {/* Cornalina's stat grid measures 24px/700 with a 1.4 leading
-                  on the value and 14px/400 with 1.6 on the label. Those are
-                  their real numbers, applied here. */}
-              <dt className="font-wordmark text-2xl leading-[1.4] font-bold tracking-normal italic text-brand-gold-deep">
-                {item.value}
-              </dt>
-              <dd className="mt-1 max-w-[16rem] font-body text-sm leading-[1.6] font-normal text-brand-text-soft text-balance">
-                {item.label}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <div className="mt-11 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+        <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
           {/* The SAME glass treatment as the hero CTA — `variant="glass"` maps
               to `.hero-glass-cta`, so there is one definition of that material
               and this cannot drift from it. That class darkens its own backdrop,
