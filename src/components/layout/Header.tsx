@@ -40,53 +40,47 @@ function useIsSectionActive() {
 }
 
 /**
- * The homepage hero, which the header sits over until it is scrolled past.
- * Matched by id rather than by a ref handed down, because the two live in
- * different subtrees — the header comes from SiteChrome in the root layout,
- * the hero from the page itself.
+ * The block that slides up over the pinned hero on the homepage. Matched by id
+ * rather than by a ref handed down, because the two live in different subtrees
+ * — the chrome comes from SiteChrome in the root layout, the stage from the
+ * page itself.
  */
-const HERO_ELEMENT_ID = 'home-hero';
+const REVEAL_OVERLAY_ID = 'home-reveal-overlay';
 
-/** Header height in px at each breakpoint — mirrors `h-16` / `md:h-20`. */
-const HEADER_H_MOBILE = 64;
-const HEADER_H_DESKTOP = 80;
-
-/**
- * Where `.hero-blend-bottom` begins fading the hero to cream. MUST match the
- * first stop of that gradient in globals.css.
- */
-const HERO_BLEND_START = 0.82;
+/** Top-chrome height in px at each breakpoint, used only before it mounts. */
+const CHROME_H_MOBILE = 105;
+const CHROME_H_DESKTOP = 126;
 
 /**
- * The scroll offset at which the header must stop being transparent.
+ * The scroll offset at which the top chrome must stop being transparent.
  *
- * NOT the hero's bottom edge. The hero's final 18% is the gradient dissolving
- * it into brand-cream, so a header that stayed transparent until the very
- * bottom would spend that whole stretch rendering white text over cream —
- * unreadable, and precisely the region the blend makes lightest. The trigger is
- * therefore the moment the header's own bottom edge reaches the START of the
- * blend, which is the last instant it is still over unambiguously dark
- * photography.
+ * The trigger is the overlay's top edge reaching the bottom of the chrome —
+ * the exact moment cream, rather than photograph, is what sits behind the nav.
+ * Measured against the OVERLAY and not the hero because the hero is sticky:
+ * its bounding rect reports where it is painted, not where it sits in flow, so
+ * it drifts as it pins. The overlay is in normal flow, so its document position
+ * is stable.
  *
- * Measured from the live DOM rather than assumed from the viewport height: the
- * hero is `max(600px, 100svh)`, and the announcement bar above it may or may
- * not be present, so arithmetic on window.innerHeight alone would be wrong on
- * short viewports and whenever the client switches the bar off.
+ * Read from the live DOM rather than assumed from the viewport height: the hero
+ * is `max(600px, 100svh)`, and the announcement bar may or may not be present,
+ * so arithmetic on window.innerHeight alone would be wrong on short viewports
+ * and whenever the client switches the bar off.
+ *
+ * ONE value feeds both the header and the announcement bar, which is what keeps
+ * them in step — they cannot drift apart because there is nothing to drift.
  */
-function measureHeroThreshold(headerEl: HTMLElement | null): number | null {
+function measureRevealThreshold(chromeEl: HTMLElement | null): number | null {
   if (typeof document === 'undefined') return null;
 
-  const hero = document.getElementById(HERO_ELEMENT_ID);
-  if (!hero) return null;
+  const overlay = document.getElementById(REVEAL_OVERLAY_ID);
+  if (!overlay) return null;
 
-  const rect = hero.getBoundingClientRect();
-  const heroTop = rect.top + window.scrollY;
-  const blendStart = heroTop + rect.height * HERO_BLEND_START;
-  const headerHeight =
-    headerEl?.offsetHeight ??
-    (window.innerWidth >= 768 ? HEADER_H_DESKTOP : HEADER_H_MOBILE);
+  const overlayTop = overlay.getBoundingClientRect().top + window.scrollY;
+  const chromeHeight =
+    chromeEl?.offsetHeight ??
+    (window.innerWidth >= 768 ? CHROME_H_DESKTOP : CHROME_H_MOBILE);
 
-  return Math.max(0, blendStart - headerHeight);
+  return Math.max(0, overlayTop - chromeHeight);
 }
 
 interface HeaderProps {
@@ -123,13 +117,15 @@ export function Header({ categories, announcementText, announcementActive }: Hea
    */
   const [pastHero, setPastHero] = React.useState(() => {
     if (!isHome) return false;
-    const threshold = measureHeroThreshold(null);
+    const threshold = measureRevealThreshold(null);
     return threshold !== null && scrollY.get() >= threshold;
   });
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const headerRef = React.useRef<HTMLElement>(null);
+  /** The whole fixed top chrome on the homepage: announcement bar + header. */
+  const chromeRef = React.useRef<HTMLDivElement>(null);
   // Held in a ref, not state: the scroll handler below has to read the CURRENT
   // threshold on every frame, and a state value would be captured stale.
   const heroThresholdRef = React.useRef<number | null>(null);
@@ -148,9 +144,9 @@ export function Header({ categories, announcementText, announcementActive }: Hea
   }
 
   /**
-   * Keeps the threshold in step with the hero's actual height. It changes on
-   * rotation, on desktop resize, and when a `100svh` hero settles after the
-   * mobile browser chrome finishes collapsing.
+   * Keeps the threshold in step with the real layout. It changes on rotation,
+   * on desktop resize, and when a `100svh` hero settles after the mobile
+   * browser chrome finishes collapsing — all of which move the overlay.
    *
    * The effect body only writes the REF. `pastHero` is already correct on
    * mount from the lazy initialiser above, and is thereafter updated only from
@@ -165,7 +161,7 @@ export function Header({ categories, announcementText, announcementActive }: Hea
     }
 
     const measure = () => {
-      heroThresholdRef.current = measureHeroThreshold(headerRef.current);
+      heroThresholdRef.current = measureRevealThreshold(chromeRef.current);
     };
 
     const remeasure = () => {
@@ -176,7 +172,9 @@ export function Header({ categories, announcementText, announcementActive }: Hea
 
     measure();
 
-    const hero = document.getElementById(HERO_ELEMENT_ID);
+    // Observing the HERO, not the overlay: the overlay's own height is
+    // irrelevant here, but the hero's height is what positions it.
+    const hero = document.getElementById('home-hero');
     const observer = hero ? new ResizeObserver(remeasure) : null;
     if (hero && observer) observer.observe(hero);
     window.addEventListener('resize', remeasure);
@@ -219,9 +217,26 @@ export function Header({ categories, announcementText, announcementActive }: Hea
   const rawCartItemCount = useCartStore((state) => state.getItemCount());
   const cartItemCount = mounted ? rawCartItemCount : 0;
 
-  return (
+  /**
+   * On the homepage the announcement bar and the header are ONE fixed unit.
+   *
+   * Fixed rather than sticky so the chrome takes no space in flow: the hero
+   * then starts flush at the top of the document with the chrome floating over
+   * it, and there is no negative margin to keep in sync with two elements'
+   * heights (which is what the previous approach needed, and what would have
+   * left a cream seam the moment either height changed).
+   *
+   * Grouping them is also what makes the state change read as one piece of
+   * chrome rather than two: they share `pastHero`, so there is no second
+   * trigger that could fire at a different scroll position.
+   */
+  const topChrome = (
     <>
-      <AnnouncementBar text={announcementText} active={announcementActive} />
+      <AnnouncementBar
+        text={announcementText}
+        active={announcementActive}
+        overHero={overHero}
+      />
 
       {/*
         Two visual systems, deliberately kept apart.
@@ -245,14 +260,16 @@ export function Header({ categories, announcementText, announcementActive }: Hea
         }
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={cn(
-          'sticky top-0 z-30 w-full',
+          'w-full',
+          // Off the homepage the header pins itself, exactly as before. On the
+          // homepage the fixed wrapper does the pinning for both.
           isHome
             ? [
-                'site-header border-b',
+                'site-header relative border-b',
                 pastHero ? 'site-header--glass' : 'site-header--over-hero',
               ]
             : [
-                'transition-shadow',
+                'sticky top-0 z-30 transition-shadow',
                 scrolled && 'border-brand-line border-b shadow-sm backdrop-blur-lg',
               ],
         )}
@@ -456,6 +473,24 @@ export function Header({ categories, announcementText, announcementActive }: Hea
           </div>
         </div>
       </motion.header>
+    </>
+  );
+
+  return (
+    <>
+      {isHome ? (
+        <div
+          ref={chromeRef}
+          className={cn(
+            'top-chrome fixed inset-x-0 top-0 z-30',
+            !pastHero && 'top-chrome--over-hero',
+          )}
+        >
+          {topChrome}
+        </div>
+      ) : (
+        topChrome
+      )}
 
       <MobileNav
         isOpen={mobileNavOpen}

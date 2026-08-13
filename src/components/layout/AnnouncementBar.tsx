@@ -4,6 +4,8 @@ import * as React from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
+
 /** Matches cornalinaaccesorios.com's announcement slider (autoplay="5"). */
 const ROTATE_MS = 5000;
 
@@ -90,9 +92,15 @@ export interface AnnouncementBarProps {
   /** Raw SiteConfig value; one message per line. */
   text: string;
   active: boolean;
+  /**
+   * True while the top chrome sits transparent over the homepage hero. Driven
+   * by the SAME `pastHero` value the header uses, so the two cannot change at
+   * different scroll positions — there is only one trigger to change.
+   */
+  overHero?: boolean;
 }
 
-export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
+export function AnnouncementBar({ text, active, overHero = false }: AnnouncementBarProps) {
   const messages = React.useMemo(() => parseAnnouncements(text), [text]);
   const [index, setIndex] = React.useState(0);
   // Direction only drives the slide animation; +1 forward, -1 back.
@@ -122,7 +130,15 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
 
   return (
     <div
-      className="bg-brand-sand border-brand-line relative w-full border-b"
+      className={cn(
+        'announcement-bar relative w-full border-b',
+        overHero
+          ? // Transparent, not a fill. Legibility comes from the scrim the
+            // top chrome paints behind the whole unit plus a text-shadow on
+            // the message itself — the same approach the nav uses.
+            'announcement-bar--over-hero'
+          : 'bg-brand-sand border-brand-line',
+      )}
       role="region"
       aria-label="Anuncios de la tienda"
     >
@@ -136,6 +152,7 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
             side="left"
             label="Anuncio anterior"
             onClick={() => go(-1)}
+            overHero={overHero}
           />
         )}
 
@@ -175,7 +192,12 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
               // above the header. The wide tracking is what carries the refined
               // look at this size, so it stays — small AND tight would just
               // look cramped.
-              className="text-brand-text text-center font-body text-[10px] leading-relaxed font-light tracking-[0.06em] text-balance uppercase sm:text-[11px] sm:tracking-[0.12em]"
+              className={cn(
+                'text-center font-body text-[10px] leading-relaxed font-light tracking-[0.06em] text-balance uppercase transition-colors duration-300 sm:text-[11px] sm:tracking-[0.12em]',
+                overHero
+                  ? 'text-white site-header__ink-over-hero'
+                  : 'text-brand-text',
+              )}
             >
               <EmphasisedMessage text={messages[index]} />
             </motion.p>
@@ -187,6 +209,7 @@ export function AnnouncementBar({ text, active }: AnnouncementBarProps) {
             side="right"
             label="Siguiente anuncio"
             onClick={() => go(1)}
+            overHero={overHero}
           />
         )}
       </div>
@@ -198,10 +221,12 @@ function ArrowButton({
   side,
   label,
   onClick,
+  overHero = false,
 }: {
   side: 'left' | 'right';
   label: string;
   onClick: () => void;
+  overHero?: boolean;
 }) {
   const Icon = side === 'left' ? ChevronLeft : ChevronRight;
   return (
@@ -211,9 +236,13 @@ function ArrowButton({
       aria-label={label}
       // Tighter and smaller on mobile so the arrows claim as little of the
       // narrow line as possible; the tap target stays >=28px either way.
-      className={`text-brand-text-soft hover:text-brand-gold-deep focus-visible:ring-brand-gold absolute top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none sm:size-8 ${
-        side === 'left' ? 'left-0 sm:left-3' : 'right-0 sm:right-3'
-      }`}
+      className={cn(
+        'focus-visible:ring-brand-gold absolute top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none sm:size-8',
+        overHero
+          ? 'text-white/80 site-header__ink-over-hero hover:text-white'
+          : 'text-brand-text-soft hover:text-brand-gold-deep',
+        side === 'left' ? 'left-0 sm:left-3' : 'right-0 sm:right-3',
+      )}
     >
       <Icon className="size-3.5 sm:size-4" aria-hidden="true" />
     </button>

@@ -255,7 +255,10 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
       // is rendered.
       id="home-hero"
       aria-label="Presentación de marca"
-      className="hero-viewport-height hero-under-header relative flex w-full items-center justify-center overflow-hidden bg-brand-neutral-900"
+      // No negative margin any more: on the homepage the top chrome is
+      // `fixed`, so it takes no space in flow and the hero starts flush at the
+      // top of the document with the chrome floating over it.
+      className="hero-viewport-height relative flex w-full items-center justify-center overflow-hidden bg-brand-neutral-900"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={hasSlides ? onTouchStart : undefined}
@@ -329,18 +332,6 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
       {/* Gold sparkles — behind the content, above the background/overlay */}
       <HeroSparkles />
 
-      {/*
-        Bottom blend into the categories band. z-[16] puts it above the
-        photograph, the dark overlay and the sparkles — so all three dissolve
-        together — but below the z-20 copy, which therefore stays crisp instead
-        of being washed out by cream. The hero's own copy is vertically centred
-        and the fade only occupies the last 18%, so the two never meet.
-      */}
-      <div
-        className="hero-blend-bottom pointer-events-none absolute inset-0 z-[16]"
-        aria-hidden="true"
-      />
-
       {/* z-20 content — CTAs always render regardless of slide data */}
       <m.div
         style={{ y: reducedMotion ? 0 : parallaxY }}
@@ -408,14 +399,11 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
                 type="button"
                 onClick={() => setCurrentIndex(index)}
                 aria-label={`Ir al slide ${index + 1}`}
-                // The dots sit inside the bottom blend, which is now cream
-                // rather than photograph — so the inactive state moved from
-                // white/40 (invisible on cream) to a soft brand-text.
+                // Glass, not solid gold — see `.hero-dot` in globals.css.
+                // Size and spacing are unchanged; only the surface differs.
                 className={cn(
-                  'h-1.5 rounded-full transition-all',
-                  index === currentIndex
-                    ? 'w-6 bg-brand-gold'
-                    : 'w-1.5 bg-brand-text/25 hover:bg-brand-text/40',
+                  'hero-dot h-1.5 rounded-full transition-all',
+                  index === currentIndex ? 'hero-dot--active w-6' : 'w-1.5',
                 )}
               />
             ))}
@@ -437,9 +425,9 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
         >
           <ChevronDown
             className={cn(
-              // gold-DEEP, not gold-light: this now sits on the cream blend
-              // rather than on the dark image, where light gold washed out.
-              'h-6 w-6 text-brand-gold-deep/70',
+              // Back on the photograph now the cream blend is gone, so this
+              // returns to light gold.
+              'h-6 w-6 text-brand-gold-light/70',
               !reducedMotion && 'motion-safe:animate-[hero-bounce_2s_ease-in-out_infinite]',
             )}
           />
