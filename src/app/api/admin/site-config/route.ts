@@ -29,6 +29,8 @@ interface SiteConfigFields {
   wholesaleBgPosY?: number;
   wholesaleBgPosXMobile?: number;
   wholesaleBgPosYMobile?: number;
+  termsAndConditionsText?: string;
+  privacyPolicyText?: string;
 }
 
 /** The only three values the band knows how to render. */
@@ -166,6 +168,17 @@ export async function PATCH(request: Request) {
         'videoSectionBody',
         'videoSectionLinkUrl',
       ] as const) {
+        const value = formData.get(key);
+        if (typeof value === 'string') data[key] = value.trim();
+      }
+
+      /**
+       * Legal documents. Trimmed only at the ends — the interior whitespace IS
+       * the formatting here, since blank lines are what separate paragraphs.
+       * Sending an empty string is a legitimate "clear this document", and the
+       * public page then shows its «en preparación» state.
+       */
+      for (const key of ['termsAndConditionsText', 'privacyPolicyText'] as const) {
         const value = formData.get(key);
         if (typeof value === 'string') data[key] = value.trim();
       }

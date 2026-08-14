@@ -3,6 +3,7 @@ import { BannerSection } from '@/components/admin/BannerSection';
 import { SectionVideosSection } from '@/components/admin/SectionVideosSection';
 import { WholesaleBackgroundSection } from '@/components/admin/WholesaleBackgroundSection';
 import { PromoPopupSection } from '@/components/admin/PromoPopupSection';
+import { LegalSection } from '@/components/admin/LegalSection';
 
 export default function AdminConfiguracionPage() {
   return (
@@ -18,6 +19,9 @@ export default function AdminConfiguracionPage() {
       */}
       <WholesaleBackgroundSection />
       <PromoPopupSection />
+      {/* Last: it is the panel the client will touch least often, and it is the
+          tallest, so putting it above the media panels would bury them. */}
+      <LegalSection />
     </div>
   );
 }
