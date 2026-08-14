@@ -352,6 +352,19 @@ model SiteConfig {
   /// Desktop/primary assets for their respective types. Names kept as-is so
   /// nothing already uploaded is stranded.
   wholesaleVideoUrl    String?
+
+  /// ── Legal pages ────────────────────────────────────────────────────
+  /// Long-form body text for /legal/terminos and /legal/privacidad, in the
+  /// small markdown subset `parseLegalText` understands (## headings, blank
+  /// -line-separated paragraphs, `- ` bullets).
+  ///
+  /// The copy used to be JSX inside each page, so changing a clause meant a
+  /// code change and a deploy — which is the wrong shape for a document the
+  /// client's lawyer will want to revise. Null renders the "en preparación"
+  /// state rather than an empty page.
+  termsAndConditionsText String?
+  privacyPolicyText      String?
+
   updatedAt          DateTime @updatedAt
 }
 

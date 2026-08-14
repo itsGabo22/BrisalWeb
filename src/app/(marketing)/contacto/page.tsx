@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
-import { Mail, Phone, Clock } from 'lucide-react';
+import { Clock, Mail, MapPin, Phone } from 'lucide-react';
 
 import { CatalogHeader } from '@/components/catalog/CatalogHeader';
 import { ContactForm } from '@/components/forms/ContactForm';
-
-// ─── Contact constants — avoid hardcoding in JSX ─────────────────────────────
-const CONTACT_EMAIL = 'contacto@brisalbysalvador.com';
-const CONTACT_PHONE = '+57 300 000 0000';
+import {
+  CONTACT_ADDRESS_LINES,
+  CONTACT_EMAIL,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PHONE_E164,
+} from '@/lib/constants/contact';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -74,14 +76,35 @@ export default function ContactoPage() {
                   <p className="font-body text-xs font-medium uppercase tracking-widest text-brand-neutral-500">
                     Teléfono / WhatsApp
                   </p>
+                  {/* `tel:` rather than the `wa.me` link this used to build.
+                      The floating button and the order flow are already the
+                      site's WhatsApp entry points; this line is the one place
+                      a visitor can simply CALL the store, which nothing else
+                      offered. Same number either way. */}
                   <a
-                    href={`https://wa.me/${CONTACT_PHONE.replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`tel:+${CONTACT_PHONE_E164}`}
                     className="mt-0.5 font-body text-sm text-brand-neutral-800 hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-sm"
                   >
-                    {CONTACT_PHONE}
+                    {CONTACT_PHONE_DISPLAY}
                   </a>
+                </div>
+              </li>
+
+              <li className="flex items-start gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gold/10">
+                  <MapPin className="h-5 w-5 text-brand-gold" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="font-body text-xs font-medium uppercase tracking-widest text-brand-neutral-500">
+                    Dirección
+                  </p>
+                  <address className="mt-0.5 font-body text-sm text-brand-neutral-800 not-italic">
+                    {CONTACT_ADDRESS_LINES.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </address>
                 </div>
               </li>
 

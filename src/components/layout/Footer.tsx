@@ -1,6 +1,14 @@
 import * as React from 'react';
 import Link from 'next/link';
-// lucide-react v1.x does not export Instagram or Facebook — using inline SVGs
+
+import {
+  CONTACT_ADDRESS_LINES,
+  CONTACT_EMAIL,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PHONE_E164,
+  SOCIAL_PROFILES,
+} from '@/lib/constants/contact';
+// lucide-react v1.x exports neither Instagram nor TikTok — inline SVGs below.
 function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -11,17 +19,10 @@ function InstagramIcon({ size = 18 }: { size?: number }) {
   );
 }
 
-function FacebookIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </svg>
-  );
-}
+// The Facebook icon that used to live here was deleted along with its link:
+// the business does not use Facebook, and the footer was shipping an
+// href="#" placeholder for it.
 
-// ─── Configurable constants ───────────────────────────────────────────────────
-const CONTACT_EMAIL = 'contacto@brisalbysalvador.com';
-const CONTACT_PHONE = '+57 300 000 0000';
 const COPYRIGHT_YEAR = 2026;
 
 // ─── TikTok icon (lucide-react doesn't include it — SVG inline) ───────────────
@@ -53,11 +54,13 @@ const LEGAL_LINKS = [
   { label: 'Términos y condiciones', href: '/legal/terminos' },
 ];
 
-const SOCIAL_LINKS = [
-  { label: 'Instagram', href: '#', icon: <InstagramIcon size={18} /> },
-  { label: 'Facebook', href: '#', icon: <FacebookIcon size={18} /> },
-  { label: 'TikTok', href: '#', icon: <TikTokIcon size={18} /> },
-];
+// Icons are paired to the shared profile list by label, so adding or removing
+// a network is a one-line change in `@/lib/constants/contact` and this file
+// only has to know how to draw it.
+const SOCIAL_ICONS: Record<string, React.ReactNode> = {
+  Instagram: <InstagramIcon size={18} />,
+  TikTok: <TikTokIcon size={18} />,
+};
 
 // ─── Footer component ─────────────────────────────────────────────────────────
 export function Footer() {
@@ -169,35 +172,57 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}
+                  href={`tel:+${CONTACT_PHONE_E164}`}
                   className="rounded-sm transition-colors hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                 >
-                  {CONTACT_PHONE}
+                  {CONTACT_PHONE_DISPLAY}
                 </a>
+              </li>
+              {/* The physical store. Plain text, not a Maps link: no address
+                  anywhere else on the site links out, so there is no pattern
+                  to be consistent with — see the report. `<address>` because
+                  that is what the element is for, with the browser default
+                  italic turned off. */}
+              <li>
+                <address className="text-brand-text-soft not-italic">
+                  {CONTACT_ADDRESS_LINES.map((line) => (
+                    <React.Fragment key={line}>
+                      {line}
+                      <br />
+                    </React.Fragment>
+                  ))}
+                </address>
               </li>
             </ul>
           </div>
 
-          {/* The same three icons that were under the tagline, relocated here.
-              "Síguenos" is a label for them, not new content — the columns
-              beside it all carry one, and a bare icon row in a grid of titled
-              columns reads as an orphan. */}
+          {/* The icons that were under the tagline, relocated here. "Síguenos"
+              is a label for them, not new content — the columns beside it all
+              carry one, and a bare icon row in a grid of titled columns reads
+              as an orphan. */}
           <div className="col-span-2 space-y-3 sm:col-span-1">
             <h3 className="font-body text-xs font-medium tracking-[0.2em] text-brand-gold-deep uppercase">
               Síguenos
             </h3>
             <div className="flex items-center gap-3">
-              {SOCIAL_LINKS.map(({ label, href, icon }) => (
+              {SOCIAL_PROFILES.map(({ label, handle, href }) => (
                 <a
                   key={label}
                   href={href}
-                  aria-label={label}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // The handle is in the label so a screen reader announces
+                  // WHICH account, not just "Instagram".
+                  aria-label={`${label}: ${handle}`}
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-brand-line bg-brand-pearl text-brand-text-soft transition-colors hover:border-brand-gold hover:text-brand-gold-deep focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none"
                 >
-                  {icon}
+                  {SOCIAL_ICONS[label]}
                 </a>
               ))}
             </div>
+            <p className="font-body text-xs text-brand-text-soft">
+              {SOCIAL_PROFILES.map((profile) => profile.handle).join(' · ')}
+            </p>
           </div>
         </div>
 
