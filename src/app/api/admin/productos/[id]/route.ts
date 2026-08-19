@@ -5,6 +5,7 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
+import { invalidProductDataResponse, productWriteErrorResponse } from '@/lib/admin/product-errors';
 
 function slugify(text: string): string {
   return text
@@ -45,10 +46,7 @@ export async function PATCH(
 
     const result = productAdminSchema.partial().safeParse(body);
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 },
-      );
+      return invalidProductDataResponse(result.error);
     }
 
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -165,13 +163,26 @@ export async function PATCH(
       });
     });
 
-    await reconcileBandejaAssignments(updated.id, collectProductImageUrls(updated));
+    // Same reasoning as the create route: the update has committed, so a
+    // bandeja bookkeeping failure must not be reported as a failed save.
+    try {
+      await reconcileBandejaAssignments(updated.id, collectProductImageUrls(updated));
+    } catch (bandejaErr) {
+      console.error(
+        `[admin/productos/[id]] Producto ${updated.id} actualizado, pero falló la reconciliación de la bandeja:`,
+        bandejaErr,
+      );
+    }
 
     return NextResponse.json(toProduct(updated));
   } catch (err) {
     console.error('[admin/productos/[id]] Error al actualizar producto:', err);
+
+    const mapped = productWriteErrorResponse(err);
+    if (mapped) return mapped;
+
     return NextResponse.json(
-      { error: 'Error al actualizar producto' },
+      { error: 'Error al actualizar producto. Revisa los datos e inténtalo de nuevo.' },
       { status: 500 },
     );
   }

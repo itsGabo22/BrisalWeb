@@ -99,7 +99,21 @@ export const productAdminSchema = z.object({
   comparePrice: z.number().min(0).optional().nullable(),
   wholesalePrice: z.number().min(0).optional().nullable(),
   categoryId: z.string().min(1, 'Debes seleccionar una categoría'),
-  sku: z.string().optional().nullable(),
+  /**
+   * Trimmed, and blank collapsed to `null`. `Product.sku` is `@unique`, and
+   * Postgres treats every NULL as distinct while treating `''` as a real value
+   * — so accepting an empty string meant the FIRST product saved without a SKU
+   * claimed `''` and the second one failed on a unique violation. The form
+   * already sends `null`, but the API must not depend on that.
+   */
+  sku: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    }),
   stock: z.number().min(0, 'El stock no puede ser negativo'),
   material: z.string().optional().nullable(),
   colorName: z.string().optional().nullable(),
