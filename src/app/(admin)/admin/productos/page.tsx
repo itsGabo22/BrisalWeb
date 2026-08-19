@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { formatCOP } from '@/lib/utils/pricing';
 import { resolveProductImageUrl } from '@/lib/utils/product-images';
-import { getProductReference } from '@/lib/utils/product-reference';
+import { getProductReference, getVariantReference } from '@/lib/utils/product-reference';
 import { getSelectableColors } from '@/lib/utils/product-options';
 import type { Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -131,12 +131,28 @@ export default function AdminProductosPage() {
     const cutoff = dateFilter.cutoff;
 
     return products.filter((product) => {
-      if (
-        term &&
-        !product.name.toLowerCase().includes(term) &&
-        !(product.category?.name || '').toLowerCase().includes(term)
-      ) {
-        return false;
+      if (term) {
+        /*
+          Searching the REFERENCE, not just the stored sku. `getProductReference`
+          falls back to a generated BRS-… string for a product with no sku, and
+          that is the string the row actually displays — so searching for what is
+          on screen has to match. Colour references are derived from the product
+          reference plus a colour code and are not stored anywhere, so they are
+          computed here rather than queried.
+        */
+        const haystack = [
+          product.name,
+          product.category?.name ?? '',
+          product.sku ?? '',
+          getProductReference(product),
+          ...(product.colorVariants ?? []).map((variant) =>
+            getVariantReference(product, variant),
+          ),
+        ];
+
+        if (!haystack.some((value) => value.toLowerCase().includes(term))) {
+          return false;
+        }
       }
 
       // Matches the category itself or its parent, so picking a root category
@@ -185,7 +201,7 @@ export default function AdminProductosPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand-neutral-400" />
           <input
             type="text"
-            placeholder="Buscar productos por nombre o categoría..."
+            placeholder="Buscar por nombre, categoría o referencia (SKU)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-md border border-brand-neutral-200 bg-white pl-10 pr-4 py-2 font-sans text-sm text-brand-neutral-800 placeholder-brand-neutral-400 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-900 dark:text-brand-neutral-100"

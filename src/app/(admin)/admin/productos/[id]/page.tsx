@@ -71,6 +71,13 @@ export default function AdminProductFormPage() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  /**
+   * A free alternative the server offers when the typed SKU is taken. Held
+   * separately from `error` because it needs an action, not just a message — and
+   * it is applied ONLY by the admin clicking, never automatically. Client-authored
+   * references must never change behind the admin's back.
+   */
+  const [skuSuggestion, setSkuSuggestion] = React.useState<string | null>(null);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
   // Load product if editing
@@ -180,6 +187,29 @@ export default function AdminProductFormPage() {
     if (imageTab === 'bandeja') void Promise.resolve().then(() => loadBandeja());
   }, [imageTab, loadBandeja]);
 
+  /**
+   * Bandeja images ticked but not yet pushed into `imageUrls` via "Usar
+   * seleccionadas".
+   *
+   * The apply button used to be the ONLY path from a ticked thumbnail to the
+   * saved product, so going straight to Guardar silently dropped the selection.
+   * Save now reads this too, which makes the button a preview convenience rather
+   * than a step you can forget.
+   */
+  const pendingBandejaUrls = React.useMemo(
+    () =>
+      bandejaImages
+        .filter((img) => selectedBandejaIds.includes(img.id))
+        .map((img) => img.url),
+    [bandejaImages, selectedBandejaIds],
+  );
+
+  /** What a save will actually persist: applied images plus still-ticked ones. */
+  const effectiveImageUrls = React.useMemo(
+    () => [...new Set([...imageUrls, ...pendingBandejaUrls])],
+    [imageUrls, pendingBandejaUrls],
+  );
+
   const toggleBandejaSelect = (imageId: string) => {
     setSelectedBandejaIds((prev) => {
       if (prev.includes(imageId)) return prev.filter((selectedId) => selectedId !== imageId);
@@ -243,7 +273,7 @@ export default function AdminProductFormPage() {
         ? 'la categoría'
         : price <= 0
           ? 'un precio mayor a cero'
-          : imageUrls.length === 0
+          : effectiveImageUrls.length === 0
             ? 'al menos una imagen'
             : null;
 
@@ -252,6 +282,7 @@ export default function AdminProductFormPage() {
     setIsSubmitting(true);
     setError(null);
     setSuccessMsg(null);
+    setSkuSuggestion(null);
 
     // Dynamic slug helper
     const slug = name
@@ -276,7 +307,10 @@ export default function AdminProductFormPage() {
       colorName: colorName.trim() || null,
       colorHex: colorName.trim() ? colorHex : null,
       description: description.trim() || null,
-      imageUrls,
+      // Includes bandeja images still ticked in the picker — see
+      // `effectiveImageUrls`. Saving must not depend on remembering to click
+      // "Usar seleccionadas" first.
+      imageUrls: effectiveImageUrls,
       featured,
       active,
       // Blank price boxes become null = "inherit the product price", which is
@@ -311,7 +345,10 @@ export default function AdminProductFormPage() {
         // message — hiding the status behind "Unexpected end of JSON input".
         const errorData = await res
           .json()
-          .catch(() => ({}) as { error?: string });
+          .catch(() => ({}) as { error?: string; suggestedSku?: string | null });
+        if (errorData.suggestedSku) {
+          setSkuSuggestion(errorData.suggestedSku);
+        }
         throw new Error(
           errorData.error ?? `Error al guardar el producto (HTTP ${res.status})`,
         );
@@ -363,7 +400,30 @@ export default function AdminProductFormPage() {
         {/* Alerts */}
         {error && (
           <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/20 dark:text-red-400">
-            {error}
+            <p>{error}</p>
+            {/*
+              Offered, never applied for them. The click is what writes the new
+              value into the field, and it stays editable afterwards — the admin
+              can refine it or ignore the suggestion entirely.
+            */}
+            {skuSuggestion && (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span>
+                  ¿Usar <strong className="font-medium">{skuSuggestion}</strong> en su lugar?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSku(skuSuggestion);
+                    setSkuSuggestion(null);
+                    setError(null);
+                  }}
+                  className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-transparent dark:text-red-300 dark:hover:bg-red-950/40"
+                >
+                  Usar {skuSuggestion}
+                </button>
+              </div>
+            )}
           </div>
         )}
         {successMsg && (
@@ -408,15 +468,26 @@ export default function AdminProductFormPage() {
 
             <div>
               <label className="block text-sm font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
-                Precio Comparativo / Anterior (COP)
+                Precio antes del descuento (COP)
               </label>
               <input
                 type="number"
                 value={comparePrice || ''}
                 onChange={(e) => setComparePrice(e.target.value ? Number(e.target.value) : null)}
-                placeholder="Opcional"
+                placeholder="Opcional — solo si el producto tiene descuento"
                 className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
+              {/*
+                Spelled out because this field kept being read as the wholesale
+                price. They are unrelated: this one is display-only decoration for
+                a discount, the other is what an approved mayorista actually pays.
+              */}
+              <p className="mt-1.5 text-xs leading-relaxed text-brand-neutral-500 dark:text-brand-neutral-400">
+                Aparece tachado junto al precio con descuento en el catálogo.
+                Déjalo vacío si el producto no tiene descuento.{' '}
+                <strong className="font-medium">No es el precio mayorista</strong> — ese se
+                configura en el campo de abajo.
+              </p>
             </div>
 
             <div>
@@ -430,6 +501,10 @@ export default function AdminProductFormPage() {
                 placeholder="Opcional — visible solo para mayoristas aprobados"
                 className="w-full rounded-md border border-brand-neutral-200 bg-white px-4 py-2 text-brand-neutral-800 dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
+              <p className="mt-1.5 text-xs leading-relaxed text-brand-neutral-500 dark:text-brand-neutral-400">
+                El precio real que paga un mayorista aprobado. No se muestra en el
+                catálogo público.
+              </p>
             </div>
 
             <div>

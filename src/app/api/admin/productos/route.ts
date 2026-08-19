@@ -4,6 +4,7 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
+import { findSkuConflict, suggestAvailableSku } from '@/lib/admin/sku-suggestion';
 import {
   PRODUCT_FIELD_LABELS,
   PRODUCT_WRITE_MESSAGES,
@@ -73,6 +74,24 @@ export async function POST(request: Request) {
         { error: 'Ya existe un producto con este nombre' },
         { status: 409 },
       );
+    }
+
+    // Checked before the insert so the 409 can carry a free alternative. The
+    // suggestion is only ever RETURNED — accepting it is a click in the form, so
+    // a client-authored reference never changes without the admin choosing it.
+    if (sku) {
+      const conflict = await findSkuConflict(sku);
+      if (conflict) {
+        const suggestedSku = await suggestAvailableSku(sku);
+        return NextResponse.json(
+          {
+            error: `Ya existe un producto («${conflict.name}») con la referencia ${conflict.sku}.`,
+            conflictingSku: conflict.sku,
+            suggestedSku,
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const newProduct = await prisma.product.create({

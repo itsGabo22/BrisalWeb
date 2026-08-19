@@ -5,6 +5,7 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
+import { findSkuConflict, suggestAvailableSku } from '@/lib/admin/sku-suggestion';
 import {
   PRODUCT_FIELD_LABELS,
   PRODUCT_WRITE_MESSAGES,
@@ -89,6 +90,24 @@ export async function PATCH(
      * existing-record fallback: the form only sends what it means to change,
      * so editing a name can't blank the description or wipe the variants.
      */
+    // Same pre-check as create, minus this product itself: a product is not a
+    // SKU conflict with its own stored reference, so re-saving without touching
+    // the field must not trip.
+    if (sku) {
+      const conflict = await findSkuConflict(sku, id);
+      if (conflict) {
+        const suggestedSku = await suggestAvailableSku(sku, id);
+        return NextResponse.json(
+          {
+            error: `Ya existe otro producto («${conflict.name}») con la referencia ${conflict.sku}.`,
+            conflictingSku: conflict.sku,
+            suggestedSku,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const updateData: Prisma.ProductUpdateInput = {
       ...(name !== undefined && { name }),
       ...(price !== undefined && { price }),
