@@ -19,8 +19,6 @@ codebase, not assumed.
 - **`@prisma/adapter-pg`** singleton in `src/lib/prisma.ts`.
   **NEVER call `new PrismaClient()` directly** — always
   `import { prisma } from '@/lib/prisma'`.
-- Supabase (Postgres + Auth + Storage), Zustand (cart), Framer Motion,
-  Resend (email), sharp (image processing).
 
 ## CRITICAL — Blob-wrap sharp output before uploading
 
@@ -66,17 +64,10 @@ Prisma `P1001`.
 
 ## Design tokens
 
-Light palette, defined in `globals.css` `@theme`:
-
-| Token | Hex |
-|---|---|
-| `brand-cream` | `#FAF7F2` |
-| `brand-pearl` | `#FFFFFF` |
-| `brand-sand` | `#F0E9E0` |
-| `brand-gold` | `#C9A96E` |
-| `brand-gold-deep` | `#8A6A2F` |
-| `brand-text` | `#2A2521` |
-| `brand-line` | `#E5DDD2` |
+Light palette. The tokens and their hex values live in the `@theme` block of
+`src/app/globals.css`, which is the single source of truth — read them there
+rather than from a copy that drifts. The rules below are what the values alone
+do not tell you:
 
 - `brand-gold` is for **accents only** — hairlines, borders, small fills. It
   scores ~1.96:1 on cream, so gold **text** must use `brand-gold-deep`.
