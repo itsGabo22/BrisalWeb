@@ -4,7 +4,12 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
-import { invalidProductDataResponse, productWriteErrorResponse } from '@/lib/admin/product-errors';
+import {
+  PRODUCT_FIELD_LABELS,
+  PRODUCT_WRITE_MESSAGES,
+  invalidDataResponse,
+  prismaWriteErrorResponse,
+} from '@/lib/admin/admin-errors';
 
 function slugify(text: string): string {
   return text
@@ -33,7 +38,7 @@ export async function POST(request: Request) {
     const result = productAdminSchema.safeParse(body);
 
     if (!result.success) {
-      return invalidProductDataResponse(result.error);
+      return invalidDataResponse(result.error, PRODUCT_FIELD_LABELS);
     }
 
     const {
@@ -126,7 +131,7 @@ export async function POST(request: Request) {
 
     // Name the actual problem (duplicate SKU, missing category, stale material)
     // when we recognise it; only a genuine unknown falls through to 500.
-    const mapped = productWriteErrorResponse(err);
+    const mapped = prismaWriteErrorResponse(err, PRODUCT_WRITE_MESSAGES);
     if (mapped) return mapped;
 
     return NextResponse.json(

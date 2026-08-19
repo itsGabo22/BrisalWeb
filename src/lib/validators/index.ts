@@ -145,7 +145,23 @@ export const categoryAdminSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
-  parentId: z.string().optional().nullable(),
+  /**
+   * Blank collapsed to `null`, meaning "top-level category".
+   *
+   * `Category.parentId` is a foreign key, so an empty string is not "no parent"
+   * to Postgres — it is a parent whose id is `''`, which no row has, and the
+   * insert died on a FK violation reported as a generic 500. The multipart form
+   * path normalises this in `parseCategoryFormData`, but a JSON caller went
+   * straight through, so the rule belongs here where BOTH paths meet.
+   */
+  parentId: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    }),
 });
 
 export type CategoryAdminFormData = z.infer<typeof categoryAdminSchema>;

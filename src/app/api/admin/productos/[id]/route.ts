@@ -5,7 +5,12 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
-import { invalidProductDataResponse, productWriteErrorResponse } from '@/lib/admin/product-errors';
+import {
+  PRODUCT_FIELD_LABELS,
+  PRODUCT_WRITE_MESSAGES,
+  invalidDataResponse,
+  prismaWriteErrorResponse,
+} from '@/lib/admin/admin-errors';
 
 function slugify(text: string): string {
   return text
@@ -46,7 +51,7 @@ export async function PATCH(
 
     const result = productAdminSchema.partial().safeParse(body);
     if (!result.success) {
-      return invalidProductDataResponse(result.error);
+      return invalidDataResponse(result.error, PRODUCT_FIELD_LABELS);
     }
 
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -178,7 +183,7 @@ export async function PATCH(
   } catch (err) {
     console.error('[admin/productos/[id]] Error al actualizar producto:', err);
 
-    const mapped = productWriteErrorResponse(err);
+    const mapped = prismaWriteErrorResponse(err, PRODUCT_WRITE_MESSAGES);
     if (mapped) return mapped;
 
     return NextResponse.json(

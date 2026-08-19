@@ -7,6 +7,12 @@ import {
   revalidateCategorySurfaces,
   uploadCategoryImage,
 } from '@/lib/admin/category-image';
+import {
+  CATEGORY_FIELD_LABELS,
+  CATEGORY_WRITE_MESSAGES,
+  invalidDataResponse,
+  prismaWriteErrorResponse,
+} from '@/lib/admin/admin-errors';
 
 export const runtime = 'nodejs';
 
@@ -53,10 +59,28 @@ export async function POST(request: Request) {
     const result = categoryAdminSchema.safeParse(fields);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 },
-      );
+      return invalidDataResponse(result.error, CATEGORY_FIELD_LABELS);
+    }
+
+    // Checked here rather than left to the foreign key. A parent that has since
+    // been deleted is an ordinary stale-form situation, and Postgres answers it
+    // with a constraint violation that reads as a server fault; this says what
+    // the admin has to do instead. The FK is still the backstop for a row
+    // deleted between this check and the insert.
+    if (result.data.parentId) {
+      const parent = await prisma.category.findUnique({
+        where: { id: result.data.parentId },
+        select: { id: true },
+      });
+      if (!parent) {
+        return NextResponse.json(
+          {
+            error:
+              'La categoría padre seleccionada ya no existe. Recarga la página y vuelve a elegirla.',
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const slug = slugify(result.data.name);
@@ -87,8 +111,12 @@ export async function POST(request: Request) {
     return NextResponse.json(toCategory(newCategory), { status: 201 });
   } catch (err) {
     console.error('[admin/categorias] Error al crear categoría:', err);
+
+    const mapped = prismaWriteErrorResponse(err, CATEGORY_WRITE_MESSAGES);
+    if (mapped) return mapped;
+
     return NextResponse.json(
-      { error: 'Error al crear categoría' },
+      { error: 'Error al crear categoría. Revisa los datos e inténtalo de nuevo.' },
       { status: 500 },
     );
   }

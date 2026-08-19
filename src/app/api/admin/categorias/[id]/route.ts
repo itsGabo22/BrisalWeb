@@ -9,6 +9,12 @@ import {
   uploadCategoryImage,
 } from '@/lib/admin/category-image';
 import { deleteFromStorageByUrl } from '@/lib/supabase/storage';
+import {
+  CATEGORY_FIELD_LABELS,
+  CATEGORY_WRITE_MESSAGES,
+  invalidDataResponse,
+  prismaWriteErrorResponse,
+} from '@/lib/admin/admin-errors';
 
 export const runtime = 'nodejs';
 
@@ -49,15 +55,46 @@ export async function PATCH(
     const result = categoryAdminSchema.partial().safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 },
-      );
+      return invalidDataResponse(result.error, CATEGORY_FIELD_LABELS);
     }
 
     const existing = await prisma.category.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
+    }
+
+    if (result.data.parentId) {
+      if (result.data.parentId === id) {
+        return NextResponse.json(
+          { error: 'Una categoría no puede ser su propia categoría padre' },
+          { status: 400 },
+        );
+      }
+      const parent = await prisma.category.findUnique({
+        where: { id: result.data.parentId },
+        select: { id: true, parentId: true },
+      });
+      if (!parent) {
+        return NextResponse.json(
+          {
+            error:
+              'La categoría padre seleccionada ya no existe. Recarga la página y vuelve a elegirla.',
+          },
+          { status: 400 },
+        );
+      }
+      // Reparenting onto one's own descendant would detach the whole branch from
+      // the tree, and every reader walks that tree from the roots — the rows
+      // would survive but vanish from the catalog.
+      if (parent.parentId === id) {
+        return NextResponse.json(
+          {
+            error:
+              'No puedes mover esta categoría dentro de una de sus propias subcategorías',
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const { name, ...rest } = result.data;
@@ -107,8 +144,12 @@ export async function PATCH(
     return NextResponse.json(toCategory(updated));
   } catch (err) {
     console.error('[admin/categorias/[id]] Error al actualizar categoría:', err);
+
+    const mapped = prismaWriteErrorResponse(err, CATEGORY_WRITE_MESSAGES);
+    if (mapped) return mapped;
+
     return NextResponse.json(
-      { error: 'Error al actualizar categoría' },
+      { error: 'Error al actualizar categoría. Revisa los datos e inténtalo de nuevo.' },
       { status: 500 },
     );
   }
@@ -188,6 +229,9 @@ export async function DELETE(
       );
     }
     console.error('[admin/categorias/[id]] Error al eliminar categoría:', err);
+
+    const mapped = prismaWriteErrorResponse(err, CATEGORY_WRITE_MESSAGES);
+    if (mapped) return mapped;
     return NextResponse.json(
       { error: 'Error al eliminar categoría' },
       { status: 500 },
