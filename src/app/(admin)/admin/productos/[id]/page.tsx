@@ -34,6 +34,62 @@ interface PendingAssignment {
   url: string;
 }
 
+/**
+ * Scrolls the document back to the top, smoothly.
+ *
+ * Hand-rolled because none of the platform's smooth-scroll APIs work on this
+ * layout — verified in the browser on this page:
+ *
+ *   window.scrollTo({ top: 0, behavior: 'smooth' })  -> no movement at all
+ *   documentElement.scrollTo({ behavior: 'smooth' }) -> no movement
+ *   element.scrollIntoView({ behavior: 'smooth' })   -> no movement
+ *   documentElement.scrollTop = 0                    -> works
+ *
+ * The root element computes to `overflow: clip visible`, and with the clipped
+ * axis in play Chrome refuses the smooth-scroll path while still honouring a
+ * direct `scrollTop` assignment. Setting CSS `scroll-behavior: smooth` makes it
+ * worse — the direct assignment stops working too. So the one mechanism that
+ * moves the page is the one this animates, frame by frame.
+ *
+ * Honours `prefers-reduced-motion` by jumping instead of animating.
+ *
+ * The animation is an ENHANCEMENT, never the guarantee. `requestAnimationFrame`
+ * stops firing while the main thread is saturated, and this very form can
+ * saturate it — the bandeja tab loads dozens of remote thumbnails at once, and
+ * during that the frame callbacks stall long enough that an animated scroll
+ * never arrives. Being seen matters more than being pretty, so a timer snaps to
+ * the top regardless of whether a single frame ran.
+ */
+function smoothScrollToTop(durationMs = 350): void {
+  const root = document.documentElement;
+  const start = root.scrollTop;
+  if (start <= 0) return;
+
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    root.scrollTop = 0;
+    return;
+  }
+
+  const startedAt = performance.now();
+  // easeOutCubic: most of the distance covered early, so the banner shows fast.
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+  let settled = false;
+
+  const step = () => {
+    const progress = Math.min(1, (performance.now() - startedAt) / durationMs);
+    root.scrollTop = start * (1 - ease(progress));
+    if (progress >= 1) settled = true;
+    else if (!settled) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+
+  // Backstop: if frames were starved, land at the top anyway.
+  window.setTimeout(() => {
+    if (!settled && root.scrollTop > 0) root.scrollTop = 0;
+  }, durationMs + 150);
+}
+
 export default function AdminProductFormPage() {
   const router = useRouter();
   const params = useParams();
@@ -284,6 +340,21 @@ export default function AdminProductFormPage() {
     setSuccessMsg(null);
     setSkuSuggestion(null);
 
+    /*
+      Every outcome of this submit renders in the banner at the top of the form —
+      success, a validation list, or the duplicate-SKU suggestion. The form is
+      taller than the viewport (materials, colours and the image picker sit well
+      below the fold), so an admin who saved from the bottom got no feedback at
+      all: the banner appeared ~1900px above them.
+
+      Scrolled here, at the START of the submit rather than in each outcome
+      branch, so all three cases behave identically and no future branch can
+      forget it. See `smoothScrollToTop` for why this is not a plain
+      `window.scrollTo({ behavior: 'smooth' })` — that call is a no-op on this
+      layout.
+    */
+    smoothScrollToTop();
+
     // Dynamic slug helper
     const slug = name
       .toLowerCase()
@@ -360,13 +431,32 @@ export default function AdminProductFormPage() {
       await res.json();
 
       setSuccessMsg(isNew ? 'Producto creado con éxito' : 'Producto actualizado con éxito');
-      setTimeout(() => {
-        router.push('/admin/productos');
-        router.refresh();
-      }, 1500);
+
+      /*
+        Straight to the list. The write is already committed by the time this
+        response arrives — the route awaits the Prisma call AND the bandeja
+        reconcile before answering — so everything that used to happen after it
+        was pure waiting:
+
+          - a hard-coded `setTimeout(…, 1500)` to let the banner be read, and
+          - `router.refresh()`, which re-runs server components for the route we
+            are leaving. The list is a client component that fetches
+            /api/admin/productos in its own mount effect, so the refresh bought
+            nothing.
+
+        Measured on a real edit: the response landed at 5.6s (remote database),
+        then 4.8s of this passed before the page actually changed.
+
+        `isSubmitting` deliberately stays TRUE here. It used to be cleared in a
+        `finally`, which ran immediately while the 1.5s timer was still pending —
+        leaving the button live and the form mounted for ~4s, long enough to
+        submit the whole thing a second time. On the success path this component
+        is on its way out, so the button stays "Guardando..." until it unmounts.
+      */
+      router.push('/admin/productos');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ocurrió un error inesperado');
-    } finally {
+      // Only re-enabled when the save FAILED and the admin has to act again.
       setIsSubmitting(false);
     }
   };
