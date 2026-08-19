@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { processAndUploadImage, slugifyFilename, uploadVideo } from '@/lib/supabase/storage';
 import { parsePercent } from '@/lib/admin/hero-slides';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 function traceHash(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex').slice(0, 16);
@@ -15,8 +16,12 @@ const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
 
 export async function GET() {
-  const slides = await prisma.heroSlide.findMany({ orderBy: { order: 'asc' } });
-  return NextResponse.json(slides);
+  try {
+    const slides = await prisma.heroSlide.findMany({ orderBy: { order: 'asc' } });
+    return NextResponse.json(slides);
+  } catch (err) {
+    return adminReadErrorResponse('admin/hero-slides', err);
+  }
 }
 
 export async function POST(request: Request) {

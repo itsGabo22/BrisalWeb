@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Order, OrderItem } from '@prisma/client';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 function serializeOrder(order: Order & { items: OrderItem[] }) {
   return {
@@ -32,10 +33,14 @@ function serializeOrder(order: Order & { items: OrderItem[] }) {
 }
 
 export async function GET() {
-  const orders = await prisma.order.findMany({
-    include: { items: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const orders = await prisma.order.findMany({
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return NextResponse.json(orders.map(serializeOrder));
+    return NextResponse.json(orders.map(serializeOrder));
+  } catch (err) {
+    return adminReadErrorResponse('admin/pedidos', err);
+  }
 }

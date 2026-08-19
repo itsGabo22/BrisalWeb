@@ -166,6 +166,32 @@ export function prismaWriteErrorResponse(
   }
 }
 
+/**
+ * The catch-all for admin READ handlers (GET/list).
+ *
+ * Every admin GET shipped without a try/catch, so anything the database threw
+ * became an unhandled rejection: Next answered with its own opaque 500, nothing
+ * was logged under a searchable tag, and the client's `if (res.ok)` branches
+ * silently fell through to an empty list. That is exactly how a transient pool
+ * exhaustion turned into "the admin panel is broken and nothing says why".
+ *
+ * Reads have no Zod input and no constraint violations to translate, so unlike
+ * `prismaWriteErrorResponse` this never tries to attribute blame to a field —
+ * a failed read is a server-side fault. It returns one honest 500 and, above
+ * all, guarantees the tagged `console.error` that makes the real stack findable
+ * in the runtime logs.
+ *
+ * @param tag  Log prefix identifying the route, e.g. `admin/categorias`.
+ */
+export function adminReadErrorResponse(
+  tag: string,
+  err: unknown,
+  message = 'No se pudieron cargar los datos. Inténtalo de nuevo.',
+): NextResponse {
+  console.error(`[${tag}] Error al cargar datos:`, err);
+  return NextResponse.json({ error: message }, { status: 500 });
+}
+
 // ─── Productos ────────────────────────────────────────────────────────────────
 
 export const PRODUCT_FIELD_LABELS: InvalidDataOptions = {

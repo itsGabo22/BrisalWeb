@@ -3,16 +3,21 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { discountAdminSchema } from '@/lib/validators';
 import { toDiscount } from '@/lib/repositories/mappers';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 export async function GET() {
-  const discounts = await prisma.discount.findMany({
-    orderBy: { createdAt: 'desc' },
-    // Ids only: the admin list renders a count and the form pre-checks boxes,
-    // and neither needs the full product rows it already fetched separately.
-    include: { products: { select: { id: true } } },
-  });
+  try {
+    const discounts = await prisma.discount.findMany({
+      orderBy: { createdAt: 'desc' },
+      // Ids only: the admin list renders a count and the form pre-checks boxes,
+      // and neither needs the full product rows it already fetched separately.
+      include: { products: { select: { id: true } } },
+    });
 
-  return NextResponse.json(discounts.map(toDiscount));
+    return NextResponse.json(discounts.map(toDiscount));
+  } catch (err) {
+    return adminReadErrorResponse('admin/descuentos', err);
+  }
 }
 
 export async function POST(request: Request) {

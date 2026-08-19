@@ -77,21 +77,34 @@ export default function AdminCategoriasPage() {
   // UI states for tree expansion
   const [expandedIds, setExpandedIds] = React.useState<Record<string, boolean>>({});
   const [formError, setFormError] = React.useState<string | null>(null);
+  /** Set when the category list itself could not be fetched. */
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const loadCategories = React.useCallback(async () => {
+    // `if (res.ok)` with no else is what made a failed load invisible: the list
+    // stayed empty and nothing said why, so a server error read as "this shop
+    // has no categories". A failure now sets an explicit error state.
+    setLoadError(null);
     try {
       const res = await fetch('/api/admin/categorias');
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
       }
+      const data = await res.json();
+      setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);
+      setLoadError('No pudimos cargar las categorías, intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const retryLoad = React.useCallback(() => {
+    setIsLoading(true);
+    void loadCategories();
+  }, [loadCategories]);
 
   React.useEffect(() => {
     void Promise.resolve().then(() => loadCategories());
@@ -305,6 +318,19 @@ export default function AdminCategoriasPage() {
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="size-8 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
+          </div>
+        ) : loadError ? (
+          /*
+            Distinct from the empty state below on purpose. "No hay categorías"
+            and "the request failed" look identical to an admin but mean opposite
+            things — the first invites creating one, the second means the data is
+            there and we could not reach it.
+          */
+          <div className="flex flex-col items-center justify-center gap-3 h-64 border border-dashed rounded-xl bg-white border-brand-neutral-200 text-brand-neutral-500">
+            <p>{loadError}</p>
+            <Button variant="secondary" onClick={retryLoad} className="px-5 py-2">
+              Reintentar
+            </Button>
           </div>
         ) : rootCategories.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 border border-dashed rounded-xl bg-white border-brand-neutral-200 text-brand-neutral-400">

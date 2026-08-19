@@ -10,6 +10,7 @@ import {
 import {
   CATEGORY_FIELD_LABELS,
   CATEGORY_WRITE_MESSAGES,
+  adminReadErrorResponse,
   invalidDataResponse,
   prismaWriteErrorResponse,
 } from '@/lib/admin/admin-errors';
@@ -29,11 +30,15 @@ function slugify(text: string): string {
 }
 
 export async function GET() {
-  const categories = await prisma.category.findMany({
-    orderBy: { createdAt: 'asc' },
-  });
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
 
-  return NextResponse.json(categories.map((category) => toCategory(category)));
+    return NextResponse.json(categories.map((category) => toCategory(category)));
+  } catch (err) {
+    return adminReadErrorResponse('admin/categorias', err);
+  }
 }
 
 export async function POST(request: Request) {

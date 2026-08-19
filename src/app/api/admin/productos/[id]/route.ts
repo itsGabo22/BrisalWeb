@@ -8,6 +8,7 @@ import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admi
 import {
   PRODUCT_FIELD_LABELS,
   PRODUCT_WRITE_MESSAGES,
+  adminReadErrorResponse,
   invalidDataResponse,
   prismaWriteErrorResponse,
 } from '@/lib/admin/admin-errors';
@@ -28,17 +29,21 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: PRODUCT_INCLUDE,
-  });
+  try {
+    const { id } = await params;
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: PRODUCT_INCLUDE,
+    });
 
-  if (!product) {
-    return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+    if (!product) {
+      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json(toProduct(product));
+  } catch (err) {
+    return adminReadErrorResponse('admin/productos/[id]', err);
   }
-
-  return NextResponse.json(toProduct(product));
 }
 
 export async function PATCH(

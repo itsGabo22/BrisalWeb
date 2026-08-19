@@ -6,6 +6,7 @@ import {
   processAndUploadImage,
   uploadVideo,
 } from '@/lib/supabase/storage';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 interface SiteConfigFields {
   announcementText?: string;
@@ -102,13 +103,17 @@ const WHOLESALE_CLEARS = [
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const config = await prisma.siteConfig.upsert({
-    where: { id: 'singleton' },
-    update: {},
-    create: { id: 'singleton' },
-  });
+  try {
+    const config = await prisma.siteConfig.upsert({
+      where: { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+    });
 
-  return NextResponse.json(config);
+    return NextResponse.json(config);
+  } catch (err) {
+    return adminReadErrorResponse('admin/site-config', err);
+  }
 }
 
 export async function PATCH(request: Request) {

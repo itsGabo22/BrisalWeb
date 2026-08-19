@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { processAndUploadImage } from '@/lib/supabase/storage';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 interface PromoPopupFields {
   active?: boolean;
@@ -16,13 +17,17 @@ interface PromoPopupFields {
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const popup = await prisma.promoPopup.upsert({
-    where: { id: 'singleton' },
-    update: {},
-    create: { id: 'singleton' },
-  });
+  try {
+    const popup = await prisma.promoPopup.upsert({
+      where: { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+    });
 
-  return NextResponse.json(popup);
+    return NextResponse.json(popup);
+  } catch (err) {
+    return adminReadErrorResponse('admin/promo-popup', err);
+  }
 }
 
 export async function PATCH(request: Request) {

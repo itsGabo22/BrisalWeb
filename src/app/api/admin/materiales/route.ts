@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { materialAdminSchema } from '@/lib/validators';
 import { toMaterial } from '@/lib/repositories/mappers';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 export const runtime = 'nodejs';
 
@@ -23,17 +24,21 @@ function slugify(text: string): string {
  * fetching every product id just to measure the array.
  */
 export async function GET() {
-  const materials = await prisma.material.findMany({
-    orderBy: { name: 'asc' },
-    include: { _count: { select: { products: true } } },
-  });
+  try {
+    const materials = await prisma.material.findMany({
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { products: true } } },
+    });
 
-  return NextResponse.json(
-    materials.map((material) => ({
-      ...toMaterial(material),
-      productCount: material._count.products,
-    })),
-  );
+    return NextResponse.json(
+      materials.map((material) => ({
+        ...toMaterial(material),
+        productCount: material._count.products,
+      })),
+    );
+  } catch (err) {
+    return adminReadErrorResponse('admin/materiales', err);
+  }
 }
 
 export async function POST(request: Request) {

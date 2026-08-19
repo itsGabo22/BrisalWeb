@@ -7,6 +7,7 @@ import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admi
 import {
   PRODUCT_FIELD_LABELS,
   PRODUCT_WRITE_MESSAGES,
+  adminReadErrorResponse,
   invalidDataResponse,
   prismaWriteErrorResponse,
 } from '@/lib/admin/admin-errors';
@@ -24,12 +25,16 @@ function slugify(text: string): string {
 }
 
 export async function GET() {
-  const products = await prisma.product.findMany({
-    include: PRODUCT_INCLUDE,
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const products = await prisma.product.findMany({
+      include: PRODUCT_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return NextResponse.json(products.map(toProduct));
+    return NextResponse.json(products.map(toProduct));
+  } catch (err) {
+    return adminReadErrorResponse('admin/productos', err);
+  }
 }
 
 export async function POST(request: Request) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Wholesaler } from '@/types';
 import type { User } from '@prisma/client';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 function toWholesaler(user: User): Wholesaler {
   return {
@@ -19,10 +20,14 @@ function toWholesaler(user: User): Wholesaler {
 }
 
 export async function GET() {
-  const wholesalers = await prisma.user.findMany({
-    where: { role: 'MAYORISTA' },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const wholesalers = await prisma.user.findMany({
+      where: { role: 'MAYORISTA' },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return NextResponse.json(wholesalers.map(toWholesaler));
+    return NextResponse.json(wholesalers.map(toWholesaler));
+  } catch (err) {
+    return adminReadErrorResponse('admin/mayoristas', err);
+  }
 }

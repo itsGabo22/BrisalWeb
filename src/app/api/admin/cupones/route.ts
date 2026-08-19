@@ -3,12 +3,17 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { couponAdminSchema } from '@/lib/validators';
 import { toCoupon } from '@/lib/repositories/mappers';
+import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
-  return NextResponse.json(coupons.map(toCoupon));
+  try {
+    const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
+    return NextResponse.json(coupons.map(toCoupon));
+  } catch (err) {
+    return adminReadErrorResponse('admin/cupones', err);
+  }
 }
 
 export async function POST(request: Request) {
