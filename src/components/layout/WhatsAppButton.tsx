@@ -46,7 +46,6 @@ export function WhatsAppButton() {
         h-14 w-14 rounded-full shadow-lg
         text-white
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#25D366]
-        motion-safe:animate-[whatsapp-pulse_2.5s_ease-in-out_infinite]
         transition-transform hover:scale-110 active:scale-95
       "
       style={{
@@ -56,7 +55,19 @@ export function WhatsAppButton() {
         right: 'calc(1.5rem + env(safe-area-inset-right))',
       }}
     >
-      <WhatsAppIcon size={28} />
+      {/* Expanding halo. A sibling ring rather than an animated box-shadow, so
+          the pulse runs on the compositor — see `whatsapp-halo` in globals.css.
+          Behind the icon and never interactive. */}
+      <span
+        aria-hidden="true"
+        className="whatsapp-halo pointer-events-none absolute inset-0 rounded-full"
+        style={{ backgroundColor: '#25D366' }}
+      />
+      {/* Above the halo: the ring is absolutely positioned, so without an
+          explicit layer it would paint over the in-flow icon. */}
+      <span className="relative z-10 flex">
+        <WhatsAppIcon size={28} />
+      </span>
     </a>
   );
 }

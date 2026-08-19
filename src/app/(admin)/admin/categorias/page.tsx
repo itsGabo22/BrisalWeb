@@ -423,8 +423,17 @@ export default function AdminCategoriasPage() {
             <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
               Imagen de la categoría
             </label>
+            {/*
+              The destination depends on where the category sits, and the copy
+              used to claim the portada for both. A subcategory image has never
+              appeared there — it now renders as the circular thumbnail in the
+              subcategory row of its parent's page, which is a square crop, so
+              the 3:4 advice was actively misleading for half the cases.
+            */}
             <p className="mb-2 text-xs text-brand-neutral-400">
-              Se muestra en la sección “Categorías” de la portada. Vertical (3:4) da mejor resultado.
+              {parentId
+                ? 'Se muestra como miniatura circular en la fila de subcategorías, dentro de la página de su categoría. Se recorta al centro, así que un encuadre cuadrado funciona mejor.'
+                : 'Se muestra en la sección “Categorías” de la portada. Vertical (3:4) da mejor resultado.'}
             </p>
 
             <div className="flex items-start gap-4">

@@ -10,5 +10,5 @@ export type { BreadcrumbItem, CatalogHeaderProps } from './CatalogHeader';
 export { CatalogContent } from './CatalogContent';
 export type { CatalogContentProps } from './CatalogContent';
 
-export { SubcategoryChips } from './SubcategoryChips';
-export type { SubcategoryChipsProps } from './SubcategoryChips';
+export { SubcategoryCircles } from './SubcategoryCircles';
+export type { SubcategoryCirclesProps } from './SubcategoryCircles';

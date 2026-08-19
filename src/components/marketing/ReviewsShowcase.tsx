@@ -66,16 +66,27 @@ const SPARKLES = (() => {
  * `pointer-events-none` + aria-hidden throughout: this is texture, not
  * content, and none of it should ever be in the tab order or the a11y tree.
  */
-function AuroraBackdrop() {
+function AuroraBackdrop({ paused }: { paused: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {/* LAYER 1 — the flowing aurora. Oversized so the animation's excursions
           never bring a container edge into view. */}
       <div
         className={cn(
-          'reviews-aurora absolute -inset-[30%]',
-          'motion-safe:animate-[brisal-aurora-flow_12s_ease-in-out_infinite]',
+          // -inset-[40%] => 180% of the band in both axes, which is the headroom
+          // the transform drift needs so no edge ever enters the frame.
+          'reviews-aurora absolute -inset-[40%]',
+          'motion-safe:animate-[brisal-aurora-drift_18s_ease-in-out_infinite]',
         )}
+        /*
+          Inline, not a class. The Tailwind `animate-[…]` utility above sets the
+          `animation` SHORTHAND, which resets `animation-play-state` to running —
+          and utilities land after our own layer, so a `.reviews-anim-idle` rule
+          loses this specific battle in the cascade. An inline style outranks
+          both. The sparkles keep using the class, because their animation is
+          declared with longhands and nothing resets them.
+        */
+        style={paused ? { animationPlayState: 'paused' } : undefined}
       />
 
       {/* LAYER 2a — fine-paper grain. The single SVG filter in the section:
@@ -216,6 +227,51 @@ function ReviewCard({
 export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
   const reducedMotion = Boolean(useReducedMotion());
   const stripRef = React.useRef<HTMLUListElement>(null);
+
+  /*
+   * Whether the band is anywhere near the viewport.
+   *
+   * `once: false` on purpose — the point is to STOP paying for the aurora and
+   * the 32 sparkles once the visitor has scrolled past, and to start again if
+   * they scroll back. `margin` starts things slightly before the band's edge
+   * crosses the fold so the field is already flowing by the time it is seen,
+   * rather than visibly kicking off mid-view.
+   */
+  /*
+   * Pauses the band's animations while it is off-screen — the aurora drift and
+   * all 32 sparkle twinkles — and resumes them when it comes back.
+   *
+   * Own observer rather than `useInView`, for one reason: the initial state has
+   * to be VISIBLE. `useInView` starts false, so gating on it directly would
+   * freeze the band until a callback arrives, and if none ever arrives the
+   * section silently never moves again. That is not hypothetical —
+   * IntersectionObserver only computes during a rendering opportunity, and on a
+   * saturated page it can go quiet for seconds (observed on this homepage
+   * locally, where neither IO nor requestAnimationFrame fired for a while).
+   *
+   * Starting at `true` makes the failure mode "we paid for an animation nobody
+   * was looking at" instead of "the decorative section is dead".
+   *
+   * `rootMargin` starts it slightly before the band crosses the fold, so the
+   * field is already flowing rather than visibly kicking off mid-view.
+   */
+  const sectionRef = React.useRef<HTMLElement>(null);
+  const [isBandVisible, setIsBandVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    const element = sectionRef.current;
+    if (!element || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsBandVisible(entry.isIntersecting),
+      { rootMargin: '200px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const animationsPaused = !isBandVisible;
+
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [hasSwiped, setHasSwiped] = React.useState(false);
 
@@ -299,10 +355,14 @@ export function ReviewsShowcase({ reviews }: ReviewsShowcaseProps) {
 
   return (
     <section
-      className="reviews-backdrop relative overflow-hidden py-16 lg:py-20"
+      ref={sectionRef}
+      className={cn(
+        'reviews-backdrop relative overflow-hidden py-16 lg:py-20',
+        animationsPaused && 'reviews-anim-idle',
+      )}
       aria-labelledby="reviews-showcase-heading"
     >
-      <AuroraBackdrop />
+      <AuroraBackdrop paused={animationsPaused} />
 
       {/* Hairlines top and bottom tie the band to the sections around it
           without introducing another surface colour. */}

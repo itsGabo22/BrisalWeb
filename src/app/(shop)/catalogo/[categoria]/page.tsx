@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { CatalogContent } from '@/components/catalog/CatalogContent';
 import { CatalogHeader } from '@/components/catalog/CatalogHeader';
-import { SubcategoryChips } from '@/components/catalog/SubcategoryChips';
+import { SubcategoryCircles } from '@/components/catalog/SubcategoryCircles';
 import {
   applyCatalogParams,
   buildCategoryFacets,
@@ -80,7 +80,7 @@ export default async function CategoriaPage({
           { label: category.name },
         ]}
       />
-      <SubcategoryChips
+      <SubcategoryCircles
         parentSlug={category.slug}
         subcategories={subcategories}
       />

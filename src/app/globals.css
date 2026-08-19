@@ -225,13 +225,32 @@
     @apply font-body font-light;
   }
 
-  /* WhatsApp button pulse — respects prefers-reduced-motion via motion-safe: class */
-  @keyframes whatsapp-pulse {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.5);
+  /* WhatsApp button halo.
+
+     This was an animated `box-shadow` spread, which repaints every frame —
+     the same class of problem as the reviews aurora, just far smaller. It
+     matters anyway because this button is mounted on EVERY page and the
+     animation never stops, so it was repainting continuously while the
+     visitor scrolled anything at all.
+
+     Now it is a ring element that scales and fades: transform + opacity,
+     both compositor properties, so the halo costs the main thread nothing.
+     Starts flush with the disc, which is why a green ring on a green button
+     is invisible at rest and only reads once it pushes outward. */
+  @keyframes whatsapp-halo {
+    0% {
+      transform: scale(1);
+      opacity: 0.45;
     }
-    50% {
-      box-shadow: 0 0 0 10px rgba(37, 211, 102, 0);
+    100% {
+      transform: scale(1.75);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .whatsapp-halo {
+      animation: whatsapp-halo 2.5s ease-out infinite;
     }
   }
 
@@ -601,6 +620,27 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.85);
   }
 
+  /* Phone-sized relief on the frosting.
+
+     A `backdrop-filter` is re-evaluated whenever what is BEHIND it changes,
+     and the aurora behind these cards moves continuously — so the three
+     cards' blurs re-run every animated frame even though the cards
+     themselves never move. Three at 14px is affordable on a desktop GPU;
+     on a phone it is the second-largest cost in the section after the
+     aurora. 10px keeps the frosting clearly readable as glass while cutting
+     the per-frame blur work meaningfully.
+
+     Opacity is nudged up 4 points alongside it: a smaller blur passes more
+     backdrop detail through, and the contrast budget documented above is
+     bound by the secondary text over an aurora peak. */
+  @media (max-width: 767px) {
+    .review-glass {
+      background-color: rgba(255, 255, 255, 0.66);
+      -webkit-backdrop-filter: blur(10px) saturate(125%);
+      backdrop-filter: blur(10px) saturate(125%);
+    }
+  }
+
   /* Where backdrop-filter is unsupported there is no frosting at all, and
      a 55%-white panel over a busy wash would look muddy — so it falls
      back to a near-opaque pearl card that still reads as a surface. */
@@ -623,25 +663,29 @@
   }
 
   /* ── Reviews band — LAYER 1: flowing aurora ─────────────────────────
-     The bolder replacement for the old drifting-blob backdrop, which read
-     as too subtle to notice. Four radial ellipses plus a linear ground,
-     all in one background shorthand at 220% 220%, so a single
-     `background-position` keyframe can slide all five independently and
-     the whole field appears to flow.
+     Four radial ellipses plus a linear ground on ONE oversized element,
+     drifting via `transform`.
 
-     `inset: -30%` on the element: the animation walks each layer well
-     past its own box, and an oversized element means those excursions
-     never expose a hard container edge.
+     It used to animate `background-position` across a 220% background,
+     which looked right and cost too much: `background-position` is not a
+     compositor property, so every frame repainted this element AND re-ran
+     its 24px blur. Measured live, the element is 2433x893 CSS px — about
+     2.2 million pixels of repaint-plus-blur per frame, sitting directly
+     behind the section the client reported as janky.
 
-     `filter: blur(24px)` is what turns five hard-edged ellipses into an
-     aurora instead of five visible blobs.
+     Now the element is painted and blurred ONCE and the compositor slides
+     the finished texture. `translate3d` (not `translate`) and a 2D-only
+     path keep it on the compositor; there is deliberately no `scale` in
+     the keyframes, because scaling a filtered layer re-rasterises it and
+     would put the blur back on the per-frame path.
 
-     Honest performance note: unlike the drift this replaces,
-     `background-position` is NOT a compositor-only property — every frame
-     repaints this layer and re-runs the 24px blur. It is one large
-     element with no children, which keeps that affordable, but it is the
-     most expensive thing in this section and worth re-checking on a
-     mid-range phone if the band ever grows taller. */
+     The trade-off, stated honestly: five layers animated independently
+     before, so the field flowed against itself. One transform moves them
+     together. Under a 24px blur the difference is very hard to see, and it
+     is what makes the movement free.
+
+     `inset: -40%` sizes the element at 180% of the band in both axes, so
+     a drift of up to 8% of its own size never brings an edge into view. */
   .reviews-aurora {
     background-image:
       radial-gradient(ellipse 55% 45% at 20% 20%, rgba(201, 169, 110, 0.8), transparent 62%),
@@ -649,42 +693,53 @@
       radial-gradient(ellipse 48% 50% at 50% 95%, rgba(201, 169, 110, 0.55), transparent 65%),
       radial-gradient(ellipse 40% 38% at 60% 10%, rgba(217, 195, 160, 0.5), transparent 60%),
       linear-gradient(135deg, #faf7f2 0%, #f0e9e0 45%, #ede0c8 100%);
-    background-size: 220% 220%;
+    /* Each layer fills the oversized element once. No 220% background and
+       no per-frame position arithmetic. */
+    background-size: 100% 100%;
     filter: blur(24px);
   }
 
-  /* 12s and a large amplitude, deliberately: this is the "clearly visible
-     at a glance" brief, not the barely-there drift it replaces. Every
-     stop lists five positions, one per background layer, so the ellipses
-     travel independently and the field never slides as one sheet.
+  /* `will-change` only while the band is actually animating: it pins a
+     composited layer for a 2433x893 element, which is not something to
+     leave hinted permanently on a page that has scrolled past. The idle
+     rule below drops it again. */
+  @media (prefers-reduced-motion: no-preference) {
+    .reviews-aurora {
+      will-change: transform;
+    }
+  }
 
-     No `background-attachment: fixed` here or anywhere in this file —
-     iOS Safari ignores it and renders a backdrop that jumps per frame. */
-  @keyframes brisal-aurora-flow {
+  /* 18s, up from 12s: the same visible travel reads calmer when the whole
+     field moves as one, and a slower drift also means fewer composited
+     commits per second for identical effect. */
+  @keyframes brisal-aurora-drift {
     0% {
-      background-position:
-        0% 0%,
-        100% 100%,
-        50% 100%,
-        40% 0%,
-        0% 0%;
+      transform: translate3d(0, 0, 0);
     }
     50% {
-      background-position:
-        100% 60%,
-        10% 20%,
-        30% 70%,
-        70% 40%,
-        100% 100%;
+      transform: translate3d(-8%, -5%, 0);
     }
     100% {
-      background-position:
-        0% 0%,
-        100% 100%,
-        50% 100%,
-        40% 0%,
-        0% 0%;
+      transform: translate3d(0, 0, 0);
     }
+  }
+
+  /* ── Reviews band — animation gating while off-screen ────────────────
+     Nothing in this band is worth a single composited frame once it has
+     scrolled out of view. The component adds this class whenever the
+     section is outside the viewport, which parks the aurora drift and all
+     32 sparkle twinkles at once.
+
+     `paused` rather than unmounting: the sparkle field keeps its phase, so
+     scrolling back does not restart every twinkle in lockstep — which is
+     exactly the visible pulse the per-sparkle delays exist to avoid. */
+  .reviews-anim-idle .reviews-aurora,
+  .reviews-anim-idle .reviews-sparkle {
+    animation-play-state: paused;
+  }
+
+  .reviews-anim-idle .reviews-aurora {
+    will-change: auto;
   }
 
   /* ── Reviews band — LAYER 2: diagonal hairline ──────────────────────
