@@ -1,6 +1,33 @@
-import sharp from 'sharp';
+import type SharpNamespace from 'sharp';
 import { createHash } from 'crypto';
 import { createAdminClient } from './admin';
+
+/**
+ * sharp is loaded LAZILY, and that is load-bearing — do not turn this back into
+ * a top-level `import sharp from 'sharp'`.
+ *
+ * sharp is a native addon: its JS half dlopen()s a matching `libvips-cpp.so`.
+ * When those two drift apart, importing the module THROWS at module-evaluation
+ * time rather than at call time. Because this file was imported at the top of
+ * ten route modules, one broken binary took down every handler in all of them —
+ * including `GET /api/admin/categorias`, which never touches an image and only
+ * reached sharp transitively via `@/lib/admin/category-image`. Production served
+ * a 500 for a plain category list with this:
+ *
+ *   Failed to load external module sharp-<hash>: Could not load the "sharp"
+ *   module using the linux-x64 runtime
+ *   ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.3: cannot open shared object file
+ *
+ * Deferring the require to the one function that actually encodes an image means
+ * a broken binary can only ever break image processing, never a list endpoint.
+ * The literal specifier keeps Next's file tracing able to see the dependency.
+ */
+let sharpPromise: Promise<typeof SharpNamespace> | null = null;
+function loadSharp(): Promise<typeof SharpNamespace> {
+  // Cached so a hot lambda pays the require once, not per upload.
+  sharpPromise ??= import('sharp').then((m) => m.default);
+  return sharpPromise;
+}
 
 function traceHash(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex').slice(0, 16);
@@ -30,6 +57,8 @@ export async function processAndUploadImage(
   buffer: Buffer,
   { bucket, path, maxWidth = 1200, quality = 82, upsert = false }: UploadImageOptions,
 ): Promise<string> {
+  const sharp = await loadSharp();
+
   const processed = await sharp(buffer)
     .resize({ width: maxWidth, withoutEnlargement: true })
     .webp({ quality })
