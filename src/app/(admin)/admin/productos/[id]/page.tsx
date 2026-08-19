@@ -230,6 +230,23 @@ export default function AdminProductFormPage() {
     setPendingAssignments((prev) => prev.filter((p) => p.url !== removedUrl));
   };
 
+  /**
+   * The first unmet requirement for a save, or null when the form is complete.
+   * Mirrors the `disabled` guard on the submit button, and exists because the
+   * server-side rules (notably "at least one image") were previously only
+   * discoverable by submitting and reading a 400.
+   */
+  const missingRequirement =
+    !name.trim()
+      ? 'el nombre del producto'
+      : !categoryId
+        ? 'la categoría'
+        : price <= 0
+          ? 'un precio mayor a cero'
+          : imageUrls.length === 0
+            ? 'al menos una imagen'
+            : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -289,8 +306,15 @@ export default function AdminProductFormPage() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Error al guardar el producto');
+        // `.catch()` matters: a 500 that never reaches our handler (proxy error,
+        // empty body) is not JSON, and an unguarded parse threw the parser's own
+        // message — hiding the status behind "Unexpected end of JSON input".
+        const errorData = await res
+          .json()
+          .catch(() => ({}) as { error?: string });
+        throw new Error(
+          errorData.error ?? `Error al guardar el producto (HTTP ${res.status})`,
+        );
       }
 
       // Bandeja bookkeeping is no longer done here. The product route
@@ -749,6 +773,16 @@ export default function AdminProductFormPage() {
 
         {/* Sticky Mobile/Desktop Bottom Action Bar */}
         <div className="fixed bottom-0 left-0 right-0 lg:left-64 border-t border-brand-neutral-200 bg-white/80 dark:border-brand-neutral-800 dark:bg-brand-neutral-900/80 backdrop-blur-md p-4 flex items-center justify-between z-30 transition-all">
+          {/*
+            Says WHY the save button is greyed out. Without this the missing
+            requirement was invisible: the API rejects a product with no images,
+            but the form gave no hint, so the only feedback was a dead button.
+          */}
+          {missingRequirement && (
+            <p className="absolute -top-px left-4 right-4 -translate-y-full pb-2 text-xs text-brand-neutral-500 dark:text-brand-neutral-400">
+              Falta: {missingRequirement}
+            </p>
+          )}
           <Link href="/admin/productos" passHref>
             <Button variant="secondary" className="px-6 py-2">
               Cancelar
@@ -756,7 +790,7 @@ export default function AdminProductFormPage() {
           </Link>
           <Button
             type="submit"
-            disabled={isSubmitting || !name || !categoryId || price <= 0}
+            disabled={isSubmitting || missingRequirement !== null}
             className="flex items-center gap-2 px-8 py-2"
           >
             <Save className="size-4" />

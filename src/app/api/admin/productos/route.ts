@@ -4,6 +4,7 @@ import { productAdminSchema } from '@/lib/validators';
 import { toProduct } from '@/lib/repositories/mappers';
 import { PRODUCT_INCLUDE } from '@/lib/repositories/product.repository';
 import { collectProductImageUrls, reconcileBandejaAssignments } from '@/lib/admin/bandeja';
+import { invalidProductDataResponse, productWriteErrorResponse } from '@/lib/admin/product-errors';
 
 function slugify(text: string): string {
   return text
@@ -32,10 +33,7 @@ export async function POST(request: Request) {
     const result = productAdminSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Datos inválidos', details: result.error.format() },
-        { status: 400 },
-      );
+      return invalidProductDataResponse(result.error);
     }
 
     const {
@@ -105,16 +103,34 @@ export async function POST(request: Request) {
       include: PRODUCT_INCLUDE,
     });
 
-    await reconcileBandejaAssignments(
-      newProduct.id,
-      collectProductImageUrls(newProduct),
-    );
+    // Deliberately not fatal. The product is already committed at this point,
+    // so letting a bandeja bookkeeping failure reach the catch below would
+    // answer 500 for a product that WAS created — the admin then retries and
+    // gets a 409 for a duplicate name, with no way to understand either. The
+    // images stay claimable and a later save reconciles them.
+    try {
+      await reconcileBandejaAssignments(
+        newProduct.id,
+        collectProductImageUrls(newProduct),
+      );
+    } catch (bandejaErr) {
+      console.error(
+        `[admin/productos] Producto ${newProduct.id} creado, pero falló la reconciliación de la bandeja:`,
+        bandejaErr,
+      );
+    }
 
     return NextResponse.json(toProduct(newProduct), { status: 201 });
   } catch (err) {
     console.error('[admin/productos] Error al crear producto:', err);
+
+    // Name the actual problem (duplicate SKU, missing category, stale material)
+    // when we recognise it; only a genuine unknown falls through to 500.
+    const mapped = productWriteErrorResponse(err);
+    if (mapped) return mapped;
+
     return NextResponse.json(
-      { error: 'Error al crear producto' },
+      { error: 'Error al crear producto. Revisa los datos e inténtalo de nuevo.' },
       { status: 500 },
     );
   }
