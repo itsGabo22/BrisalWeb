@@ -57,6 +57,26 @@ export function AdminSidebar() {
     queueMicrotask(() => setIsMobileOpen(false));
   }, [pathname]);
 
+  // Background scroll while the drawer is open lets the dashboard content
+  // move underneath it, which triggers a mobile WebKit/Chromium compositing
+  // bug where fixed + backdrop-blur layers repaint out of z-order.
+  //
+  // Locks <html>, not <body>: the root layout's <html> carries an explicit
+  // `overflow-x-clip`, which disqualifies the standard CSS rule that lets a
+  // <body> overflow value propagate to the viewport — document.scrollingElement
+  // is <html> here, so locking body alone would not actually stop scrolling.
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (isMobileOpen) {
+      root.style.overflowY = 'hidden';
+    } else {
+      root.style.overflowY = '';
+    }
+    return () => {
+      root.style.overflowY = '';
+    };
+  }, [isMobileOpen]);
+
   React.useEffect(() => {
     async function loadNotificationCounts() {
       try {
