@@ -92,6 +92,16 @@ export function PromoPopup({ popup }: PromoPopupProps) {
                   className="object-cover"
                   style={{ objectPosition: `${popup.imagePosX}% ${popup.imagePosY}%` }}
                 />
+                {/* Glass CTA floats on the photo, same language as the hero
+                    CTA — .hero-glass-cta needs photography behind it to read
+                    as glass, which is exactly what this image provides. */}
+                {popup.ctaHref && (
+                  <div className="absolute inset-x-0 bottom-0 flex justify-center p-4">
+                    <Button variant="glass" asChild onClick={handleClose}>
+                      <Link href={popup.ctaHref}>{popup.ctaText || 'Ver oferta'}</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -104,7 +114,10 @@ export function PromoPopup({ popup }: PromoPopupProps) {
               {popup.subtitle && (
                 <p className="mt-2 font-body text-sm text-brand-text-soft">{popup.subtitle}</p>
               )}
-              {popup.ctaHref && (
+              {/* Without an image there is nothing for the glass CTA to
+                  frost (see the variant's own comment in button.tsx), so a
+                  popup with no photo keeps the site's standard pearl CTA. */}
+              {popup.ctaHref && !popup.imageUrl && (
                 <Button asChild className="mt-6 w-full" onClick={handleClose}>
                   <Link href={popup.ctaHref}>{popup.ctaText || 'Ver oferta'}</Link>
                 </Button>

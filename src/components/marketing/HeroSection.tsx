@@ -19,6 +19,17 @@ import { usePageScroll } from '@/hooks/usePageScroll';
 import type { HeroSlide } from '@/types';
 
 const AUTO_ADVANCE_MS = 5000;
+/**
+ * The first rotation waits longer than the steady-state cadence. Rotating at
+ * the same 5s cadence from mount swaps the hero's h1 for a new one (new
+ * `key`, so React unmounts/remounts it) while the browser can still be
+ * assembling its Largest Contentful Paint candidate — DevTools traced this
+ * hero at 7.86s LCP and named the SECOND slide's heading as the element,
+ * proving the metric was measuring a mid-rotation swap, not the real first
+ * paint. Keeping the initial slide in place for a few extra seconds lets LCP
+ * settle on the actual first paint before anything in the DOM changes.
+ */
+const INITIAL_AUTO_ADVANCE_MS = 9000;
 const SWIPE_THRESHOLD = 50;
 const BRISAL_LETTERS = 'BRISAL'.split('');
 
@@ -191,6 +202,7 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isPaused, setIsPaused] = React.useState(false);
   const touchStartX = React.useRef(0);
+  const hasAdvancedOnceRef = React.useRef(false);
 
   const { scrollY } = usePageScroll();
   const parallaxY = useTransform(scrollY, [0, 800], [0, -28]);
@@ -229,11 +241,13 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
 
   React.useEffect(() => {
     if (!hasSlides || slides.length <= 1 || isPaused) return;
-    const timer = setInterval(() => {
+    const delay = hasAdvancedOnceRef.current ? AUTO_ADVANCE_MS : INITIAL_AUTO_ADVANCE_MS;
+    const timer = setTimeout(() => {
+      hasAdvancedOnceRef.current = true;
       setCurrentIndex((i) => (i + 1) % slides.length);
-    }, AUTO_ADVANCE_MS);
-    return () => clearInterval(timer);
-  }, [hasSlides, slides.length, isPaused]);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [hasSlides, slides.length, isPaused, currentIndex]);
 
   const goToPrev = () => setCurrentIndex((i) => (i - 1 + slides.length) % slides.length);
   const goToNext = () => setCurrentIndex((i) => (i + 1) % slides.length);
@@ -280,6 +294,7 @@ export function HeroSection({ slides = [] }: HeroSectionProps) {
                 key={activeSlide.desktopUrl}
                 src={activeSlide.desktopUrl}
                 poster={activeSlide.posterUrl ?? undefined}
+                preload="auto"
                 autoPlay
                 muted
                 loop
