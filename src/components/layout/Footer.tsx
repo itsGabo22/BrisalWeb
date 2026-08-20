@@ -8,6 +8,7 @@ import {
   CONTACT_PHONE_E164,
   SOCIAL_PROFILES,
 } from '@/lib/constants/contact';
+import { DeveloperCredit } from './DeveloperCredit';
 // lucide-react v1.x exports neither Instagram nor TikTok — inline SVGs below.
 function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
@@ -234,6 +235,11 @@ export function Footer() {
           <p className="font-body text-xs text-brand-text-soft">
             Diseñado con elegancia
           </p>
+        </div>
+
+        {/* ── Developer credit ────────────────────────────── */}
+        <div className="mt-4 flex justify-center">
+          <DeveloperCredit />
         </div>
       </div>
     </footer>
