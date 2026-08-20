@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createOrderSchema } from '@/lib/validators';
 import { formatCOP } from '@/lib/utils/pricing';
 import { getAvailableStock } from '@/lib/orders/backorder';
+import {
+  InsufficientStockError,
+  lineLabel,
+  reserveStock,
+  resolveStockRow,
+  type StockReservation,
+} from '@/lib/orders/reservation';
 import { computeCouponDiscount, findRedeemableCoupon, redeemCoupon } from '@/lib/coupons';
 import {
   RATE_LIMITS,
@@ -70,6 +78,66 @@ function buildWhatsAppMessage(
   );
 }
 
+/**
+ * The 409 shape, in one place.
+ *
+ * 409 rather than 400: the request is well-formed — the world changed under it.
+ * Every offending line is named, because "no hay stock" without saying of WHAT
+ * leaves the shopper to guess which of six items to edit.
+ *
+ * Extracted because there are now two callers that must answer identically: the
+ * courtesy pre-check, and the reservation that is the real authority. A shopper
+ * must not be able to tell which one refused them.
+ */
+function insufficientStockResponse(unavailable: string[]): NextResponse {
+  return NextResponse.json(
+    {
+      error: `No pudimos completar tu pedido porque el stock cambió: ${unavailable.join(
+        ' · ',
+      )}. Ajusta las cantidades en tu carrito e inténtalo de nuevo.`,
+      unavailable,
+    },
+    { status: 409 },
+  );
+}
+
+/**
+ * Reads what a failed line actually has left, AFTER its transaction rolled back.
+ *
+ * Deliberately a fresh read outside the aborted transaction: the value seen
+ * inside it is not what the next shopper will see, and quoting it would send the
+ * customer back to a cart that fails again for a different number. Best-effort —
+ * if this read also fails, the generic "agotado" wording still tells the truth.
+ */
+async function describeShortfall(reservation: StockReservation): Promise<string> {
+  try {
+    const row =
+      reservation.table === 'ColorVariant'
+        ? await prisma.colorVariant.findUnique({
+            where: { id: reservation.rowId },
+            select: { stock: true },
+          })
+        : await prisma.product.findUnique({
+            where: { id: reservation.rowId },
+            select: { stock: true },
+          });
+
+    if (!row) {
+      return `${reservation.label}: ya no está disponible`;
+    }
+    if (row.stock <= 0) {
+      return `${reservation.label}: agotado`;
+    }
+    // "unidad disponible" / "unidades disponibles" — the adjective has to agree
+    // too. It read "solo 1 unidad disponibles" before.
+    return `${reservation.label}: solo ${row.stock} ${
+      row.stock === 1 ? 'unidad disponible' : 'unidades disponibles'
+    } (pediste ${reservation.quantity})`;
+  } catch {
+    return `${reservation.label}: agotado`;
+  }
+}
+
 export async function POST(request: Request) {
   /**
    * Order creation writes rows and sends the client to WhatsApp, so an
@@ -101,22 +169,18 @@ export async function POST(request: Request) {
 
   try {
     /**
-     * Stock is read HERE rather than trusted from the client: the cart may have
-     * been sitting in localStorage for days, and the shopper can't be the one
-     * who decides how much of a colour exists.
+     * ─── Fast path: a courtesy pre-check ───────────────────────────────────
      *
-     * This used to RECORD the shortfall as `backorderQty` and accept the order
-     * anyway — sobrepedido. That path is closed: ordering beyond stock risked
-     * burying the client in production they never agreed to, so a line asking
-     * for more than its colour holds now fails the whole order with a 409 the
-     * cart can show. The storefront blocks it first (disabled buttons, a
-     * quantity capped at stock), but the page's numbers are only as fresh as
-     * its last load, so this is the check that actually decides.
+     * NOT what prevents overselling. This turns the overwhelmingly common case
+     * — a cart that went stale while the shopper browsed — into one clear
+     * message naming every offending line, without opening a transaction. It
+     * READS stock, so it is inherently racy, and nothing it concludes is
+     * trusted.
      *
-     * `backorderQty` stays in the schema and is written as 0 on every new line.
-     * The column is order HISTORY — two existing orders carry real, non-zero
-     * values the client still needs to see — so it is stopped from growing, not
-     * removed.
+     * The guarantee lives in the guarded decrements below. If this passes and
+     * the reservation then fails, the reservation wins and the customer gets the
+     * same 409 — which is exactly what used to be impossible, because this
+     * check WAS the only gate between a shopper and an oversold item.
      */
     const products = await prisma.product.findMany({
       where: { id: { in: [...new Set(items.map((item) => item.productId))] } },
@@ -125,21 +189,22 @@ export async function POST(request: Request) {
     const productMap = new Map(products.map((product) => [product.id, product]));
 
     /**
-     * Stock remaining per COLOUR ROW as the lines are walked, not per product:
-     * two lines of one product in different colours draw on different rows, and
-     * two lines somehow hitting the SAME row must not each be granted the same
-     * starting stock and together oversell it. This mirrors how the admin
-     * confirm route accounts for its deductions.
+     * Remaining per COLOUR ROW as the lines are walked, not per product: two
+     * lines of one product in different colours draw on different rows, and two
+     * lines hitting the SAME row must not each be granted the same starting
+     * stock. `reserveStock` enforces the identical rule in the database, which
+     * is what makes it hold across separate requests too.
      */
     const remaining = new Map<string, number>();
     const unavailable: string[] = [];
+    const reservations: StockReservation[] = [];
 
     for (const item of items) {
       const product = productMap.get(item.productId);
-      const label = item.color ? `${item.name} (${item.color})` : item.name;
+      const label = lineLabel(item);
 
-      // Deleted since the cart was filled. There is no stock to check and no
-      // row to deduct from later, so it cannot be ordered.
+      // Deleted since the cart was filled. No row to reserve against, so it
+      // cannot be ordered.
       if (!product) {
         unavailable.push(`${label}: ya no está disponible`);
         continue;
@@ -157,31 +222,18 @@ export async function POST(request: Request) {
           available <= 0
             ? `${label}: agotado`
             : `${label}: solo ${available} ${
-                available === 1 ? 'unidad' : 'unidades'
-              } disponibles (pediste ${item.quantity})`,
+                available === 1 ? 'unidad disponible' : 'unidades disponibles'
+              } (pediste ${item.quantity})`,
         );
         continue;
       }
 
       remaining.set(key, available - item.quantity);
+      reservations.push(resolveStockRow(product, { ...item, ...colorRef }));
     }
 
-    /**
-     * 409, not 400: the request is well-formed — the world changed under it.
-     * Every offending line is named, because "no hay stock" without saying of
-     * WHAT leaves the shopper to guess which of six items to edit. Returned
-     * BEFORE the coupon is redeemed, so a rejected order never burns a use.
-     */
     if (unavailable.length > 0) {
-      return NextResponse.json(
-        {
-          error: `No pudimos completar tu pedido porque el stock cambió: ${unavailable.join(
-            ' · ',
-          )}. Ajusta las cantidades en tu carrito e inténtalo de nuevo.`,
-          unavailable,
-        },
-        { status: 409 },
-      );
+      return insufficientStockResponse(unavailable);
     }
 
     /**
@@ -193,53 +245,120 @@ export async function POST(request: Request) {
     const lineSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     /**
-     * Redemption, not just validation. `redeemCoupon` re-checks active, dates
-     * and the usage limit and claims a use in ONE atomic statement — so two
-     * orders racing for the last redemption cannot both win. A coupon that
-     * expired or ran out since the shopper applied it simply does not apply;
-     * the order still goes through at full price rather than failing, because
-     * losing a cart over a stale code is the worse outcome.
+     * ─── The transaction that actually decides ────────────────────────────
+     *
+     * Reserve → redeem coupon → write the order. All or nothing.
+     *
+     * That ORDER is preserved from before and load-bearing: stock is committed
+     * to FIRST, so a shopper whose item sold out never loses a coupon
+     * redemption to an order that was never going to succeed.
+     *
+     * Putting all three in ONE transaction is the change. When creation merely
+     * READ stock, claiming the coupon and writing the order as separate steps
+     * was survivable. Now that creation MOVES stock it is not: any failure
+     * after a successful reservation would strand units as reserved against an
+     * order that does not exist — stock the client can never sell and no screen
+     * would ever explain. It also closes a pre-existing hole, where a coupon use
+     * was burned outright if `order.create` threw.
      */
     let appliedCoupon: { code: string; discountAmount: number } | null = null;
-    if (couponCode) {
-      const coupon = await findRedeemableCoupon(couponCode);
-      if (coupon && (await redeemCoupon(coupon.code))) {
-        appliedCoupon = {
-          code: coupon.code,
-          discountAmount: computeCouponDiscount(lineSubtotal, coupon.percentage),
-        };
-      }
-    }
 
-    const total = Math.max(0, lineSubtotal - (appliedCoupon?.discountAmount ?? 0));
+    /**
+     * The coupon LOOKUP is read-only and claims nothing, so it is deliberately
+     * hoisted out of the transaction below. Everything inside that transaction
+     * holds one of only five pooled connections (see `src/lib/prisma.ts`), and
+     * under a burst of concurrent orders the scarce resource is connection-hold
+     * TIME. Doing a read in there that could equally be done out here is how a
+     * checkout queue turns into transaction-acquisition timeouts.
+     *
+     * The CLAIM still happens inside, after the reservation — that ordering is
+     * the part that matters, and it is preserved.
+     */
+    const coupon = couponCode ? await findRedeemableCoupon(couponCode) : null;
 
-    const order = await prisma.order.create({
-      data: {
-        total,
-        status: 'PENDING_WHATSAPP',
-        customerName,
-        customerPhone,
-        wholesaleUserId: wholesaleUserId ?? null,
-        couponCode: appliedCoupon?.code ?? null,
-        couponDiscountAmount: appliedCoupon?.discountAmount ?? null,
-        items: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            imageUrl: item.imageUrl ?? null,
-            color: item.color ?? null,
-            colorVariantId: item.colorVariantId ?? null,
-            reference: item.reference ?? null,
-            // Always 0 now. Kept explicit rather than left to the column
-            // default so it is obvious at the write site that new orders never
-            // carry a backorder, while the field itself survives for history.
-            backorderQty: 0,
-          })),
-        },
+    const order = await prisma.$transaction(
+      async (tx) => {
+        // Throws InsufficientStockError — rolling back every decrement already
+        // applied — the moment a line's guarded UPDATE matches no row.
+        await reserveStock(tx, reservations);
+
+        /**
+         * Redemption, not just validation. `redeemCoupon` claims a use in ONE
+         * atomic statement re-checking active, dates and the usage limit — so
+         * two orders racing for the last redemption cannot both win. A coupon
+         * that expired or ran out since the shopper applied it simply does not
+         * apply; the order still goes through at full price rather than failing,
+         * because losing a cart over a stale code is the worse outcome.
+         *
+         * Handed `tx`, so the claim shares the fate of the reservation above.
+         */
+        if (coupon && (await redeemCoupon(coupon.code, new Date(), tx))) {
+          appliedCoupon = {
+            code: coupon.code,
+            discountAmount: computeCouponDiscount(lineSubtotal, coupon.percentage),
+          };
+        }
+
+        const orderTotal = Math.max(0, lineSubtotal - (appliedCoupon?.discountAmount ?? 0));
+
+        return tx.order.create({
+          data: {
+            total: orderTotal,
+            status: 'PENDING_WHATSAPP',
+            customerName,
+            customerPhone,
+            wholesaleUserId: wholesaleUserId ?? null,
+            couponCode: appliedCoupon?.code ?? null,
+            couponDiscountAmount: appliedCoupon?.discountAmount ?? null,
+            items: {
+              create: items.map((item) => ({
+                productId: item.productId,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                imageUrl: item.imageUrl ?? null,
+                color: item.color ?? null,
+                colorVariantId: item.colorVariantId ?? null,
+                reference: item.reference ?? null,
+                // Always 0 now. Kept explicit rather than left to the column
+                // default so it is obvious at the write site that new orders
+                // never carry a backorder, while the field survives for history.
+                backorderQty: 0,
+              })),
+            },
+          },
+        });
       },
-    });
+      {
+        /**
+         * Tuned against a real failure, not guessed. Firing fifteen simultaneous
+         * orders at one low-stock colour produced eight HTTP 500s with
+         * "Unable to start a transaction in the given time": Prisma waits only
+         * 2000ms by DEFAULT to acquire a transaction, and the pool is capped at
+         * five connections on purpose (see `src/lib/prisma.ts` — the Supabase
+         * pooler ceiling divided across Vercel instances). Under a burst,
+         * fifteen transactions queue behind five slots and the default gives up.
+         *
+         * Correctness was never at risk — the guarded decrements held the
+         * invariant exactly, and no order overslept its stock. What failed was
+         * AVAILABILITY: a customer whose turn came 2.1 seconds late was told the
+         * order could not be created, when waiting a moment longer would have
+         * served them.
+         *
+         * `maxWait` matches the pool's own 10s `connectionTimeoutMillis`, so the
+         * two give up on the same horizon rather than one masking the other.
+         * `timeout` bounds the body itself — a few statements that should take
+         * milliseconds — generously enough that a slow link never aborts a
+         * half-applied reservation.
+         */
+        maxWait: 10_000,
+        timeout: 15_000,
+      },
+    );
+
+    // Read back off the created row rather than recomputing, so the WhatsApp
+    // message and the stored order can never quote different totals.
+    const total = order.total.toNumber();
 
     if (wholesaleUserId) {
       await prisma.user
@@ -259,6 +378,39 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ orderId: order.id, whatsappUrl }, { status: 201 });
   } catch (err) {
+    /**
+     * The race, arriving. Another order took the units between the pre-check
+     * and the guarded decrement — the whole transaction rolled back, so neither
+     * an order nor a reservation exists, and the customer gets the same 409 the
+     * pre-check would have produced. The shortfall is re-read fresh so the
+     * number quoted is the one they will actually see on the product page.
+     */
+    if (err instanceof InsufficientStockError) {
+      return insufficientStockResponse([await describeShortfall(err.reservation)]);
+    }
+
+    /**
+     * P2028 — the transaction could not be started or was aborted by Prisma,
+     * essentially always because every pooled connection was busy for longer
+     * than `maxWait`. Nothing was written: no order, no reservation, no coupon
+     * claim, so retrying is both safe and likely to work.
+     *
+     * 503 with `Retry-After` rather than the generic 500 below, because those
+     * two mean genuinely different things to whoever reads the log or the
+     * screen: this is "we are busy, come back", not "your order broke". The
+     * message says so in the same voice as the rest of the checkout errors.
+     */
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2028') {
+      console.warn('[ordenes] Transacción no disponible (pool saturado):', err.message);
+      return NextResponse.json(
+        {
+          error:
+            'Estamos recibiendo muchos pedidos en este momento. Espera unos segundos e inténtalo de nuevo.',
+        },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      );
+    }
+
     console.error('[ordenes] Error al crear la orden:', err);
     return NextResponse.json({ error: 'No se pudo crear el pedido' }, { status: 500 });
   }

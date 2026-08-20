@@ -91,11 +91,28 @@ export async function findRedeemableCoupon(
  *
  * @returns true when this caller got the redemption.
  */
-export async function redeemCoupon(code: string, now: Date = new Date()): Promise<boolean> {
+export async function redeemCoupon(
+  code: string,
+  now: Date = new Date(),
+  /**
+   * Optional transaction client, so the claim can be made INSIDE the caller's
+   * transaction.
+   *
+   * The order route needs this: stock is reserved and the order row is written
+   * in one transaction, and the coupon claim has to share that fate. Redeeming
+   * on the base client instead would burn a use that a later rollback could not
+   * give back — which is exactly the bug this parameter removes.
+   *
+   * The atomicity of the statement itself is unchanged either way: the row lock
+   * Postgres takes for the UPDATE is what serialises two racing claims, and a
+   * transaction only widens how long that lock is held.
+   */
+  executor: Pick<typeof prisma, '$executeRaw'> = prisma,
+): Promise<boolean> {
   const normalized = normalizeCouponCode(code);
   if (!normalized) return false;
 
-  const affected = await prisma.$executeRaw(Prisma.sql`
+  const affected = await executor.$executeRaw(Prisma.sql`
     UPDATE "Coupon"
        SET "usageCount" = "usageCount" + 1,
            "updatedAt"  = ${now}

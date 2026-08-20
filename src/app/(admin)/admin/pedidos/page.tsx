@@ -234,6 +234,28 @@ export default function AdminPedidosPage() {
     void Promise.resolve().then(() => loadOrders());
   }, [loadOrders]);
 
+  /**
+   * Rejecting is now an inventory movement, not just a status change: it returns
+   * the order's reserved units to stock. That is worth one confirmation click —
+   * every other action in this admin that changes data irreversibly asks first,
+   * and an accidental rejection now silently puts units back on sale that the
+   * client may have already set aside for this customer.
+   */
+  const handleReject = (order: OrderView) => {
+    const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    if (
+      !confirm(
+        // Verb agrees too: "Se devolverá 1 unidad", "Se devolverán 2 unidades".
+        `¿Rechazar el pedido #${order.id.slice(-6).toUpperCase()} de "${order.customerName ?? 'sin nombre'}"? ${
+          units === 1 ? 'Se devolverá 1 unidad' : `Se devolverán ${units} unidades`
+        } al inventario.`,
+      )
+    ) {
+      return;
+    }
+    void handleAction(order.id, 'reject');
+  };
+
   const handleAction = async (id: string, action: 'confirm' | 'reject') => {
     setProcessingId(id);
     setActionError(null);
@@ -606,14 +628,29 @@ export default function AdminPedidosPage() {
                         </p>
                       )}
 
-                      {/* Confirming no longer refuses an order it can't fully
-                          cover, so say what it will actually do instead. */}
+                      {/*
+                        The single most important thing for the client to
+                        understand about the new model: the units are ALREADY
+                        out of inventory. Without saying so, "confirm" looks
+                        like the step that reserves them and rejecting looks
+                        free — and the stock number they see on the product
+                        list would seem wrong by exactly this order.
+                      */}
+                      {order.status === 'PENDING_WHATSAPP' && (
+                        <p className="mb-3 rounded-md bg-brand-neutral-50 px-3 py-2 font-sans text-xs text-brand-neutral-600 dark:bg-brand-neutral-800/40 dark:text-brand-neutral-300">
+                          El stock de este pedido ya está reservado (se descontó al
+                          hacerse el pedido). Confirmar no descuenta nada de nuevo;
+                          rechazar devuelve las unidades al inventario.
+                        </p>
+                      )}
+
+                      {/* Historical orders only — no new order can carry a
+                          sobrepedido, so this is read-only context now. */}
                       {order.status === 'PENDING_WHATSAPP' && showsBackorder && (
                         <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 font-sans text-xs text-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
-                          Al confirmar se descuenta solo el stock disponible (nunca
-                          queda en negativo). Las {backordered}{' '}
+                          Este pedido antiguo registra {backordered}{' '}
                           {backordered === 1 ? 'unidad' : 'unidades'} de sobrepedido
-                          quedan registradas como pendientes de reponer.
+                          pendientes de reponer.
                         </p>
                       )}
 
@@ -623,7 +660,7 @@ export default function AdminPedidosPage() {
                             variant="secondary"
                             size="sm"
                             disabled={processingId === order.id}
-                            onClick={() => handleAction(order.id, 'reject')}
+                            onClick={() => handleReject(order)}
                             className="flex items-center gap-1.5 text-red-600 hover:text-red-700"
                           >
                             <X className="size-3.5" />
@@ -636,7 +673,9 @@ export default function AdminPedidosPage() {
                             className="flex items-center gap-1.5"
                           >
                             <Check className="size-3.5" />
-                            {processingId === order.id ? 'Procesando…' : 'Confirmar (descuenta stock)'}
+                            {/* Was "Confirmar (descuenta stock)". It no longer
+                                descuenta anything — creation did. */}
+                            {processingId === order.id ? 'Procesando…' : 'Confirmar pedido'}
                           </Button>
                         </div>
                       )}

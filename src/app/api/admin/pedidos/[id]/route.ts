@@ -1,8 +1,38 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { computeBackorderQty, resolveLineVariant } from '@/lib/orders/backorder';
+import { releaseStock, resolveStockRow, type StockReservation } from '@/lib/orders/reservation';
 import { releaseCouponRedemption } from '@/lib/coupons';
 import { orderActionSchema } from '@/lib/validators';
+
+/**
+ * Flips an order out of PENDING, atomically, and reports whether THIS caller is
+ * the one who did it.
+ *
+ * The check-then-write it replaces (`findUnique`, compare `status`, then
+ * `update`) is the same shape of race the stock check had: two concurrent
+ * rejections both read PENDING, both proceed, and the reserved stock is released
+ * TWICE — inventing units out of nothing. Carrying the expected status in the
+ * WHERE clause makes the transition itself the lock: Postgres matches the row
+ * for exactly one of them, and `count` tells the loser it lost.
+ *
+ * This is what makes the release "exactly once" without needing a flag column
+ * to track it. Whoever does not win the flip never reaches the release.
+ */
+async function claimPendingOrder(
+  tx: Pick<Prisma.TransactionClient, '$executeRaw'>,
+  id: string,
+  nextStatus: 'CONFIRMED' | 'REJECTED',
+): Promise<boolean> {
+  const count = await tx.$executeRaw(Prisma.sql`
+    UPDATE "Order"
+       SET "status" = ${nextStatus}::"OrderStatus",
+           "updatedAt" = NOW()
+     WHERE "id" = ${id}
+       AND "status" = 'PENDING_WHATSAPP'::"OrderStatus"
+  `);
+  return count === 1;
+}
 
 export async function PATCH(
   request: Request,
@@ -18,10 +48,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 });
     }
 
-    // Was `body as { action?: string }` — a cast, which asserts a shape without
-    // checking it — followed by a manual equality guard. The schema is now the
-    // guard, and an unparseable body no longer throws into the outer catch as a
-    // 500 when it is plainly a 400.
     const parsed = orderActionSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
@@ -37,6 +63,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
     }
 
+    // A cheap, friendly early exit for the ordinary "you already clicked this"
+    // case. It is NOT the guard — `claimPendingOrder` is, inside the
+    // transaction — because by the time this comparison runs the value can
+    // already be stale.
     if (order.status !== 'PENDING_WHATSAPP') {
       return NextResponse.json(
         { error: 'Este pedido ya fue procesado' },
@@ -44,108 +74,81 @@ export async function PATCH(
       );
     }
 
-    if (action === 'reject') {
-      const updated = await prisma.order.update({
+    /**
+     * ─── CONFIRM ──────────────────────────────────────────────────────────
+     *
+     * Status transition ONLY. It used to deduct stock here, and must not any
+     * more: the units were already taken out of inventory when the order was
+     * created (see `reserveStock`), so deducting again would remove them twice
+     * and drive real stock down by double every sale.
+     *
+     * The `backorderQty` raising that lived here went with it. It existed to
+     * record a shortfall discovered at confirm time, and there can no longer be
+     * one — an order that could not be covered was never created. Removing the
+     * write leaves historical values exactly as they are; nothing rewrites them.
+     */
+    if (action === 'confirm') {
+      const claimed = await prisma.$transaction((tx) => claimPendingOrder(tx, id, 'CONFIRMED'));
+
+      if (!claimed) {
+        return NextResponse.json(
+          { error: 'Este pedido ya fue procesado' },
+          { status: 409 },
+        );
+      }
+
+      const confirmed = await prisma.order.findUnique({
         where: { id },
-        data: { status: 'REJECTED' },
+        include: { items: true },
       });
-      return NextResponse.json(updated);
+      return NextResponse.json(confirmed);
     }
 
     /**
-     * Confirm.
+     * ─── REJECT ───────────────────────────────────────────────────────────
      *
-     * Deducts what exists for each line's own COLOUR — stock lives per colour,
-     * and an earlier version read the product's stock even for a line ordered
-     * in a variant, decrementing the wrong row.
+     * The moment reserved units go back on the shelf. Rejecting used to touch
+     * stock not at all, which was correct when nothing had been reserved; now it
+     * is the ONLY thing that undoes a reservation, and skipping it would quietly
+     * retire inventory the client still physically owns.
      *
-     * The floor-at-zero behaviour is left exactly as it was, deliberately. It
-     * is now a SAFETY NET rather than a feature: `POST /api/ordenes` refuses an
-     * order it cannot cover, so a genuine oversell can no longer be created and
-     * this path should always find enough stock. Should it somehow not — a
-     * concurrent stock edit between order and confirm — nothing goes negative
-     * and the shortfall is recorded on `backorderQty`, which is strictly better
-     * than failing the confirmation or corrupting the stock column.
+     * Release and status flip share one transaction, and the flip is claimed
+     * FIRST: if it fails, this caller lost the race and returns without
+     * touching stock, so a double-click cannot release the same units twice.
+     * If the release then throws, the flip rolls back with it and the order
+     * stays pending — recoverable by clicking again, which is much better than
+     * a rejected order whose stock was never returned.
      */
-    await prisma.$transaction(async (tx) => {
-      const productIds = [...new Set(order.items.map((item) => item.productId))];
-      const products = await tx.product.findMany({
-        where: { id: { in: productIds } },
-        include: { colorVariants: true },
-      });
-      const productMap = new Map(products.map((product) => [product.id, product]));
+    const products = await prisma.product.findMany({
+      where: { id: { in: [...new Set(order.items.map((item) => item.productId))] } },
+      include: { colorVariants: true },
+    });
+    const productMap = new Map(products.map((product) => [product.id, product]));
 
-      /**
-       * Stock remaining per row as we walk the lines, keyed by row rather than
-       * by product: two lines in different colours touch different rows, and
-       * two lines that somehow touch the SAME row must not each be granted the
-       * same starting stock and together drive it below zero.
-       */
-      const remaining = new Map<string, number>();
-      const deductions = new Map<string, { variantId: string | null; productId: string; qty: number }>();
+    const toRelease: StockReservation[] = [];
+    for (const item of order.items) {
+      const product = productMap.get(item.productId);
+      // Product deleted since the order was placed — there is no row left to
+      // return the units to, and the rejection still has to succeed.
+      if (!product) continue;
+      toRelease.push(resolveStockRow(product, item));
+    }
 
-      for (const item of order.items) {
-        const product = productMap.get(item.productId);
-        // Product deleted since the order was placed — there is no row left to
-        // deduct from, and the order still confirms.
-        if (!product) continue;
-
-        const variant = resolveLineVariant(product, item);
-        const key = variant ? `v:${variant.id}` : `p:${product.id}`;
-
-        if (!remaining.has(key)) {
-          remaining.set(key, Math.max(0, variant ? variant.stock : product.stock));
-        }
-
-        const available = remaining.get(key)!;
-        const deduct = Math.min(item.quantity, available);
-        remaining.set(key, available - deduct);
-
-        /**
-         * What the line still owes AT CONFIRM TIME. It can only be worse than
-         * what was recorded when the order was placed — another order may have
-         * taken the stock in between — so the larger of the two wins. Raising
-         * it never erases a recorded backorder, and it keeps the number the
-         * client acts on equal to the units they actually have to make.
-         */
-        const owed = computeBackorderQty(item.quantity, available);
-        if (owed > item.backorderQty) {
-          await tx.orderItem.update({
-            where: { id: item.id },
-            data: { backorderQty: owed },
-          });
-        }
-
-        if (deduct <= 0) continue;
-        const existing = deductions.get(key);
-        deductions.set(key, {
-          variantId: variant?.id ?? null,
-          productId: product.id,
-          qty: (existing?.qty ?? 0) + deduct,
-        });
-      }
-
-      for (const { variantId, productId, qty } of deductions.values()) {
-        // `decrement` rather than an absolute set, so a concurrent stock edit
-        // in the admin isn't silently overwritten by the value read above.
-        if (variantId) {
-          await tx.colorVariant.update({
-            where: { id: variantId },
-            data: { stock: { decrement: qty } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: productId },
-            data: { stock: { decrement: qty } },
-          });
-        }
-      }
-
-      await tx.order.update({ where: { id }, data: { status: 'CONFIRMED' } });
+    const claimed = await prisma.$transaction(async (tx) => {
+      if (!(await claimPendingOrder(tx, id, 'REJECTED'))) return false;
+      await releaseStock(tx, toRelease);
+      return true;
     });
 
-    const confirmed = await prisma.order.findUnique({ where: { id }, include: { items: true } });
-    return NextResponse.json(confirmed);
+    if (!claimed) {
+      return NextResponse.json(
+        { error: 'Este pedido ya fue procesado' },
+        { status: 409 },
+      );
+    }
+
+    const rejected = await prisma.order.findUnique({ where: { id } });
+    return NextResponse.json(rejected);
   } catch (err) {
     console.error('[admin/pedidos/[id]] Error al procesar pedido:', err);
     return NextResponse.json({ error: 'Error al procesar el pedido' }, { status: 500 });
@@ -162,6 +165,13 @@ export async function PATCH(
  * real history, and the client ties this admin to their books. Rejected orders,
  * by contrast, accumulate forever with nothing to do about them, which is the
  * problem this solves.
+ *
+ * STOCK: deliberately untouched, and safe by construction rather than by luck.
+ * Reaching this handler at all requires `status === 'REJECTED'`, and the only
+ * way an order becomes REJECTED is the reject branch above, which already
+ * returned its reserved units. Releasing again here would invent stock the
+ * client does not have. There is nothing to release and nothing to guard: this
+ * handler removes rows and never writes a stock column.
  *
  * `OrderItem` rows go with it: the relation is `onDelete: Cascade`, so the
  * lines are removed by the database rather than by a second query here.
