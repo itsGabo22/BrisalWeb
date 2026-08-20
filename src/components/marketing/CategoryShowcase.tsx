@@ -50,6 +50,7 @@ function CategoryPanel({ category }: { category: Category }) {
           fill
           sizes="(max-width: 640px) 62vw, (max-width: 1024px) 42vw, 23vw"
           className="object-cover transition-transform duration-[600ms] ease-out motion-safe:group-hover:scale-105"
+          style={{ objectPosition: `${category.imagePosX ?? 50}% ${category.imagePosY ?? 50}%` }}
           onError={() => setImageFailed(true)}
         />
       ) : (

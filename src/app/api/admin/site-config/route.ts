@@ -7,14 +7,17 @@ import {
   uploadVideo,
 } from '@/lib/supabase/storage';
 import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
+import { parsePercent } from '@/lib/admin/focal-point';
 
 interface SiteConfigFields {
   announcementText?: string;
   announcementActive?: boolean;
   videoSectionTitle?: string;
   videoSectionBody?: string;
-  videoSectionVideoUrl?: string;
+  videoSectionVideoUrl?: string | null;
   videoSectionLinkUrl?: string;
+  videoSectionPosX?: number;
+  videoSectionPosY?: number;
   /**
    * Wholesale background. Nullable rather than merely optional: "no media" is a
    * state the admin can now choose explicitly ("Quitar video/imagen"), and
@@ -37,18 +40,12 @@ interface SiteConfigFields {
   /** Optional inline video for /mayoristas specifically -- nullable, same
    * "clear this deliberately" reasoning as the wholesale background above. */
   wholesaleInfoVideoUrl?: string | null;
+  wholesaleInfoVideoPosX?: number;
+  wholesaleInfoVideoPosY?: number;
 }
 
 /** The only three values the band knows how to render. */
 const WHOLESALE_BG_TYPES = ['NONE', 'VIDEO', 'IMAGE'];
-
-/** Focal percentages, clamped to what `object-position` can use. */
-function parsePercent(value: FormDataEntryValue | null): number | undefined {
-  if (typeof value !== 'string' || value.trim() === '') return undefined;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return undefined;
-  return Math.min(100, Math.max(0, Math.round(n)));
-}
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
 
@@ -252,6 +249,10 @@ export async function PATCH(request: Request) {
         'wholesaleBgPosY',
         'wholesaleBgPosXMobile',
         'wholesaleBgPosYMobile',
+        'videoSectionPosX',
+        'videoSectionPosY',
+        'wholesaleInfoVideoPosX',
+        'wholesaleInfoVideoPosY',
       ] as const) {
         const pct = parsePercent(formData.get(key));
         if (pct !== undefined) data[key] = pct;
@@ -278,6 +279,15 @@ export async function PATCH(request: Request) {
         const previous = existing?.wholesaleInfoVideoUrl;
         if (previous) await deleteFromStorageByUrl('hero-media', previous);
         data.wholesaleInfoVideoUrl = null;
+      }
+
+      // Same single-asset clear for the video+text section's video, which
+      // used to have no "Quitar video" affordance at all -- replacing it was
+      // the only option.
+      if (formData.get('clearVideoSectionVideo') === 'true') {
+        const previous = existing?.videoSectionVideoUrl;
+        if (previous) await deleteFromStorageByUrl('hero-media', previous);
+        data.videoSectionVideoUrl = null;
       }
     } else {
       const body = (await request.json()) as {

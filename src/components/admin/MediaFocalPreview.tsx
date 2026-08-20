@@ -18,6 +18,8 @@ export interface FocalPoint {
 export const CENTER: FocalPoint = { x: 50, y: 50 };
 
 interface FocalFrameProps {
+  /** Empty string hides the label row entirely (SingleFocalPreview's case,
+   * where the wrapper around this frame already has its own heading). */
   label: string;
   hint: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -30,6 +32,14 @@ interface FocalFrameProps {
   value: FocalPoint;
   onChange: (next: FocalPoint) => void;
   className?: string;
+  /**
+   * The frame's clip shape. Defaults to the hero/wholesale rectangle;
+   * `'circle'` is for a location whose LIVE display is a circle (a
+   * subcategory thumbnail) rather than a rectangle -- pass an `aspect-square`
+   * `aspectClassName` alongside it, since `rounded-full` on a non-square box
+   * clips to an oval, not a circle.
+   */
+  shape?: 'rect' | 'circle';
 }
 
 /**
@@ -57,6 +67,7 @@ function FocalFrame({
   value,
   onChange,
   className,
+  shape = 'rect',
 }: FocalFrameProps) {
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -122,17 +133,23 @@ function FocalFrame({
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <div className="flex items-center gap-1.5">
-        <Icon className="size-3.5 text-brand-gold" />
-        <span className="font-sans text-xs font-semibold text-brand-neutral-600 dark:text-brand-neutral-300">
-          {label}
-        </span>
-      </div>
+      {/* Omitted entirely when there is no label to show -- the single-frame
+          wrapper (SingleFocalPreview) already has its own heading above this,
+          and repeating "Vista previa" a second time right on top of it read
+          as a mistake, not as information. */}
+      {label && (
+        <div className="flex items-center gap-1.5">
+          <Icon className="size-3.5 text-brand-gold" />
+          <span className="font-sans text-xs font-semibold text-brand-neutral-600 dark:text-brand-neutral-300">
+            {label}
+          </span>
+        </div>
+      )}
 
       <div
         ref={frameRef}
         role="application"
-        aria-label={`Punto focal ${label}. Arrastra o usa las flechas. Actualmente ${value.x}% horizontal, ${value.y}% vertical.`}
+        aria-label={`Punto focal${label ? ' ' + label : ''}. Arrastra o usa las flechas. Actualmente ${value.x}% horizontal, ${value.y}% vertical.`}
         tabIndex={url ? 0 : -1}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -140,7 +157,8 @@ function FocalFrame({
         onPointerCancel={endDrag}
         onKeyDown={handleKeyDown}
         className={cn(
-          'relative w-full overflow-hidden rounded-lg border-2 bg-brand-neutral-100 dark:bg-brand-neutral-950',
+          'relative w-full overflow-hidden border-2 bg-brand-neutral-100 dark:bg-brand-neutral-950',
+          shape === 'circle' ? 'rounded-full' : 'rounded-lg',
           aspectClassName,
           url
             ? 'border-brand-neutral-200 focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none dark:border-brand-neutral-800'
@@ -318,6 +336,74 @@ export function MediaFocalPreview({
           igual que hará el sitio.
         </p>
       )}
+    </div>
+  );
+}
+
+export interface SingleFocalPreviewProps {
+  url: string | null;
+  kind: 'image' | 'video';
+  posterUrl?: string | null;
+  value: FocalPoint;
+  onChange: (next: FocalPoint) => void;
+  /** Tailwind aspect class matching the live section's actual frame. */
+  aspectClassName?: string;
+  shape?: 'rect' | 'circle';
+  /** Constrains the frame's width so it doesn't stretch full-width in a form
+   * that has room to spare -- most single-point locations are a small card,
+   * not a full-bleed band. */
+  maxWidthClassName?: string;
+}
+
+/**
+ * One device frame with a draggable focal marker, for a location whose LIVE
+ * display shape does NOT change between mobile and desktop -- a circular
+ * subcategory thumbnail, a fixed-aspect popup card, a square video+text
+ * frame. `MediaFocalPreview` above always renders two independent frames
+ * because Hero and the wholesale band genuinely crop differently per
+ * breakpoint (16:9 vs 9:16, a short strip vs a tall one); showing that same
+ * two-frame UI here would imply an independent mobile crop that nothing on
+ * the live site actually uses.
+ *
+ * Built on the same `FocalFrame` as the two-frame version above rather than a
+ * second copy of its ~130 lines of pointer-capture and keyboard-nudge logic.
+ */
+export function SingleFocalPreview({
+  url,
+  kind,
+  posterUrl,
+  value,
+  onChange,
+  aspectClassName = 'aspect-square',
+  shape = 'rect',
+  maxWidthClassName = 'max-w-xs',
+}: SingleFocalPreviewProps) {
+  return (
+    <div className="rounded-lg border border-brand-neutral-100 bg-brand-neutral-50/60 p-4 dark:border-brand-neutral-800 dark:bg-brand-neutral-950/40">
+      <div className="flex items-center gap-1.5">
+        <Crosshair className="size-4 text-brand-gold" />
+        <h3 className="font-sans text-sm font-semibold text-brand-neutral-800 dark:text-brand-neutral-200">
+          Vista previa y punto focal
+        </h3>
+      </div>
+      <p className="mt-1 font-sans text-[11px] leading-relaxed text-brand-neutral-400">
+        Así se verá en el sitio. Arrastra el punto (o usa las flechas del
+        teclado) para elegir qué parte del archivo se conserva al recortar.
+      </p>
+
+      <FocalFrame
+        label=""
+        hint="Sin archivo"
+        icon={Crosshair}
+        aspectClassName={aspectClassName}
+        kind={kind}
+        url={url}
+        posterUrl={posterUrl}
+        value={value}
+        onChange={onChange}
+        shape={shape}
+        className={cn('mt-4', maxWidthClassName)}
+      />
     </div>
   );
 }

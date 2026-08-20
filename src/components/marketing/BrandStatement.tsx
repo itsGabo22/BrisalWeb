@@ -24,6 +24,10 @@ interface BrandStatementProps {
    * half-live image fallback would mean two ways to configure one section.
    */
   videoUrl?: string | null;
+  /** Focal point (object-position), 0-100. Single point, not a desktop/mobile
+   * pair -- the frame is a constant `aspect-square` at every viewport width. */
+  posX?: number;
+  posY?: number;
   /**
    * Optional internal destination, e.g. "/catalogo/aretes". Null leaves the
    * section exactly as it is today: no link, no pointer cursor, nothing
@@ -32,7 +36,7 @@ interface BrandStatementProps {
   linkUrl?: string | null;
 }
 
-export function BrandStatement({ title, body, videoUrl, linkUrl }: BrandStatementProps) {
+export function BrandStatement({ title, body, videoUrl, posX = 50, posY = 50, linkUrl }: BrandStatementProps) {
   const ref = React.useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   const reducedMotion = useReducedMotion();
@@ -73,7 +77,7 @@ export function BrandStatement({ title, body, videoUrl, linkUrl }: BrandStatemen
         muted
         loop
         playsInline
-        style={{ y: reducedMotion ? 0 : videoY }}
+        style={{ y: reducedMotion ? 0 : videoY, objectPosition: `${posX}% ${posY}%` }}
         className="h-[112%] w-full -translate-y-[6%] object-cover"
         aria-hidden="true"
       />

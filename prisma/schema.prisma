@@ -37,6 +37,12 @@ model Category {
   slug        String     @unique
   description String?
   imageUrl    String?
+  /// Single point, not a desktop/mobile pair: a given row renders in
+  /// exactly ONE display shape -- the homepage band (rectangle) if this is
+  /// a top-level category, or the subcategory circle if not -- and neither
+  /// shape varies by viewport, so one point covers it.
+  imagePosX   Int        @default(50)
+  imagePosY   Int        @default(50)
   parentId    String?
   parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryTree")
@@ -336,6 +342,11 @@ model SiteConfig {
   videoSectionTitle       String?
   videoSectionBody        String?
   videoSectionVideoUrl    String?
+  /// Single point, not a desktop/mobile pair: the section renders at a
+  /// constant `aspect-square` regardless of viewport width, so there is
+  /// only one frame shape to crop for.
+  videoSectionPosX        Int     @default(50)
+  videoSectionPosY        Int     @default(50)
   /// Where the band links to — any internal path the admin types, e.g.
   /// "/catalogo/aretes" or "/catalogo?tag=nuevo". Null means the section is
   /// not clickable at all, which is the state it shipped in.
@@ -392,6 +403,11 @@ model SiteConfig {
   /// loop behind a CTA, this is inline content on an informational page, and
   /// conflating them would mean one upload could never serve both roles well.
   wholesaleInfoVideoUrl   String?
+  /// Same reasoning as `videoSectionPosX/Y` -- the /mayoristas video
+  /// renders at a constant `aspect-video`, so one point covers every
+  /// viewport.
+  wholesaleInfoVideoPosX  Int     @default(50)
+  wholesaleInfoVideoPosY  Int     @default(50)
 
   updatedAt DateTime @updatedAt
 }
@@ -442,6 +458,10 @@ model PromoPopup {
   id        String   @id @default("singleton")
   active    Boolean  @default(false)
   imageUrl  String?
+  /// Single point -- the popup renders at a constant `aspect-[4/3]` card
+  /// regardless of viewport, so there is only one frame shape to crop for.
+  imagePosX Int      @default(50)
+  imagePosY Int      @default(50)
   title     String?
   subtitle  String?
   ctaText   String?  @default("Ver oferta")

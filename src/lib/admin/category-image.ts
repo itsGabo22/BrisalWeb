@@ -8,6 +8,7 @@ import {
   processAndUploadImage,
   slugifyFilename,
 } from '@/lib/supabase/storage';
+import { parsePercent } from '@/lib/admin/focal-point';
 
 /**
  * Category showcase images are site chrome, not product photography, so they
@@ -24,6 +25,8 @@ export interface ParsedCategoryForm {
     description?: string | null;
     parentId?: string | null;
     imageUrl?: string | null;
+    imagePosX?: number;
+    imagePosY?: number;
   };
   imageFile: File | null;
 }
@@ -62,6 +65,11 @@ export function parseCategoryFormData(formData: FormData): ParsedCategoryForm {
     fields.imageUrl =
       typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : null;
   }
+
+  const posX = parsePercent(formData.get('imagePosX'));
+  if (posX !== undefined) fields.imagePosX = posX;
+  const posY = parsePercent(formData.get('imagePosY'));
+  if (posY !== undefined) fields.imagePosY = posY;
 
   const imageFile = formData.get('imageFile');
   return {

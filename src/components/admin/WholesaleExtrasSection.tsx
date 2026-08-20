@@ -5,10 +5,19 @@ import { MessageCircleHeart, PlayCircle, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
+import {
+  CENTER,
+  SingleFocalPreview,
+  clampPercent,
+  type FocalPoint,
+} from '@/components/admin/MediaFocalPreview';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface SiteConfigData {
   wholesaleWelcomeMessage: string | null;
   wholesaleInfoVideoUrl: string | null;
+  wholesaleInfoVideoPosX: number;
+  wholesaleInfoVideoPosY: number;
 }
 
 const VIDEO_HELP =
@@ -36,6 +45,8 @@ export function WholesaleExtrasSection() {
   const [message, setMessage] = React.useState('');
   const [videoFile, setVideoFile] = React.useState<File | null>(null);
   const [clearVideo, setClearVideo] = React.useState(false);
+  const [focal, setFocal] = React.useState<FocalPoint>(CENTER);
+  const pendingVideoUrl = useObjectUrl(videoFile);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -46,6 +57,10 @@ export function WholesaleExtrasSection() {
     setConfig(next);
     setMessage(next.wholesaleWelcomeMessage ?? '');
     setClearVideo(false);
+    setFocal({
+      x: clampPercent(next.wholesaleInfoVideoPosX),
+      y: clampPercent(next.wholesaleInfoVideoPosY),
+    });
   }, []);
 
   const loadConfig = React.useCallback(async () => {
@@ -70,6 +85,8 @@ export function WholesaleExtrasSection() {
 
     const formData = new FormData();
     formData.append('wholesaleWelcomeMessage', message);
+    formData.append('wholesaleInfoVideoPosX', String(focal.x));
+    formData.append('wholesaleInfoVideoPosY', String(focal.y));
     if (videoFile) formData.append('wholesaleInfoVideoFile', videoFile);
     if (clearVideo) formData.append('clearWholesaleInfoVideo', 'true');
 
@@ -163,6 +180,16 @@ export function WholesaleExtrasSection() {
                 <Trash2 className="size-3.5" />
                 Quitar video
               </button>
+            )}
+            {!clearVideo && (pendingVideoUrl || config?.wholesaleInfoVideoUrl) && (
+              <SingleFocalPreview
+                url={pendingVideoUrl ?? config?.wholesaleInfoVideoUrl ?? null}
+                kind="video"
+                value={focal}
+                onChange={setFocal}
+                aspectClassName="aspect-video"
+                maxWidthClassName="max-w-sm"
+              />
             )}
             <p className="text-[11px] text-brand-neutral-400">
               Opcional. Si no subes uno, la página se ve exactamente como hoy —

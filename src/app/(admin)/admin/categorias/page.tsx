@@ -6,6 +6,13 @@ import { Plus, Edit, Trash2, Folder, ChevronDown, ChevronRight, ImageIcon, X } f
 import type { Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import {
+  CENTER,
+  SingleFocalPreview,
+  clampPercent,
+  type FocalPoint,
+} from '@/components/admin/MediaFocalPreview';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 /**
  * Shows the pending upload if there is one, otherwise the stored image,
@@ -72,6 +79,8 @@ export default function AdminCategoriasPage() {
   // see the existing-image fallback in the PATCH route.
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [removeImage, setRemoveImage] = React.useState(false);
+  const [imageFocal, setImageFocal] = React.useState<FocalPoint>(CENTER);
+  const pendingImageUrl = useObjectUrl(imageFile);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // UI states for tree expansion
@@ -124,6 +133,7 @@ export default function AdminCategoriasPage() {
     setParentId(parentCatId || '');
     setImageFile(null);
     setRemoveImage(false);
+    setImageFocal(CENTER);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -135,6 +145,7 @@ export default function AdminCategoriasPage() {
     setParentId(cat.parentId || '');
     setImageFile(null);
     setRemoveImage(false);
+    setImageFocal({ x: clampPercent(cat.imagePosX ?? 50), y: clampPercent(cat.imagePosY ?? 50) });
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -181,6 +192,8 @@ export default function AdminCategoriasPage() {
     formData.set('name', name);
     formData.set('description', description.trim());
     formData.set('parentId', parentId);
+    formData.set('imagePosX', String(imageFocal.x));
+    formData.set('imagePosY', String(imageFocal.y));
 
     if (imageFile) {
       formData.set('imageFile', imageFile);
@@ -495,6 +508,25 @@ export default function AdminCategoriasPage() {
                 )}
               </div>
             </div>
+
+            {/*
+              Shape follows destination, per the helper text above: a
+              rectangle matching the homepage band for a top-level category,
+              a circle matching SubcategoryCircles for a subcategory. Single
+              point, not a desktop/mobile pair -- see the schema comment on
+              Category.imagePosX for why.
+            */}
+            {!removeImage && (pendingImageUrl || editingCategory?.imageUrl) && (
+              <SingleFocalPreview
+                url={pendingImageUrl ?? editingCategory?.imageUrl ?? null}
+                kind="image"
+                value={imageFocal}
+                onChange={setImageFocal}
+                shape={parentId ? 'circle' : 'rect'}
+                aspectClassName={parentId ? 'aspect-square' : 'aspect-[4/5]'}
+                maxWidthClassName={parentId ? 'max-w-[10rem]' : 'max-w-[12rem]'}
+              />
+            )}
           </div>
 
         </form>

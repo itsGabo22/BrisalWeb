@@ -34,6 +34,8 @@ export function toCategory(
     slug: category.slug,
     description: category.description,
     imageUrl: category.imageUrl,
+    imagePosX: category.imagePosX,
+    imagePosY: category.imagePosY,
     parentId: category.parentId,
     children: category.children?.map((child) => toCategory(child)),
   };

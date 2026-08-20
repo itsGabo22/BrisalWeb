@@ -16,6 +16,10 @@ export interface Category {
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
+  /** Focal point (object-position) as whole percentages, 0-100. Meaningful
+   * only alongside `imageUrl`; defaults to 50/50 (centred) on every row. */
+  imagePosX?: number;
+  imagePosY?: number;
   parentId?: string | null;
   children?: Category[];
 }

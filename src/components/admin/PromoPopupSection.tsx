@@ -1,15 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { Gift, ImageIcon } from 'lucide-react';
+import { Gift, ImageIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
+import {
+  CENTER,
+  SingleFocalPreview,
+  clampPercent,
+  type FocalPoint,
+} from '@/components/admin/MediaFocalPreview';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface PromoPopupData {
   id: string;
   active: boolean;
   imageUrl: string | null;
+  imagePosX: number;
+  imagePosY: number;
   title: string | null;
   subtitle: string | null;
   ctaText: string | null;
@@ -26,6 +35,13 @@ export function PromoPopupSection() {
   const [ctaHref, setCtaHref] = React.useState('');
   const [showOnce, setShowOnce] = React.useState(true);
   const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [focal, setFocal] = React.useState<FocalPoint>(CENTER);
+  /** Staged, not immediate -- matches the wholesale-background and
+   * /mayoristas-video "Quitar" pattern: nothing is actually removed until
+   * "Guardar cambios" is clicked, so the admin can back out of a clear by
+   * reloading instead of needing a confirm() dialog. */
+  const [clearImage, setClearImage] = React.useState(false);
+  const pendingImageUrl = useObjectUrl(imageFile);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -44,6 +60,8 @@ export function PromoPopupSection() {
         setCtaText(data.ctaText ?? '');
         setCtaHref(data.ctaHref ?? '');
         setShowOnce(data.showOnce);
+        setFocal({ x: clampPercent(data.imagePosX), y: clampPercent(data.imagePosY) });
+        setClearImage(false);
       }
     } catch (err) {
       console.error('Error loading promo popup:', err);
@@ -68,7 +86,13 @@ export function PromoPopupSection() {
     formData.append('ctaText', ctaText);
     formData.append('ctaHref', ctaHref);
     formData.append('showOnce', String(showOnce));
-    if (imageFile) formData.append('imageFile', imageFile);
+    formData.append('imagePosX', String(focal.x));
+    formData.append('imagePosY', String(focal.y));
+    if (imageFile) {
+      formData.append('imageFile', imageFile);
+    } else if (clearImage) {
+      formData.append('clearImage', 'true');
+    }
 
     try {
       const res = await fetch('/api/admin/promo-popup', { method: 'PATCH', body: formData });
@@ -79,6 +103,8 @@ export function PromoPopupSection() {
       const updated = (await res.json()) as PromoPopupData;
       setPopup(updated);
       setImageFile(null);
+      setClearImage(false);
+      setFocal({ x: clampPercent(updated.imagePosX), y: clampPercent(updated.imagePosY) });
       setSavedMsg('Guardado correctamente.');
       setTimeout(() => setSavedMsg(null), 2500);
     } catch (err) {
@@ -116,17 +142,43 @@ export function PromoPopupSection() {
             </span>
           </label>
 
-          <MediaFrameCard
-            label="Imagen (opcional)"
-            aspectClassName="aspect-[4/3]"
-            icon={ImageIcon}
-            kind="image"
-            file={imageFile}
-            existingUrl={popup?.imageUrl}
-            onChange={setImageFile}
-            accept="image/*"
-            className="max-w-xs"
-          />
+          <div className="space-y-2">
+            <MediaFrameCard
+              label="Imagen (opcional)"
+              aspectClassName="aspect-[4/3]"
+              icon={ImageIcon}
+              kind="image"
+              file={imageFile}
+              existingUrl={clearImage ? null : popup?.imageUrl}
+              onChange={(file) => {
+                setImageFile(file);
+                if (file) setClearImage(false);
+              }}
+              accept="image/*"
+              className="max-w-xs"
+            />
+            {!clearImage && !imageFile && popup?.imageUrl && (
+              <button
+                type="button"
+                onClick={() => setClearImage(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-red-600 transition-colors hover:text-red-700 dark:text-red-400"
+              >
+                <Trash2 className="size-3.5" />
+                Quitar imagen
+              </button>
+            )}
+          </div>
+
+          {!clearImage && (pendingImageUrl || popup?.imageUrl) && (
+            <SingleFocalPreview
+              url={pendingImageUrl ?? popup?.imageUrl ?? null}
+              kind="image"
+              value={focal}
+              onChange={setFocal}
+              aspectClassName="aspect-[4/3]"
+              maxWidthClassName="max-w-xs"
+            />
+          )}
 
           <Input
             label="Título"

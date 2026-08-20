@@ -53,9 +53,15 @@ export default async function MayoristasPage() {
   const rootCategories = allCategories.filter((cat) => cat.parentId === null);
   const siteConfig = await prisma.siteConfig.findUnique({
     where: { id: 'singleton' },
-    select: { wholesaleInfoVideoUrl: true },
+    select: {
+      wholesaleInfoVideoUrl: true,
+      wholesaleInfoVideoPosX: true,
+      wholesaleInfoVideoPosY: true,
+    },
   });
   const infoVideoUrl = siteConfig?.wholesaleInfoVideoUrl;
+  const infoVideoPosX = siteConfig?.wholesaleInfoVideoPosX ?? 50;
+  const infoVideoPosY = siteConfig?.wholesaleInfoVideoPosY ?? 50;
 
   return (
     <main>
@@ -136,14 +142,24 @@ export default async function MayoristasPage() {
           className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16"
           aria-label="Video informativo sobre el programa de mayoristas"
         >
-          <div className="overflow-hidden rounded-2xl shadow-sm">
+          {/*
+            `aspect-video` added alongside the focal point: without a fixed
+            frame the video only ever showed at its own intrinsic ratio, so
+            `object-position` (which only moves an axis that overflows a
+            fixed box) would have had nothing to do. The admin's own preview
+            already assumed this exact ratio (WholesaleExtrasSection's
+            MediaFrameCard), so this brings the live page in line with what
+            the admin has been previewing all along.
+          */}
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl shadow-sm">
             <video
               src={infoVideoUrl}
               autoPlay
               muted
               loop
               playsInline
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ objectPosition: `${infoVideoPosX}% ${infoVideoPosY}%` }}
               aria-hidden="true"
             />
           </div>

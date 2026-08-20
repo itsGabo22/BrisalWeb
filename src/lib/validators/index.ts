@@ -152,6 +152,10 @@ export const categoryAdminSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
+  /** Focal point (object-position), 0-100. Single point -- see the schema
+   * comment on `Category.imagePosX` for why no desktop/mobile split. */
+  imagePosX: z.number().int().min(0).max(100).optional(),
+  imagePosY: z.number().int().min(0).max(100).optional(),
   /**
    * Blank collapsed to `null`, meaning "top-level category".
    *

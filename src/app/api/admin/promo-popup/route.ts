@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { processAndUploadImage } from '@/lib/supabase/storage';
+import { deleteFromStorageByUrl, processAndUploadImage } from '@/lib/supabase/storage';
 import { adminReadErrorResponse } from '@/lib/admin/admin-errors';
+import { parsePercent } from '@/lib/admin/focal-point';
 
 interface PromoPopupFields {
   active?: boolean;
@@ -11,7 +12,9 @@ interface PromoPopupFields {
   ctaText?: string;
   ctaHref?: string | null;
   showOnce?: boolean;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  imagePosX?: number;
+  imagePosY?: number;
 }
 
 export const runtime = 'nodejs';
@@ -40,8 +43,13 @@ export async function PATCH(request: Request) {
     const ctaHref = formData.get('ctaHref');
     const showOnce = formData.get('showOnce');
     const imageFile = formData.get('imageFile');
+    const clearImage = formData.get('clearImage');
 
     const data: PromoPopupFields = {};
+    // Read once, so a "Quitar imagen" clear can remove the exact file that
+    // was actually stored, matching the read-before-clear pattern the other
+    // admin sections use.
+    const existing = await prisma.promoPopup.findUnique({ where: { id: 'singleton' } });
 
     if (active !== null) data.active = active === 'true';
     if (title !== null) data.title = typeof title === 'string' && title.trim() ? title.trim() : null;
@@ -66,6 +74,24 @@ export async function PATCH(request: Request) {
         upsert: true,
       });
       data.imageUrl = url;
+    } else if (clearImage === 'true') {
+      /**
+       * Run only when no new file was sent in the SAME request -- the upload
+       * branch above already handles "replace", and a stray clear flag
+       * alongside a fresh file would be a client bug, not a real intent to
+       * both upload and immediately clear.
+       *
+       * Fixed path (`promo/popup.webp`, upserted in place) rather than the
+       * timestamped-path pattern the other sections use, so there is exactly
+       * one object to remove, not a history of previous uploads.
+       */
+      if (existing?.imageUrl) await deleteFromStorageByUrl('hero-media', existing.imageUrl);
+      data.imageUrl = null;
+    }
+
+    for (const key of ['imagePosX', 'imagePosY'] as const) {
+      const pct = parsePercent(formData.get(key));
+      if (pct !== undefined) data[key] = pct;
     }
 
     const popup = await prisma.promoPopup.upsert({

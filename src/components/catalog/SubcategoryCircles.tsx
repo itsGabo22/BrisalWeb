@@ -87,6 +87,9 @@ export function SubcategoryCircles({
                     // needs to fetch anything larger than the circle it fills.
                     sizes="80px"
                     className="object-cover"
+                    style={{
+                      objectPosition: `${subcategory.imagePosX ?? 50}% ${subcategory.imagePosY ?? 50}%`,
+                    }}
                   />
                 ) : (
                   <span className="bg-brand-sand text-brand-gold-deep/70 flex h-full w-full items-center justify-center font-body text-sm font-medium tracking-wide">

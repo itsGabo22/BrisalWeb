@@ -79,6 +79,8 @@ export default async function HomePage() {
         title={siteConfig?.videoSectionTitle}
         body={siteConfig?.videoSectionBody}
         videoUrl={siteConfig?.videoSectionVideoUrl}
+        posX={siteConfig?.videoSectionPosX}
+        posY={siteConfig?.videoSectionPosY}
         linkUrl={siteConfig?.videoSectionLinkUrl}
       />
       <ProductShowcaseSection

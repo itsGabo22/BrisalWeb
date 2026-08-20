@@ -1,15 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { Clapperboard, Film } from 'lucide-react';
+import { Clapperboard, Film, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { MediaFrameCard } from '@/components/admin/MediaFrameCard';
+import {
+  CENTER,
+  SingleFocalPreview,
+  clampPercent,
+  type FocalPoint,
+} from '@/components/admin/MediaFocalPreview';
+import { useObjectUrl } from '@/hooks/useObjectUrl';
 
 interface SiteConfigData {
   videoSectionTitle: string | null;
   videoSectionBody: string | null;
   videoSectionVideoUrl: string | null;
+  videoSectionPosX: number;
+  videoSectionPosY: number;
   videoSectionLinkUrl: string | null;
 }
 
@@ -22,6 +31,13 @@ export function SectionVideosSection() {
   const [title, setTitle] = React.useState('');
   const [body, setBody] = React.useState('');
   const [linkUrl, setLinkUrl] = React.useState('');
+  const [focal, setFocal] = React.useState<FocalPoint>(CENTER);
+  /** Staged, not immediate -- the same "Quitar" pattern the wholesale
+   * background and /mayoristas video already use: nothing is removed until
+   * "Guardar cambios" actually commits it. Previously this section had NO
+   * discard affordance at all -- only "Cambiar" (replace). */
+  const [clearVideo, setClearVideo] = React.useState(false);
+  const pendingVideoUrl = useObjectUrl(videoSectionFile);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -33,6 +49,8 @@ export function SectionVideosSection() {
     setTitle(next.videoSectionTitle ?? '');
     setBody(next.videoSectionBody ?? '');
     setLinkUrl(next.videoSectionLinkUrl ?? '');
+    setFocal({ x: clampPercent(next.videoSectionPosX), y: clampPercent(next.videoSectionPosY) });
+    setClearVideo(false);
   }, []);
 
   const loadConfig = React.useCallback(async () => {
@@ -65,7 +83,13 @@ export function SectionVideosSection() {
     formData.append('videoSectionTitle', title);
     formData.append('videoSectionBody', body);
     formData.append('videoSectionLinkUrl', linkUrl);
-    if (videoSectionFile) formData.append('videoSectionFile', videoSectionFile);
+    formData.append('videoSectionPosX', String(focal.x));
+    formData.append('videoSectionPosY', String(focal.y));
+    if (videoSectionFile) {
+      formData.append('videoSectionFile', videoSectionFile);
+    } else if (clearVideo) {
+      formData.append('clearVideoSectionVideo', 'true');
+    }
 
     try {
       const res = await fetch('/api/admin/site-config', { method: 'PATCH', body: formData });
@@ -86,6 +110,7 @@ export function SectionVideosSection() {
 
   const hasChanges =
     Boolean(videoSectionFile) ||
+    clearVideo ||
     title !== (config?.videoSectionTitle ?? '') ||
     body !== (config?.videoSectionBody ?? '') ||
     linkUrl !== (config?.videoSectionLinkUrl ?? '');
@@ -112,19 +137,45 @@ export function SectionVideosSection() {
               selector says which of them the site actually renders. */}
           <div className="grid gap-6 md:max-w-xl">
             <div className="space-y-4">
-              <MediaFrameCard
-                label="Sección video + texto"
-                sublabel="Reemplaza «Cada pieza, una historia.»"
-                helperText={VIDEO_HELP}
-                // Square, because that is the frame it renders in on the site.
-                aspectClassName="aspect-square"
-                icon={Film}
-                kind="video"
-                file={videoSectionFile}
-                existingUrl={config?.videoSectionVideoUrl}
-                onChange={setVideoSectionFile}
-                accept="video/mp4,video/webm"
-              />
+              <div className="space-y-2">
+                <MediaFrameCard
+                  label="Sección video + texto"
+                  sublabel="Reemplaza «Cada pieza, una historia.»"
+                  helperText={VIDEO_HELP}
+                  // Square, because that is the frame it renders in on the site.
+                  aspectClassName="aspect-square"
+                  icon={Film}
+                  kind="video"
+                  file={videoSectionFile}
+                  existingUrl={clearVideo ? null : config?.videoSectionVideoUrl}
+                  onChange={(file) => {
+                    setVideoSectionFile(file);
+                    if (file) setClearVideo(false);
+                  }}
+                  accept="video/mp4,video/webm"
+                />
+                {!clearVideo && !videoSectionFile && config?.videoSectionVideoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setClearVideo(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-600 transition-colors hover:text-red-700 dark:text-red-400"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Quitar video
+                  </button>
+                )}
+              </div>
+
+              {!clearVideo && (pendingVideoUrl || config?.videoSectionVideoUrl) && (
+                <SingleFocalPreview
+                  url={pendingVideoUrl ?? config?.videoSectionVideoUrl ?? null}
+                  kind="video"
+                  value={focal}
+                  onChange={setFocal}
+                  aspectClassName="aspect-square"
+                  maxWidthClassName="max-w-xs"
+                />
+              )}
 
               <div>
                 <label

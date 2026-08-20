@@ -11,6 +11,8 @@ export interface PromoPopupData {
   id: string;
   active: boolean;
   imageUrl: string | null;
+  imagePosX: number;
+  imagePosY: number;
   title: string | null;
   subtitle: string | null;
   ctaText: string | null;
@@ -82,7 +84,14 @@ export function PromoPopup({ popup }: PromoPopupProps) {
 
             {popup.imageUrl && (
               <div className="relative aspect-[4/3] w-full">
-                <Image src={popup.imageUrl} alt="" fill sizes="384px" className="object-cover" />
+                <Image
+                  src={popup.imageUrl}
+                  alt=""
+                  fill
+                  sizes="384px"
+                  className="object-cover"
+                  style={{ objectPosition: `${popup.imagePosX}% ${popup.imagePosY}%` }}
+                />
               </div>
             )}
 
