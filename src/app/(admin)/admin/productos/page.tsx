@@ -17,7 +17,7 @@ import {
 import { formatCOP } from '@/lib/utils/pricing';
 import { resolveProductImageUrl } from '@/lib/utils/product-images';
 import { getProductReference, getVariantReference } from '@/lib/utils/product-reference';
-import { getSelectableColors } from '@/lib/utils/product-options';
+import { getSelectableColors, getTotalStock } from '@/lib/utils/product-options';
 import type { Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 
@@ -31,20 +31,6 @@ const DATE_RANGES = [
 
 type DateRange = (typeof DATE_RANGES)[number]['value'];
 type StatusFilter = 'all' | 'activo' | 'agotado' | 'inactivo';
-
-/**
- * Total units across every colour a product sells in.
- *
- * `product.stock` alone is only the PRIMARY colour's — a product whose primary
- * colour is sold out but which still has stock in two variants is not
- * "Agotado", and saying so would pull a sellable piece out of the list.
- */
-function getTotalStock(product: Product): number {
-  const colors = getSelectableColors(product);
-  // A product with no colour data at all keeps its own stock as the total.
-  if (colors.length === 0) return product.stock;
-  return colors.reduce((sum, color) => sum + color.stock, 0);
-}
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', {
   day: '2-digit',

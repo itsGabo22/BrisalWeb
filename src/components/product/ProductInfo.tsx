@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, Clock, Minus, Plus } from 'lucide-react';
+import { Check, Flame, Minus, PackageX, Plus } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,12 @@ interface ProductInfoProps {
   colors?: SelectableColor[];
   selectedColor?: SelectableColor | null;
   onSelectColor?: (color: SelectableColor) => void;
+  /**
+   * At or below how many units of the SELECTED colour to nudge with "¡Últimas
+   * N unidades disponibles!". Comes from `SiteConfig.lowStockThreshold` so the
+   * client can tune it without a deploy; the default mirrors the column's.
+   */
+  lowStockThreshold?: number;
 }
 
 type BadgeVariant = 'nuevo' | 'mas-vendido' | 'en-oferta' | 'tendencia';
@@ -39,12 +45,20 @@ function getTagVariant(tag: Tag): BadgeVariant | undefined {
   return TAG_SLUG_TO_VARIANT[tag.slug];
 }
 
-function clampQuantity(value: number): number {
+/**
+ * A quantity the selected colour can actually serve.
+ *
+ * `max` is that colour's stock. The shopper can no longer type or step past it
+ * — ordering beyond stock used to be allowed on purpose (sobrepedido) and is
+ * now blocked outright, server side included, so letting the field hold an
+ * unfillable number would only produce a rejection at checkout.
+ */
+function clampQuantity(value: number, max: number): number {
   if (!Number.isFinite(value) || value < 1) {
     return 1;
   }
 
-  return Math.floor(value);
+  return Math.min(Math.floor(value), Math.max(1, max));
 }
 
 export function ProductInfo({
@@ -52,6 +66,7 @@ export function ProductInfo({
   colors = [],
   selectedColor = null,
   onSelectColor,
+  lowStockThreshold = 3,
 }: ProductInfoProps) {
   const [quantity, setQuantity] = React.useState(1);
   const [added, setAdded] = React.useState(false);
@@ -82,17 +97,21 @@ export function ProductInfo({
   const price = getEffectivePrice(priced, showWholesalePrice);
   const stock = Math.max(0, selectedColor ? selectedColor.stock : product.stock);
   /**
-   * Sobrepedido: a colour with too little stock is still orderable — the client
-   * produces or restocks the difference — so the page never blocks the add. It
-   * says so instead, and the same arithmetic is redone server-side at order
-   * time (see `computeBackorderQty`), because this stock number is only as
-   * fresh as the page load.
+   * Sobrepedido is gone: a colour with no stock is genuinely unbuyable now,
+   * because letting customers order beyond stock risked burying the client's
+   * production. The page blocks the add, and `POST /api/ordenes` re-checks the
+   * same thing server-side — this number is only as fresh as the page load, so
+   * the button being enabled is never the last word.
    */
-  const backorderQty = Math.max(0, quantity - stock);
   const isSoldOut = stock <= 0;
-  const isBackorder = backorderQty > 0;
+  /**
+   * The one case where an exact count is still shown. Above the threshold no
+   * number appears at all, which is the standing decision for this storefront;
+   * at or below it, the count IS the message.
+   */
+  const isLowStock = stock > 0 && stock <= Math.max(1, lowStockThreshold);
   // "este color" only makes sense when the shopper actually chose one.
-  const subject = colors.length > 1 ? 'Este color está' : 'Este producto está';
+  const subject = colors.length > 1 ? 'Este color' : 'Este producto';
   // Changes with the selected colour, so the shopper and the client are always
   // looking at the same reference for the same thing.
   const reference = selectedColor?.reference ?? getProductReference(product);
@@ -108,10 +127,14 @@ export function ProductInfo({
   }, []);
 
   const handleQuantityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setQuantity(clampQuantity(event.target.valueAsNumber));
+    setQuantity(clampQuantity(event.target.valueAsNumber, stock));
   };
 
   const handleAddToCart = () => {
+    // Belt and braces: the button is disabled while sold out, but a stale page
+    // whose colour ran out since load must not be able to add either.
+    if (isSoldOut) return;
+
     addItem(
       {
         productId: product.id,
@@ -251,9 +274,9 @@ export function ProductInfo({
           </span>
         )}
 
-        {/* Shown as soon as the colour is empty — before the shopper commits to
-            a quantity — so "sobre pedido" is never a surprise at checkout. */}
-        {isSoldOut && <Badge variant="sobre-pedido">Sobre pedido</Badge>}
+        {/* The same word and the same red the admin product list uses, so the
+            client and the shopper are looking at one state, not two. */}
+        {isSoldOut && <Badge variant="agotado">Agotado</Badge>}
       </div>
 
       <div className="h-px w-24 bg-brand-gold" aria-hidden="true" />
@@ -304,7 +327,7 @@ export function ProductInfo({
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
-                  aria-label={`${color.colorName}${soldOut ? ' (sobre pedido)' : ''}`}
+                  aria-label={`${color.colorName}${soldOut ? ' (agotado)' : ''}`}
                   title={color.colorName}
                   onClick={() => onSelectColor?.(color)}
                   className={cn(
@@ -320,8 +343,10 @@ export function ProductInfo({
                     aria-hidden="true"
                   />
                   {soldOut && (
-                    // Diagonal strike marks a colour with no stock without
-                    // disabling it — it is still orderable, on sobrepedido.
+                    // Diagonal strike marks a colour that cannot be bought.
+                    // The swatch stays clickable on purpose: the shopper has to
+                    // be able to select it to read WHY it is unavailable, and
+                    // an unselectable swatch just looks broken.
                     <span
                       className="absolute inset-0 flex items-center justify-center"
                       aria-hidden="true"
@@ -333,11 +358,15 @@ export function ProductInfo({
               );
             })}
           </div>
-          <p className="font-body text-xs text-brand-text-soft">
-            {stock > 0
-              ? `${stock} disponibles en este color`
-              : 'Sin stock en este color — se hace sobre pedido'}
-          </p>
+          {/* Only ever says something when there IS something to say. Exact
+              counts are hidden on this storefront; "agotado" is a state the
+              shopper must know, and the low-stock nudge has its own block
+              below the quantity picker. */}
+          {isSoldOut && (
+            <p className="font-body text-xs font-medium text-red-700">
+              Agotado en este color
+            </p>
+          )}
         </div>
       )}
 
@@ -351,11 +380,22 @@ export function ProductInfo({
         >
           Cantidad
         </label>
-        <div className="flex w-36 items-center rounded-md border border-brand-gold/70 bg-brand-pearl">
+        {/*
+          `max` is the selected colour's stock, and the stepper honours it — the
+          shopper cannot ask for units that do not exist. The whole control goes
+          inert when the colour is agotado: there is no quantity of nothing.
+        */}
+        <div
+          className={cn(
+            'flex w-36 items-center rounded-md border border-brand-gold/70 bg-brand-pearl',
+            isSoldOut && 'opacity-50',
+          )}
+        >
           <button
             type="button"
             onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-            className="flex h-10 w-10 items-center justify-center text-brand-neutral-700 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            disabled={isSoldOut || quantity <= 1}
+            className="flex h-10 w-10 items-center justify-center text-brand-neutral-700 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Disminuir cantidad"
           >
             <Minus size={15} aria-hidden="true" />
@@ -364,67 +404,81 @@ export function ProductInfo({
             id="product-quantity"
             type="number"
             min={1}
+            max={Math.max(1, stock)}
+            disabled={isSoldOut}
             inputMode="numeric"
             value={quantity}
             onChange={handleQuantityChange}
-            className="h-10 w-14 border-x border-brand-gold/40 bg-transparent text-center font-body text-sm font-medium text-brand-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            className="h-10 w-14 border-x border-brand-gold/40 bg-transparent text-center font-body text-sm font-medium text-brand-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-not-allowed"
             aria-label="Cantidad"
           />
           <button
             type="button"
-            onClick={() => setQuantity((current) => current + 1)}
-            className="flex h-10 w-10 items-center justify-center text-brand-neutral-700 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            onClick={() => setQuantity((current) => clampQuantity(current + 1, stock))}
+            disabled={isSoldOut || quantity >= stock}
+            className="flex h-10 w-10 items-center justify-center text-brand-neutral-700 transition-colors hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Aumentar cantidad"
           >
             <Plus size={15} aria-hidden="true" />
           </button>
         </div>
+        {/* Says why the + stopped responding, rather than leaving a dead
+            control. Only once the shopper has actually hit the ceiling. */}
+        {!isSoldOut && quantity >= stock && (
+          <p className="font-body text-xs text-brand-text-soft">
+            Máximo disponible en este color.
+          </p>
+        )}
       </div>
 
       {/*
-        The sobrepedido notice. It sits directly above "Agregar al carrito"
-        because that is the moment it changes a decision — the shopper is told
-        what ordering more than exists means BEFORE they do it, and the button
-        stays enabled, which is the point of the whole feature.
+        Two mutually exclusive notices, in the one place where they change a
+        decision — directly above "Agregar al carrito".
 
-        `aria-live` because the message appears and changes as the quantity or
-        the colour changes, without the surrounding page moving.
+          • agotado    → says the colour cannot be bought, since the disabled
+                         button alone does not explain itself.
+          • pocas unid → the ONLY place this storefront prints an exact stock
+                         number. Above `lowStockThreshold` nothing renders at
+                         all, which is the standing decision to keep counts
+                         private; at or below it the number IS the nudge.
+
+        `aria-live` because both appear and change as the quantity or the
+        colour changes, without the surrounding page moving.
       */}
       <div aria-live="polite">
-        {isBackorder && (
-          <div className="border-badge-sobrepedido-fg/25 bg-badge-sobrepedido-bg flex gap-2.5 rounded-md border px-4 py-3">
-            <Clock
-              size={16}
-              className="text-badge-sobrepedido-fg mt-0.5 shrink-0"
-              aria-hidden="true"
-            />
-            <p className="text-badge-sobrepedido-fg font-body text-sm leading-relaxed">
-              {isSoldOut ? (
-                <>
-                  {subject} <strong className="font-medium">sobre pedido</strong>. Tu
-                  pedido se procesará y coordinaremos el tiempo de entrega por
-                  WhatsApp.
-                </>
-              ) : (
-                <>
-                  Tenemos <strong className="font-medium">{stock}</strong>{' '}
-                  {stock === 1 ? 'unidad disponible' : 'unidades disponibles'} de
-                  inmediato. {backorderQty === 1 ? 'La otra unidad queda' : `Las otras ${backorderQty} unidades quedan`}{' '}
-                  <strong className="font-medium">sobre pedido</strong> y
-                  coordinaremos el tiempo de entrega por WhatsApp.
-                </>
-              )}
+        {isSoldOut ? (
+          <div className="flex gap-2.5 rounded-md border border-red-300/60 bg-red-50 px-4 py-3">
+            <PackageX size={16} className="mt-0.5 shrink-0 text-red-700" aria-hidden="true" />
+            <p className="font-body text-sm leading-relaxed text-red-800">
+              {subject} está <strong className="font-medium">agotado</strong> por
+              ahora.{' '}
+              {colors.length > 1
+                ? 'Prueba otro color o escríbenos por WhatsApp y te avisamos cuando vuelva.'
+                : 'Escríbenos por WhatsApp y te avisamos cuando vuelva a estar disponible.'}
             </p>
           </div>
+        ) : (
+          isLowStock && (
+            <div className="border-brand-gold/40 bg-brand-gold/10 flex items-center gap-2.5 rounded-md border px-4 py-2.5">
+              <Flame size={15} className="text-brand-gold-deep shrink-0" aria-hidden="true" />
+              <p className="text-brand-gold-deep font-body text-sm font-medium">
+                ¡Últimas {stock} {stock === 1 ? 'unidad disponible' : 'unidades disponibles'}!
+              </p>
+            </div>
+          )
         )}
       </div>
 
       <div className="flex flex-col gap-3">
+        {/* Disabled, not relabelled-and-still-clickable as it was under
+            sobrepedido: an agotado colour is genuinely not orderable, and
+            `POST /api/ordenes` now refuses the line too. */}
         <Button
           type="button"
           variant="primary"
           size="lg"
           onClick={handleAddToCart}
+          disabled={isSoldOut}
           className={cn(
             'w-full',
             added &&
@@ -432,7 +486,9 @@ export function ProductInfo({
           )}
           aria-live="polite"
         >
-          {added ? (
+          {isSoldOut ? (
+            'Agotado'
+          ) : added ? (
             <span className="inline-flex items-center gap-2">
               <Check size={18} aria-hidden="true" />
               Agregado

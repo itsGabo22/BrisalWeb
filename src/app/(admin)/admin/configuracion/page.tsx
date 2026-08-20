@@ -4,6 +4,7 @@ import { SectionVideosSection } from '@/components/admin/SectionVideosSection';
 import { WholesaleBackgroundSection } from '@/components/admin/WholesaleBackgroundSection';
 import { WholesaleExtrasSection } from '@/components/admin/WholesaleExtrasSection';
 import { PromoPopupSection } from '@/components/admin/PromoPopupSection';
+import { StockThresholdSection } from '@/components/admin/StockThresholdSection';
 import { LegalSection } from '@/components/admin/LegalSection';
 
 export default function AdminConfiguracionPage() {
@@ -24,6 +25,10 @@ export default function AdminConfiguracionPage() {
           videos sit near each other but stay clearly distinct in their labels. */}
       <WholesaleExtrasSection />
       <PromoPopupSection />
+      {/* Sits with the other storefront-behaviour controls rather than under a
+          products heading: it changes what every product page says, not any one
+          product's data. */}
+      <StockThresholdSection />
       {/* Last: it is the panel the client will touch least often, and it is the
           tallest, so putting it above the media panels would bury them. */}
       <LegalSection />

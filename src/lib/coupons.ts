@@ -108,3 +108,41 @@ export async function redeemCoupon(code: string, now: Date = new Date()): Promis
 
   return affected === 1;
 }
+
+/**
+ * Gives one redemption back, atomically.
+ *
+ * Needed because `redeemCoupon` fires at ORDER CREATION, not at admin confirm:
+ * a customer who places an order the client then REJECTS has already consumed
+ * a use. Left alone, deleting that rejected order would permanently burn a
+ * redemption on a sale that never happened — and on a coupon with
+ * `usageLimit: 1` that means nobody can ever use the code again.
+ *
+ * The guard is `usageCount > 0` inside the same statement as the decrement, for
+ * the same reason the increment checks its limit inline: two deletions racing on
+ * a coupon sitting at 1 must not take it to -1. A count that is already 0 is
+ * simply left alone.
+ *
+ * Deliberately NOT wired into rejection itself. Rejecting is reversible in
+ * spirit — the client may re-confirm after a WhatsApp conversation — so the use
+ * stays claimed until the order record is actually thrown away.
+ *
+ * @returns true when a use was actually released.
+ */
+export async function releaseCouponRedemption(
+  code: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const normalized = normalizeCouponCode(code);
+  if (!normalized) return false;
+
+  const affected = await prisma.$executeRaw(Prisma.sql`
+    UPDATE "Coupon"
+       SET "usageCount" = "usageCount" - 1,
+           "updatedAt"  = ${now}
+     WHERE "code" = ${normalized}
+       AND "usageCount" > 0
+  `);
+
+  return affected === 1;
+}

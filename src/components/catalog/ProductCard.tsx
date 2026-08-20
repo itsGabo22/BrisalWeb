@@ -4,7 +4,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, ShoppingBag } from 'lucide-react';
+import { Check, PackageX, Palette, ShoppingBag } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';
@@ -20,7 +20,11 @@ import {
 } from '@/lib/utils/product-images';
 import { Badge } from '@/components/ui/badge';
 import { Stars } from '@/components/ui/star-rating';
-import { getSelectableColors } from '@/lib/utils/product-options';
+import {
+  getPrimaryStock,
+  getSelectableColors,
+  isProductSoldOut,
+} from '@/lib/utils/product-options';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import type { Product, Tag } from '@/types';
 
@@ -87,11 +91,34 @@ export function ProductCard({ product, className }: ProductCardProps) {
     };
   }, []);
 
-  // Phase 5: no stock is "sobre pedido", not "unavailable". The primary
-  // colour's stock IS the product's own — see the colour model in AGENTS.md.
-  const isBackorder = product.stock <= 0;
+  /**
+   * Two different questions, deliberately not the same one:
+   *
+   *   • `soldOutEverywhere` — is NO colour of this piece buyable? That is what
+   *     the card's "Agotado" badge states, matching the admin product list's
+   *     own all-colours rule (`isProductSoldOut`). Judging the badge on the
+   *     primary colour alone would stamp Agotado on a piece that is still
+   *     purchasable in another finish, talking the shopper out of a sale the
+   *     client can fulfil.
+   *
+   *   • `primaryOut` — can QUICK-ADD do its job? It always adds the primary
+   *     colour, so it is the primary colour's stock that gates it, whatever
+   *     the rest of the palette holds.
+   *
+   * When those two disagree — primary empty, another colour in stock — the
+   * button stops being an add and becomes a link to the product page, where
+   * the shopper can pick a colour that exists. Silently adding a colour with
+   * no stock is what this replaces.
+   */
+  const soldOutEverywhere = React.useMemo(() => isProductSoldOut(product), [product]);
+  const primaryOut = getPrimaryStock(product) <= 0;
+  const hasOtherColorInStock = primaryOut && !soldOutEverywhere;
 
   const handleQuickAdd = () => {
+    // The button is disabled or swapped for a link in both blocked cases; this
+    // is the guard for a card whose stock ran out since the page was rendered.
+    if (primaryOut) return;
+
     addItem({
       productId: product.id,
       name: product.name,
@@ -176,9 +203,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
             aria-hidden="true"
           />
 
-          {/* Tag badges */}
-          {product.tags.length > 0 && (
+          {/* Tag badges, with Agotado first when nothing is buyable — it
+              outranks "Nuevo" or "En oferta", which are pointless claims about
+              a piece the shopper cannot have. */}
+          {(soldOutEverywhere || product.tags.length > 0) && (
             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+              {soldOutEverywhere && <Badge variant="agotado">Agotado</Badge>}
               {product.tags.map((tag) => {
                 const variant = tagVariant(tag);
                 if (!variant) return null;
@@ -215,31 +245,60 @@ export function ProductCard({ product, className }: ProductCardProps) {
             'sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100',
           )}
         >
-          <button
-            type="button"
-            onClick={handleQuickAdd}
-            // Deliberately never disabled. Phase 5's rule is that no stock means
-            // "sobre pedido", not "unavailable" — the client makes or restocks
-            // the difference — so the add always goes through and the label says
-            // what the shopper is agreeing to.
-            aria-label={`Agregar ${product.name} al carrito${isBackorder ? ' (sobre pedido)' : ''}`}
-            className={cn(
-              'hero-glass-cta font-body pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium tracking-wide text-white',
-              'focus-visible:ring-brand-gold transition-transform focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95',
-            )}
-          >
-            {added ? (
-              <>
-                <Check className="size-3.5" aria-hidden="true" />
-                Agregado
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="size-3.5" aria-hidden="true" />
-                {isBackorder ? 'Sobre pedido' : 'Agregar al carrito'}
-              </>
-            )}
-          </button>
+          {hasOtherColorInStock ? (
+            /* Primary colour empty but another finish is in stock. Quick-add
+               cannot serve this card — it only ever adds the primary — so it
+               hands the shopper to the product page to choose, instead of
+               claiming Agotado for a piece that is still for sale. */
+            <Link
+              href={href}
+              aria-label={`Ver colores disponibles de ${product.name}`}
+              className={cn(
+                'hero-glass-cta font-body pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium tracking-wide text-white',
+                'focus-visible:ring-brand-gold transition-transform focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95',
+              )}
+            >
+              <Palette className="size-3.5" aria-hidden="true" />
+              Ver colores
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              /* Disabled when the primary colour has no stock. This button used
+                 to be deliberately never disabled — no stock meant "sobre
+                 pedido" — and would happily add one unit of nothing. Ordering
+                 beyond stock is blocked now, here and in the order route. */
+              disabled={primaryOut}
+              aria-label={
+                primaryOut
+                  ? `${product.name} está agotado`
+                  : `Agregar ${product.name} al carrito`
+              }
+              className={cn(
+                'hero-glass-cta font-body pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium tracking-wide text-white',
+                'focus-visible:ring-brand-gold transition-transform focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95',
+                primaryOut && 'cursor-not-allowed opacity-60 active:scale-100',
+              )}
+            >
+              {primaryOut ? (
+                <>
+                  <PackageX className="size-3.5" aria-hidden="true" />
+                  Agotado
+                </>
+              ) : added ? (
+                <>
+                  <Check className="size-3.5" aria-hidden="true" />
+                  Agregado
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="size-3.5" aria-hidden="true" />
+                  Agregar al carrito
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

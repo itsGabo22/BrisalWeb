@@ -1,7 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDown, ChevronUp, Check, X, Phone, Calendar, Clock } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
+  Phone,
+  Calendar,
+  Clock,
+  Search,
+  Trash2,
+  Ticket,
+} from 'lucide-react';
 import { formatCOP } from '@/lib/utils/pricing';
 import { Button } from '@/components/ui/button';
 
@@ -32,6 +43,9 @@ interface OrderView {
   customerName: string | null;
   customerPhone: string | null;
   wholesaleUserId: string | null;
+  /** The code as typed at checkout, and what it took off. Null when none. */
+  couponCode: string | null;
+  couponDiscountAmount: number | null;
   notes: string | null;
   createdAt: string;
   items: OrderItemView[];
@@ -41,6 +55,11 @@ interface OrderView {
  * SOBREPEDIDO is not a status — an order with backordered lines can be pending
  * or already confirmed. It is a cross-cutting view of "what do I still owe",
  * which is why it filters on the items rather than on `order.status`.
+ *
+ * Kept even though NO NEW order can ever land here: `POST /api/ordenes` now
+ * refuses a line beyond stock instead of recording a shortfall. The existing
+ * orders that carry a real `backorderQty` are the client's own record of units
+ * they still owe, and removing the tab would hide them.
  */
 type Tab = 'PENDIENTES' | 'CONFIRMADOS' | 'SOBREPEDIDO' | 'RECHAZADOS' | 'TODOS';
 
@@ -51,6 +70,101 @@ const STATUS_MAP: Record<Tab, OrderStatus | null> = {
   RECHAZADOS: 'REJECTED',
   TODOS: null,
 };
+
+/**
+ * Date presets plus a custom range.
+ *
+ * Presets rather than two date inputs as the primary control: "¿qué entró hoy?"
+ * and "¿cómo cerró la semana?" are the questions actually being asked of this
+ * screen, and both are one click here instead of two date pickers typed
+ * correctly. The custom range stays for anything else — month-end closes, in
+ * particular, which is what the client reconciles against.
+ */
+const DATE_RANGES = [
+  { value: 'all', label: 'Todo el tiempo' },
+  { value: 'today', label: 'Hoy' },
+  { value: '7d', label: 'Últimos 7 días' },
+  { value: '30d', label: 'Últimos 30 días' },
+  { value: 'custom', label: 'Rango personalizado' },
+] as const;
+
+type DateRange = (typeof DATE_RANGES)[number]['value'];
+
+/** Local midnight N days back — `startOfToday()` at N = 0. */
+function daysAgoStart(days: number): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - days);
+  return date;
+}
+
+/**
+ * The `[from, to)` window a range selection means, in LOCAL time.
+ *
+ * Local rather than UTC on purpose: an order placed at 9pm in Colombia is
+ * "today" to the person reading this screen, and a UTC boundary would file it
+ * under tomorrow. `null` bounds are open ends.
+ *
+ * A custom `to` is pushed to the START OF THE NEXT DAY so the chosen end date
+ * is included — a plain `new Date('2026-08-20')` is that day's midnight, which
+ * would silently exclude everything that happened on it.
+ */
+function resolveDateWindow(
+  range: DateRange,
+  customFrom: string,
+  customTo: string,
+): { from: Date | null; to: Date | null } {
+  if (range === 'today') return { from: daysAgoStart(0), to: null };
+  if (range === '7d') return { from: daysAgoStart(6), to: null };
+  if (range === '30d') return { from: daysAgoStart(29), to: null };
+
+  if (range === 'custom') {
+    const from = customFrom ? new Date(`${customFrom}T00:00:00`) : null;
+    const to = customTo ? new Date(`${customTo}T00:00:00`) : null;
+    if (to) to.setDate(to.getDate() + 1);
+    return {
+      from: from && !Number.isNaN(from.getTime()) ? from : null,
+      to: to && !Number.isNaN(to.getTime()) ? to : null,
+    };
+  }
+
+  return { from: null, to: null };
+}
+
+/**
+ * What the search box matches: the 6-character order code the client quotes on
+ * WhatsApp, the full id (so a link or a log line can be pasted straight in),
+ * the customer's name, and their phone. Case- and accent-insensitive, partial.
+ *
+ * Phone is normalised to digits on BOTH sides, so "300 123" finds a number
+ * stored as "3001234567" — the client types numbers the way they were dictated,
+ * not the way they were saved.
+ */
+function matchesSearch(order: OrderView, query: string): boolean {
+  const needle = normalizeText(query);
+  if (!needle) return true;
+
+  const code = order.id.slice(-6).toUpperCase();
+  const haystack = [code, order.id, order.customerName ?? ''].map(normalizeText);
+  if (haystack.some((value) => value.includes(needle))) return true;
+
+  const digits = needle.replace(/\D/g, '');
+  if (digits.length > 0) {
+    const phone = (order.customerPhone ?? '').replace(/\D/g, '');
+    if (phone.length > 0 && phone.includes(digits)) return true;
+  }
+
+  return false;
+}
+
+/** Lowercased and stripped of accents, so "monica" finds "Mónica". */
+function normalizeText(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
 
 /** Units this order still owes across every line. 0 = nothing to restock. */
 function totalBackorderQty(order: OrderView): number {
@@ -93,6 +207,18 @@ export default function AdminPedidosPage() {
   const [processingId, setProcessingId] = React.useState<string | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
 
+  /**
+   * Search and date compose with the status tabs rather than replacing them:
+   * all three narrow the same list, so "los rechazados de la semana pasada de
+   * Mónica" is one view. Filtering happens client-side because this route
+   * already returns every order in one GET — adding query params would mean a
+   * round trip per keystroke for a list this size.
+   */
+  const [search, setSearch] = React.useState('');
+  const [dateRange, setDateRange] = React.useState<DateRange>('all');
+  const [customFrom, setCustomFrom] = React.useState('');
+  const [customTo, setCustomTo] = React.useState('');
+
   const loadOrders = React.useCallback(async () => {
     try {
       const res = await fetch('/api/admin/pedidos');
@@ -129,34 +255,113 @@ export default function AdminPedidosPage() {
     }
   };
 
+  /**
+   * Delete, scoped to REJECTED. The button only renders for a rejected order
+   * and the server independently refuses anything else, so a confirmed order
+   * cannot be reached from here even by mistake — the same belt-and-braces the
+   * rejected-wholesaler delete uses.
+   *
+   * `confirm()` because that is what every delete in this admin uses
+   * (categorías, materiales, cupones, descuentos, reseñas, productos, imágenes,
+   * mayoristas). A bespoke modal for this one action would be the odd one out,
+   * and the client has learned the native dialog.
+   */
+  const handleDelete = async (order: OrderView) => {
+    const code = order.id.slice(-6).toUpperCase();
+    const couponNote = order.couponCode
+      ? ` Se devolverá el uso del cupón ${order.couponCode}.`
+      : '';
+    if (
+      !confirm(
+        `¿Eliminar definitivamente el pedido rechazado #${code} de "${order.customerName ?? 'sin nombre'}"? Esta acción no se puede deshacer.${couponNote}`,
+      )
+    ) {
+      return;
+    }
+
+    setProcessingId(order.id);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/admin/pedidos/${order.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}) as { error?: string });
+        throw new Error(body.error ?? 'Error al eliminar el pedido');
+      }
+      setOrders((prev) => prev.filter((existing) => existing.id !== order.id));
+      // The row is gone, so an expansion pointing at it would be orphaned.
+      setExpandedId((current) => (current === order.id ? null : current));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Error inesperado');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  /**
+   * Search + date applied WITHOUT the status tab.
+   *
+   * Split out from the status pass so the tab COUNTS can be computed against
+   * it: searching a customer's name should show "Pendientes 1 · Confirmados 3"
+   * for that customer, not the totals for the whole shop. Counts that ignored
+   * the search would send the client clicking through tabs that turn out empty
+   * — the opposite of "nothing feels lost".
+   */
+  const scopedOrders = React.useMemo(() => {
+    const { from, to } = resolveDateWindow(dateRange, customFrom, customTo);
+
+    return orders.filter((order) => {
+      if (!matchesSearch(order, search)) return false;
+      if (!from && !to) return true;
+      const createdAt = new Date(order.createdAt);
+      if (from && createdAt < from) return false;
+      if (to && createdAt >= to) return false;
+      return true;
+    });
+  }, [orders, search, dateRange, customFrom, customTo]);
+
+  /** Status AND search AND date — narrowing, never replacing. */
   const filteredOrders = React.useMemo(() => {
-    if (activeTab === 'SOBREPEDIDO') return orders.filter(hasPendingBackorder);
+    if (activeTab === 'SOBREPEDIDO') return scopedOrders.filter(hasPendingBackorder);
     const status = STATUS_MAP[activeTab];
-    return status ? orders.filter((o) => o.status === status) : orders;
-  }, [orders, activeTab]);
+    return status ? scopedOrders.filter((order) => order.status === status) : scopedOrders;
+  }, [scopedOrders, activeTab]);
+
+  /** True when anything beyond the status tab is narrowing the list. */
+  const hasExtraFilters =
+    search.trim().length > 0 ||
+    dateRange !== 'all' ||
+    Boolean(customFrom) ||
+    Boolean(customTo);
+
+  const clearExtraFilters = () => {
+    setSearch('');
+    setDateRange('all');
+    setCustomFrom('');
+    setCustomTo('');
+  };
 
   const tabOptions: { key: Tab; label: string; count: number }[] = [
     {
       key: 'PENDIENTES',
       label: 'Pendientes',
-      count: orders.filter((o) => o.status === 'PENDING_WHATSAPP').length,
+      count: scopedOrders.filter((o) => o.status === 'PENDING_WHATSAPP').length,
     },
     {
       key: 'CONFIRMADOS',
       label: 'Confirmados',
-      count: orders.filter((o) => o.status === 'CONFIRMED').length,
+      count: scopedOrders.filter((o) => o.status === 'CONFIRMED').length,
     },
     {
       key: 'SOBREPEDIDO',
       label: 'Con sobrepedido',
-      count: orders.filter(hasPendingBackorder).length,
+      count: scopedOrders.filter(hasPendingBackorder).length,
     },
     {
       key: 'RECHAZADOS',
       label: 'Rechazados',
-      count: orders.filter((o) => o.status === 'REJECTED').length,
+      count: scopedOrders.filter((o) => o.status === 'REJECTED').length,
     },
-    { key: 'TODOS', label: 'Todos', count: orders.length },
+    { key: 'TODOS', label: 'Todos', count: scopedOrders.length },
   ];
 
   return (
@@ -164,6 +369,80 @@ export default function AdminPedidosPage() {
       <p className="font-sans text-sm text-brand-neutral-500">
         Revisa y confirma los pedidos solicitados por WhatsApp.
       </p>
+
+      {/*
+        Search + date, above the tabs because they scope what the tabs count.
+        Both compose with whichever tab is active — see `scopedOrders`.
+      */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-brand-neutral-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por código, nombre o teléfono"
+            aria-label="Buscar pedidos"
+            className="w-full rounded-md border border-brand-neutral-200 bg-white py-2 pr-3 pl-9 font-sans text-sm text-brand-neutral-900 placeholder:text-brand-neutral-400 focus-visible:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+          />
+        </div>
+
+        <select
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value as DateRange)}
+          aria-label="Filtrar por fecha"
+          className="rounded-md border border-brand-neutral-200 bg-white px-3 py-2 font-sans text-sm text-brand-neutral-900 focus-visible:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+        >
+          {DATE_RANGES.map((range) => (
+            <option key={range.value} value={range.value}>
+              {range.label}
+            </option>
+          ))}
+        </select>
+
+        {/* The two date inputs appear only for the custom range — they are dead
+            controls under a preset, and a dead control reads as broken. */}
+        {dateRange === 'custom' && (
+          <div className="flex items-center gap-2 font-sans text-sm">
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              aria-label="Desde"
+              className="rounded-md border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-900 focus-visible:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+            />
+            <span className="text-brand-neutral-400">→</span>
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom || undefined}
+              onChange={(e) => setCustomTo(e.target.value)}
+              aria-label="Hasta"
+              className="rounded-md border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-900 focus-visible:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:outline-none dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+            />
+          </div>
+        )}
+
+        {hasExtraFilters && (
+          <button
+            type="button"
+            onClick={clearExtraFilters}
+            className="inline-flex items-center gap-1.5 font-sans text-sm text-brand-neutral-500 transition-colors hover:text-brand-neutral-800 dark:hover:text-brand-neutral-200"
+          >
+            <X className="size-3.5" />
+            Limpiar filtros
+          </button>
+        )}
+
+        {/* States plainly how many of how many are showing, so a narrowed list
+            can never be mistaken for the whole ledger. */}
+        {hasExtraFilters && !isLoading && (
+          <span className="font-sans text-xs text-brand-neutral-400">
+            {scopedOrders.length} de {orders.length} pedidos coinciden
+          </span>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-brand-neutral-200 dark:border-brand-neutral-800 font-sans text-sm">
@@ -204,8 +483,19 @@ export default function AdminPedidosPage() {
             <div className="size-8 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-neutral-400 font-sans text-sm">
+          <div className="flex h-64 flex-col items-center justify-center gap-2 text-brand-neutral-400 font-sans text-sm">
             <p>No hay pedidos en esta sección.</p>
+            {/* Distinguishes "nothing here" from "nothing MATCHES here" — the
+                second is the one that makes an order feel lost. */}
+            {hasExtraFilters && (
+              <button
+                type="button"
+                onClick={clearExtraFilters}
+                className="text-brand-gold underline-offset-2 hover:underline"
+              >
+                Quitar los filtros de búsqueda y fecha
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-brand-neutral-100 dark:divide-brand-neutral-800">
@@ -302,6 +592,20 @@ export default function AdminPedidosPage() {
                         ))}
                       </ul>
 
+                      {/* The coupon that produced this total. Without it the
+                          sum of the lines does not reconcile with the amount
+                          charged, which is exactly the kind of gap the client
+                          audits against. */}
+                      {order.couponCode && (
+                        <p className="mb-3 flex items-center gap-1.5 font-sans text-xs text-brand-neutral-500">
+                          <Ticket className="size-3.5 shrink-0" aria-hidden="true" />
+                          Cupón {order.couponCode}
+                          {order.couponDiscountAmount !== null && (
+                            <> · −{formatCOP(order.couponDiscountAmount)}</>
+                          )}
+                        </p>
+                      )}
+
                       {/* Confirming no longer refuses an order it can't fully
                           cover, so say what it will actually do instead. */}
                       {order.status === 'PENDING_WHATSAPP' && showsBackorder && (
@@ -333,6 +637,27 @@ export default function AdminPedidosPage() {
                           >
                             <Check className="size-3.5" />
                             {processingId === order.id ? 'Procesando…' : 'Confirmar (descuenta stock)'}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/*
+                        Rejected orders only. They used to have no action at all
+                        and simply piled up; a confirmed order, by contrast, is
+                        an accounting record with stock deducted against it and
+                        stays put. The server enforces the same scope.
+                      */}
+                      {order.status === 'REJECTED' && (
+                        <div className="flex justify-end">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={processingId === order.id}
+                            onClick={() => handleDelete(order)}
+                            className="flex items-center gap-1.5 text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="size-3.5" />
+                            {processingId === order.id ? 'Eliminando…' : 'Eliminar pedido'}
                           </Button>
                         </div>
                       )}

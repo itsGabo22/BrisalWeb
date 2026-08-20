@@ -409,6 +409,20 @@ model SiteConfig {
   wholesaleInfoVideoPosX  Int     @default(50)
   wholesaleInfoVideoPosY  Int     @default(50)
 
+  /// At or below how many units of ONE COLOUR the product page starts nudging
+  /// ("¡Últimas 2 unidades disponibles!").
+  ///
+  /// Admin-configurable rather than hardcoded because the right number is a
+  /// merchandising judgement, not an engineering one: it depends on how fast
+  /// the client can restock a piece. Above the threshold no count is shown at
+  /// all -- exact stock numbers were deliberately hidden from the storefront,
+  /// and this is the one narrow exception where scarcity is the message.
+  ///
+  /// Per COLOUR, not per product: stock lives per colour (see the colour model
+  /// in AGENTS.md), and "últimas 2" has to mean the colour the shopper is
+  /// actually looking at.
+  lowStockThreshold       Int     @default(3)
+
   updatedAt DateTime @updatedAt
 }
 

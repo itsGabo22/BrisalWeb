@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { ProductBreadcrumb, ProductReviews, RelatedProducts } from '@/components/product';
 import { ProductDetail } from '@/components/product/ProductDetail';
+import { prisma } from '@/lib/prisma';
 import { productRepository } from '@/lib/repositories';
 import { getFrequentlyBoughtTogether } from '@/lib/recommendations';
 import { getApprovedReviews, getRatingSummary } from '@/lib/reviews';
@@ -48,20 +49,27 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
     notFound();
   }
 
-  const [related, frequentlyBoughtTogether, reviews, ratingSummary] = await Promise.all([
-    productRepository.getRelated(product, 4),
-    getFrequentlyBoughtTogether(product.id, 4),
-    // Both filter on APPROVED — a pending or rejected review must never reach
-    // this page, and the aggregate must not count one either.
-    getApprovedReviews(product.id),
-    getRatingSummary(product.id),
-  ]);
+  const [related, frequentlyBoughtTogether, reviews, ratingSummary, siteConfig] =
+    await Promise.all([
+      productRepository.getRelated(product, 4),
+      getFrequentlyBoughtTogether(product.id, 4),
+      // Both filter on APPROVED — a pending or rejected review must never reach
+      // this page, and the aggregate must not count one either.
+      getApprovedReviews(product.id),
+      getRatingSummary(product.id),
+      // One integer, joined into the batch the page already awaits, so the
+      // low-stock nudge is server-rendered rather than popping in later.
+      prisma.siteConfig.findUnique({ where: { id: 'singleton' } }),
+    ]);
 
   return (
     <main className="bg-brand-pearl">
       <ProductBreadcrumb product={product} />
 
-      <ProductDetail product={product} />
+      <ProductDetail
+        product={product}
+        lowStockThreshold={siteConfig?.lowStockThreshold}
+      />
 
       {/* Rendered only when the client actually wrote one — no empty
           "Descripción" heading on products without a description. */}

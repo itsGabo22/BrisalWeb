@@ -86,6 +86,44 @@ export function getSelectableColors(product: Product): SelectableColor[] {
 }
 
 /**
+ * Total units across every colour a product sells in.
+ *
+ * `product.stock` alone is only the PRIMARY colour's — a product whose primary
+ * colour is sold out but which still has stock in two variants is not
+ * "Agotado", and saying so would pull a sellable piece out of the listing.
+ *
+ * Lifted out of the admin product list, which is where this rule was written:
+ * the storefront now blocks ordering on the same judgement, and the two must
+ * not be able to disagree about whether a product is sellable.
+ */
+export function getTotalStock(product: Product): number {
+  const colors = getSelectableColors(product);
+  // A product with no colour data at all keeps its own stock as the total.
+  if (colors.length === 0) return product.stock;
+  return colors.reduce((sum, color) => sum + Math.max(0, color.stock), 0);
+}
+
+/**
+ * True when NO colour of this product can be bought — the card-level "Agotado".
+ *
+ * Deliberately all-colours rather than primary-only: labelling a product
+ * Agotado while a different finish of it is still purchasable would talk a
+ * shopper out of a sale the client can actually fulfil.
+ */
+export function isProductSoldOut(product: Product): boolean {
+  return getTotalStock(product) <= 0;
+}
+
+/**
+ * Stock of the colour the CARD represents — the primary one, which is what
+ * quick-add puts in the cart. Falls back to the product's own column for a
+ * product with no colour data, exactly as `getSelectableColors` does.
+ */
+export function getPrimaryStock(product: Product): number {
+  return Math.max(0, product.stock);
+}
+
+/**
  * The distinct colour NAMES a product is available in — primary included.
  *
  * This is what the catalog filter reads, and including the primary is what

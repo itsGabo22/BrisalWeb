@@ -12,11 +12,16 @@ export async function GET() {
 
     const notifications: { id: string; message: string; href: string; count: number }[] = [];
 
+    // `/admin/pedidos`, not `/admin`. This pointed at the dashboard, which is
+    // the page the admin is almost always already on when they notice the
+    // badge — so clicking the notification navigated to the current route and
+    // read as a dead link. Every entry here has to land on the screen where
+    // the work actually gets done, which is what the two below already did.
     if (pendingOrders > 0) {
       notifications.push({
         id: 'pending-orders',
         message: `${pendingOrders} pedido${pendingOrders === 1 ? '' : 's'} pendiente${pendingOrders === 1 ? '' : 's'} de confirmación`,
-        href: '/admin',
+        href: '/admin/pedidos',
         count: pendingOrders,
       });
     }

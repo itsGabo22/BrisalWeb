@@ -14,6 +14,10 @@ const badgeVariants = cva(
         tendencia: 'bg-badge-tendencia-bg text-badge-tendencia-fg border-purple-200/50 shadow-sm',
         mayorista: 'bg-badge-mayorista-bg text-badge-mayorista-fg border-brand-gold/35 shadow-sm uppercase tracking-wider',
         'sobre-pedido': 'bg-badge-sobrepedido-bg text-badge-sobrepedido-fg border-amber-300/50 shadow-sm uppercase tracking-wider',
+        // Matches the admin product list's Agotado pill — same red, same word.
+        // The client reads "Agotado" in the panel and has to see the identical
+        // thing on the storefront, or the two look like different states.
+        agotado: 'bg-red-100 text-red-700 border-red-300/70 shadow-sm uppercase tracking-wider',
       },
     },
     defaultVariants: {

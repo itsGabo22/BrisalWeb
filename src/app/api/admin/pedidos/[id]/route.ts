@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { computeBackorderQty, resolveLineVariant } from '@/lib/orders/backorder';
+import { releaseCouponRedemption } from '@/lib/coupons';
 
 export async function PATCH(
   request: Request,
@@ -42,17 +43,17 @@ export async function PATCH(
     /**
      * Confirm.
      *
-     * This used to reject the whole order with a 409 the moment any line asked
-     * for more than `Product.stock` held. Sobrepedido makes that wrong twice
-     * over: an order deliberately placed beyond stock is now a normal order,
-     * and stock is per COLOUR — the old check read the product's stock even for
-     * a line ordered in a variant colour, so it both blocked orders it
-     * shouldn't and decremented the wrong row.
+     * Deducts what exists for each line's own COLOUR — stock lives per colour,
+     * and an earlier version read the product's stock even for a line ordered
+     * in a variant, decrementing the wrong row.
      *
-     * What it does now: deduct what actually exists for each line's own colour,
-     * floored at zero, and never fail on insufficient stock. Nothing goes
-     * negative; what could not be deducted stays owed on the line's
-     * `backorderQty`, which is the record of what still has to be produced.
+     * The floor-at-zero behaviour is left exactly as it was, deliberately. It
+     * is now a SAFETY NET rather than a feature: `POST /api/ordenes` refuses an
+     * order it cannot cover, so a genuine oversell can no longer be created and
+     * this path should always find enough stock. Should it somehow not — a
+     * concurrent stock edit between order and confirm — nothing goes negative
+     * and the shortfall is recorded on `backorderQty`, which is strictly better
+     * than failing the confirmation or corrupting the stock column.
      */
     await prisma.$transaction(async (tx) => {
       const productIds = [...new Set(order.items.map((item) => item.productId))];
@@ -136,5 +137,63 @@ export async function PATCH(
   } catch (err) {
     console.error('[admin/pedidos/[id]] Error al procesar pedido:', err);
     return NextResponse.json({ error: 'Error al procesar el pedido' }, { status: 500 });
+  }
+}
+
+/**
+ * Deletes an order -- scoped to REJECTED only.
+ *
+ * Mirrors the rejected-wholesaler delete: rejected records are the only ones
+ * whose story is over, so they are the only ones safe to throw away. A PENDING
+ * order is still awaiting a decision and a CONFIRMED one is an accounting
+ * record with stock already deducted against it -- deleting either would lose
+ * real history, and the client ties this admin to their books. Rejected orders,
+ * by contrast, accumulate forever with nothing to do about them, which is the
+ * problem this solves.
+ *
+ * `OrderItem` rows go with it: the relation is `onDelete: Cascade`, so the
+ * lines are removed by the database rather than by a second query here.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
+    }
+
+    if (order.status !== 'REJECTED') {
+      return NextResponse.json(
+        { error: 'Solo se pueden eliminar pedidos rechazados' },
+        { status: 400 },
+      );
+    }
+
+    /**
+     * The coupon use has to be handed back BEFORE the row that records it is
+     * gone -- `order.couponCode` is the only trace that this order ever claimed
+     * one. `redeemCoupon` runs at order CREATION (see `POST /api/ordenes`), so
+     * a rejected order has already consumed a redemption; without this, deleting
+     * it would silently retire that use forever.
+     *
+     * Ordered deliberately: if the release succeeds and the delete then fails,
+     * the coupon has one use too many available, which merely lets one extra
+     * customer redeem it. The reverse order would lose a use with no record
+     * left to recover it from. Over-crediting is the recoverable mistake.
+     */
+    if (order.couponCode) {
+      await releaseCouponRedemption(order.couponCode);
+    }
+
+    await prisma.order.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('[admin/pedidos/[id]] Error al eliminar pedido rechazado:', err);
+    return NextResponse.json({ error: 'Error al eliminar el pedido' }, { status: 500 });
   }
 }

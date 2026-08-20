@@ -42,6 +42,8 @@ interface SiteConfigFields {
   wholesaleInfoVideoUrl?: string | null;
   wholesaleInfoVideoPosX?: number;
   wholesaleInfoVideoPosY?: number;
+  /** Units of one colour at or below which the product page nudges. */
+  lowStockThreshold?: number;
 }
 
 /** The only three values the band knows how to render. */
@@ -293,11 +295,21 @@ export async function PATCH(request: Request) {
       const body = (await request.json()) as {
         announcementText?: string;
         announcementActive?: boolean;
+        lowStockThreshold?: number;
       };
       if (typeof body.announcementText === 'string')
         data.announcementText = body.announcementText.trim();
       if (typeof body.announcementActive === 'boolean')
         data.announcementActive = body.announcementActive;
+      /**
+       * Clamped rather than merely validated. 0 would silently disable the
+       * nudge in a way that reads as a bug, and an absurd ceiling would print
+       * "¡Últimas 400 unidades!" — which is the opposite of scarcity. 1-99
+       * covers every sane merchandising choice for a piece made by hand.
+       */
+      if (typeof body.lowStockThreshold === 'number' && Number.isFinite(body.lowStockThreshold)) {
+        data.lowStockThreshold = Math.min(99, Math.max(1, Math.round(body.lowStockThreshold)));
+      }
     }
 
     // Every field above is set only when the request actually carried it, so a

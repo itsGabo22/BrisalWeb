@@ -11,6 +11,10 @@ function serializeOrder(order: Order & { items: OrderItem[] }) {
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     wholesaleUserId: order.wholesaleUserId,
+    // Sent so the admin can see WHY a total is below the line items, and so the
+    // delete confirmation can warn that a coupon use is being handed back.
+    couponCode: order.couponCode,
+    couponDiscountAmount: order.couponDiscountAmount?.toNumber() ?? null,
     notes: order.notes,
     createdAt: order.createdAt.toISOString(),
     items: order.items.map((item) => ({

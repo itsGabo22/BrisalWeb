@@ -9,6 +9,12 @@ import type { Product } from '@/types';
 
 export interface ProductDetailProps {
   product: Product;
+  /**
+   * `SiteConfig.lowStockThreshold`, read on the server and passed down rather
+   * than fetched here — it is one integer the page already has in hand, and a
+   * client fetch would make the nudge pop in after paint.
+   */
+  lowStockThreshold?: number;
 }
 
 /**
@@ -20,7 +26,7 @@ export interface ProductDetailProps {
  * PRIMARY colour first and the additional variants after it. A product with
  * neither renders exactly as before: no colour UI at all.
  */
-export function ProductDetail({ product }: ProductDetailProps) {
+export function ProductDetail({ product, lowStockThreshold }: ProductDetailProps) {
   const colors = React.useMemo(() => getSelectableColors(product), [product]);
 
   // Defaults to the primary colour, which is always index 0 when one exists.
@@ -49,6 +55,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
         colors={colors}
         selectedColor={selected}
         onSelectColor={(color) => setSelectedId(color.id)}
+        lowStockThreshold={lowStockThreshold}
       />
     </section>
   );

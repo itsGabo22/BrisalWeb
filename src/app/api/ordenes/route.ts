@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createOrderSchema } from '@/lib/validators';
 import { formatCOP } from '@/lib/utils/pricing';
-import { computeBackorderQty, getAvailableStock } from '@/lib/orders/backorder';
+import { getAvailableStock } from '@/lib/orders/backorder';
 import { computeCouponDiscount, findRedeemableCoupon, redeemCoupon } from '@/lib/coupons';
 
 interface MessageItem {
@@ -11,8 +11,6 @@ interface MessageItem {
   quantity: number;
   color?: string | null;
   reference?: string | null;
-  /** 0 when the line was fully in stock. */
-  backorderQty: number;
 }
 
 function buildWhatsAppMessage(
@@ -31,22 +29,17 @@ function buildWhatsAppMessage(
    * only printed when there is one, so a simple product doesn't get an empty
    * "Color:" label.
    *
-   * A backordered line gets one extra line naming the MISSING quantity, not the
-   * ordered one: that number is what the client has to produce or restock. A
-   * fully in-stock line is left exactly as it was.
+   * The "SOBRE PEDIDO" line that used to appear here is gone with the backorder
+   * path: every line in a NEW order is fully covered by stock, because the
+   * route below refuses the order outright otherwise. Historical orders keep
+   * their recorded `backorderQty` and still show it in the admin.
    */
   const itemLines = items
     .map((item) => {
       const color = item.color ? ` — Color: ${item.color}` : '';
       const reference = item.reference ? ` (Ref: ${item.reference})` : '';
       const amount = formatCOP(item.price * item.quantity);
-      const backorder =
-        item.backorderQty > 0
-          ? `\n  ⚠️ SOBRE PEDIDO: faltan ${item.backorderQty} ${
-              item.backorderQty === 1 ? 'unidad' : 'unidades'
-            } por reponer`
-          : '';
-      return `• ${item.name}${color}${reference}\n  x${item.quantity} = ${amount}${backorder}`;
+      return `• ${item.name}${color}${reference}\n  x${item.quantity} = ${amount}`;
     })
     .join('\n');
 
@@ -95,8 +88,18 @@ export async function POST(request: Request) {
      * been sitting in localStorage for days, and the shopper can't be the one
      * who decides how much of a colour exists.
      *
-     * Insufficient stock deliberately does NOT reject the order — that is the
-     * whole point of sobrepedido. It is recorded per line instead.
+     * This used to RECORD the shortfall as `backorderQty` and accept the order
+     * anyway — sobrepedido. That path is closed: ordering beyond stock risked
+     * burying the client in production they never agreed to, so a line asking
+     * for more than its colour holds now fails the whole order with a 409 the
+     * cart can show. The storefront blocks it first (disabled buttons, a
+     * quantity capped at stock), but the page's numbers are only as fresh as
+     * its last load, so this is the check that actually decides.
+     *
+     * `backorderQty` stays in the schema and is written as 0 on every new line.
+     * The column is order HISTORY — two existing orders carry real, non-zero
+     * values the client still needs to see — so it is stopped from growing, not
+     * removed.
      */
     const products = await prisma.product.findMany({
       where: { id: { in: [...new Set(items.map((item) => item.productId))] } },
@@ -104,22 +107,65 @@ export async function POST(request: Request) {
     });
     const productMap = new Map(products.map((product) => [product.id, product]));
 
-    const linesWithBackorder = items.map((item) => {
-      const product = productMap.get(item.productId);
-      // A product that no longer exists can't be checked against stock; the
-      // line is recorded as ordered rather than silently flagged.
-      const available = product
-        ? getAvailableStock(product, {
-            colorVariantId: item.colorVariantId,
-            color: item.color,
-          })
-        : item.quantity;
+    /**
+     * Stock remaining per COLOUR ROW as the lines are walked, not per product:
+     * two lines of one product in different colours draw on different rows, and
+     * two lines somehow hitting the SAME row must not each be granted the same
+     * starting stock and together oversell it. This mirrors how the admin
+     * confirm route accounts for its deductions.
+     */
+    const remaining = new Map<string, number>();
+    const unavailable: string[] = [];
 
-      return {
-        ...item,
-        backorderQty: computeBackorderQty(item.quantity, available),
-      };
-    });
+    for (const item of items) {
+      const product = productMap.get(item.productId);
+      const label = item.color ? `${item.name} (${item.color})` : item.name;
+
+      // Deleted since the cart was filled. There is no stock to check and no
+      // row to deduct from later, so it cannot be ordered.
+      if (!product) {
+        unavailable.push(`${label}: ya no está disponible`);
+        continue;
+      }
+
+      const colorRef = { colorVariantId: item.colorVariantId, color: item.color };
+      const key = item.colorVariantId ?? `product:${product.id}`;
+      if (!remaining.has(key)) {
+        remaining.set(key, getAvailableStock(product, colorRef));
+      }
+
+      const available = remaining.get(key)!;
+      if (item.quantity > available) {
+        unavailable.push(
+          available <= 0
+            ? `${label}: agotado`
+            : `${label}: solo ${available} ${
+                available === 1 ? 'unidad' : 'unidades'
+              } disponibles (pediste ${item.quantity})`,
+        );
+        continue;
+      }
+
+      remaining.set(key, available - item.quantity);
+    }
+
+    /**
+     * 409, not 400: the request is well-formed — the world changed under it.
+     * Every offending line is named, because "no hay stock" without saying of
+     * WHAT leaves the shopper to guess which of six items to edit. Returned
+     * BEFORE the coupon is redeemed, so a rejected order never burns a use.
+     */
+    if (unavailable.length > 0) {
+      return NextResponse.json(
+        {
+          error: `No pudimos completar tu pedido porque el stock cambió: ${unavailable.join(
+            ' · ',
+          )}. Ajusta las cantidades en tu carrito e inténtalo de nuevo.`,
+          unavailable,
+        },
+        { status: 409 },
+      );
+    }
 
     /**
      * The line subtotal is recomputed from the posted prices rather than using
@@ -160,7 +206,7 @@ export async function POST(request: Request) {
         couponCode: appliedCoupon?.code ?? null,
         couponDiscountAmount: appliedCoupon?.discountAmount ?? null,
         items: {
-          create: linesWithBackorder.map((item) => ({
+          create: items.map((item) => ({
             productId: item.productId,
             name: item.name,
             price: item.price,
@@ -169,7 +215,10 @@ export async function POST(request: Request) {
             color: item.color ?? null,
             colorVariantId: item.colorVariantId ?? null,
             reference: item.reference ?? null,
-            backorderQty: item.backorderQty,
+            // Always 0 now. Kept explicit rather than left to the column
+            // default so it is obvious at the write site that new orders never
+            // carry a backorder, while the field itself survives for history.
+            backorderQty: 0,
           })),
         },
       },
@@ -183,7 +232,7 @@ export async function POST(request: Request) {
 
     const message = buildWhatsAppMessage(
       order.id,
-      linesWithBackorder,
+      items,
       total,
       customerName,
       customerPhone,
