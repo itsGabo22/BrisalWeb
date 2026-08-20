@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contactSchema } from '@/lib/validators';
-
-// Resend is used for transactional email notifications.
-// Installed via: npm install resend (Phase 2.5)
-let resendClient: import('resend').Resend | null = null;
-
-function getResend() {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!resendClient) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Resend } = require('resend') as typeof import('resend');
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
-}
+import { getResend } from '@/lib/email/resend-client';
 
 function buildContactHtml(data: {
   nombre: string;

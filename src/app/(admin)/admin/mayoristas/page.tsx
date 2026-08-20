@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Mail, Phone, MapPin, Building, Calendar, Check, X, Undo2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Building, Calendar, Check, X, Undo2, Trash2 } from 'lucide-react';
 import type { Wholesaler } from '@/types';
 
 type Tab = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
@@ -38,14 +38,46 @@ export default function AdminMayoristasPage() {
       });
 
       if (res.ok) {
-        setWholesalers((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, estado: newStatus } : w))
-        );
+        // Applies whatever the server actually persisted, not the status we
+        // asked for -- now that RECHAZADO is a real row (not an immediate
+        // delete), this is what makes the card survive a refresh correctly.
+        const updated: Wholesaler = await res.json();
+        setWholesalers((prev) => prev.map((w) => (w.id === id ? updated : w)));
       } else {
-        alert('Error al actualizar estado');
+        const data = await res.json().catch(() => null);
+        alert(data?.error ?? 'Error al actualizar estado');
       }
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+
+  /**
+   * Delete is scoped to REJECTED records only -- the button below only
+   * renders for `w.estado === 'RECHAZADO'`, and the server independently
+   * refuses to delete anything else, so this can't be reached for an
+   * approved or pending application even by mistake.
+   */
+  const handleDelete = async (w: Wholesaler) => {
+    if (
+      !confirm(
+        `¿Eliminar definitivamente la solicitud rechazada de "${w.nombre}"? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/mayoristas/${w.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setWholesalers((prev) => prev.filter((x) => x.id !== w.id));
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error ?? 'Error al eliminar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error deleting wholesaler:', error);
+      alert('Error de conexión al eliminar la solicitud');
     }
   };
 
@@ -146,7 +178,10 @@ export default function AdminMayoristasPage() {
                 <div className="grid gap-2 text-brand-neutral-600 dark:text-brand-neutral-350 border-t border-b border-brand-neutral-100 dark:border-brand-neutral-800 py-3 my-3">
                   <div className="flex items-center gap-2">
                     <Building className="size-4 text-brand-gold flex-shrink-0" />
-                    <span className="font-semibold">{w.negocio}</span>
+                    {/* nombreNegocio is optional (Part 5) -- the API already
+                        coerces null to '', so a blank value reads as an em
+                        dash here instead of an empty gap next to the icon. */}
+                    <span className="font-semibold">{w.negocio || '—'}</span>
                     <span className="text-xs text-brand-neutral-400">(NIT/CC: {w.nit})</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -197,6 +232,18 @@ export default function AdminMayoristasPage() {
                   >
                     <Undo2 className="size-3.5" />
                     <span>Volver a Pendientes</span>
+                  </button>
+                )}
+                {/* Scoped to RECHAZADO only -- never rendered for APROBADO or
+                    PENDIENTE, matching the server-side guard in the DELETE
+                    handler. */}
+                {w.estado === 'RECHAZADO' && (
+                  <button
+                    onClick={() => handleDelete(w)}
+                    className="flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-950/20 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Eliminar</span>
                   </button>
                 )}
               </div>

@@ -73,44 +73,44 @@ model Material {
 }
 
 model Product {
-  id             String       @id @default(cuid())
-  name           String
-  slug           String       @unique
-  description    String?
-  price          Decimal      @db.Decimal(10, 2)
-  comparePrice   Decimal?     @db.Decimal(10, 2)
-  wholesalePrice Decimal?     @db.Decimal(10, 2)
-  sku            String?      @unique
-  stock          Int          @default(0)
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  description      String?
+  price            Decimal        @db.Decimal(10, 2)
+  comparePrice     Decimal?       @db.Decimal(10, 2)
+  wholesalePrice   Decimal?       @db.Decimal(10, 2)
+  sku              String?        @unique
+  stock            Int            @default(0)
   /// LEGACY free-text material. Superseded by the `materials` relation below and
   /// no longer written by the admin form; retained so this change stays purely
   /// additive and the original strings survive the backfill. Safe to drop once
   /// the client confirms the migrated values look right.
-  material       String?
-  materials      Material[]   @relation("ProductMaterials")
+  material         String?
+  materials        Material[]     @relation("ProductMaterials")
   /// The PRIMARY colour, which belongs to the product itself — its own
   /// imageUrls, price, stock and sku ARE that colour's. ColorVariant rows are
   /// ADDITIONAL colours on top of it, so a single-colour product needs no
   /// variant and enters its stock only once.
-  colorName      String?
-  colorHex       String?
-  imageUrls      String[]
-  featured       Boolean      @default(false)
-  active         Boolean      @default(true)
-  categoryId     String
-  category       Category     @relation(fields: [categoryId], references: [id])
-  tags           ProductTag[]
+  colorName        String?
+  colorHex         String?
+  imageUrls        String[]
+  featured         Boolean        @default(false)
+  active           Boolean        @default(true)
+  categoryId       String
+  category         Category       @relation(fields: [categoryId], references: [id])
+  tags             ProductTag[]
   /// Back-relation of the LEGACY `Discount.productId`. Nothing reads it — see
   /// `appliedDiscounts`, which is the many-to-many that replaced it.
-  discounts      Discount[]
+  discounts        Discount[]
   /// PRODUCT-scoped discounts applying to this product, via the join table.
-  appliedDiscounts Discount[] @relation("DiscountProducts")
+  appliedDiscounts Discount[]     @relation("DiscountProducts")
   // A product with NO colorVariants is a simple product and keeps using
   // `imageUrls`, `price` and `stock` above exactly as before.
-  colorVariants  ColorVariant[]
-  reviews        Review[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  colorVariants    ColorVariant[]
+  reviews          Review[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 /// A shopper-submitted review. Anyone can write one without an account, which
@@ -219,39 +219,54 @@ model Coupon {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  authId       String    @unique
-  email        String    @unique
-  name         String?
-  role         Role      @default(CLIENTE)
-  businessName String?
-  taxId        String?
-  city         String?
-  phone        String?
-  approved     Boolean   @default(true) // set to false explicitly when a wholesale signup is pending review; not used for CLIENTE
-  lastOrderAt  DateTime?
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                     String    @id @default(cuid())
+  authId                 String    @unique
+  email                  String    @unique
+  name                   String?
+  role                   Role      @default(CLIENTE)
+  businessName           String?
+  taxId                  String?
+  city                   String?
+  phone                  String?
+  approved               Boolean   @default(true) // set to false explicitly when a wholesale signup is pending review; not used for CLIENTE
+  /// Set when an admin rejects a pending wholesale application. Previously a
+  /// rejection hard-deleted the User immediately -- with no confirmation and
+  /// no check for attached data -- which also meant the admin's "Rechazadas"
+  /// tab was a client-side-only illusion that vanished on refresh, and
+  /// "Volver a Pendientes" on it 404'd because the row was already gone.
+  /// Null means never rejected (or since un-rejected/re-approved -- both
+  /// clear it). Distinct from `approved`, which stays false while rejected,
+  /// so PENDIENTE and RECHAZADO can both be told apart from one boolean plus
+  /// this timestamp.
+  rejectedAt             DateTime?
+  /// Null until shown once. Gates the in-app wholesale welcome message on
+  /// first login after approval -- see `SiteConfig.wholesaleWelcomeMessage`.
+  /// Reset to null on every transition INTO approved, so a wholesaler who is
+  /// reapproved after being reverted to pending or rejected sees it again.
+  wholesaleWelcomeSeenAt DateTime?
+  lastOrderAt            DateTime?
+  notes                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  items           OrderItem[]
-  total           Decimal     @db.Decimal(10, 2)
-  status          OrderStatus @default(PENDING_WHATSAPP)
-  customerName    String?
-  customerPhone   String?
-  wholesaleUserId String?
+  id                   String      @id @default(cuid())
+  items                OrderItem[]
+  total                Decimal     @db.Decimal(10, 2)
+  status               OrderStatus @default(PENDING_WHATSAPP)
+  customerName         String?
+  customerPhone        String?
+  wholesaleUserId      String?
   /// The coupon code as typed at checkout, and the peso amount it took off.
   /// Stored as a snapshot rather than a relation: the coupon may later be
   /// edited or deleted, and what the customer was actually charged must not
   /// change with it.
   couponCode           String?
-  couponDiscountAmount Decimal? @db.Decimal(10, 2)
-  notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  couponDiscountAmount Decimal?    @db.Decimal(10, 2)
+  notes                String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 }
 
 enum OrderStatus {
@@ -262,17 +277,17 @@ enum OrderStatus {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  name      String
-  price     Decimal @db.Decimal(10, 2)
-  quantity  Int
-  imageUrl  String?
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  name           String
+  price          Decimal @db.Decimal(10, 2)
+  quantity       Int
+  imageUrl       String?
   /// Which colour was ordered. Null for simple products with no variants,
   /// so existing order history stays valid.
-  color     String?
+  color          String?
   /// The ColorVariant this line was ordered in, or null when the line is the
   /// product's PRIMARY colour (or the product has no colours at all). Stock
   /// lives per colour, so confirming an order can only decrement the right
@@ -282,18 +297,18 @@ model OrderItem {
   colorVariantId String?
   /// The reference as it stood WHEN ORDERED. Stored rather than derived so a
   /// later SKU change can't rewrite what an old order says was shipped.
-  reference String?
+  reference      String?
   /// How many of `quantity` were beyond the colour's available stock at order
   /// time — 0 when the line was fully in stock. This is the record of what the
   /// client still owes the customer ("sobrepedido"), and it is never rewritten
   /// when stock is later replenished: it says what was true when ordered.
-  backorderQty Int @default(0)
+  backorderQty   Int     @default(0)
 }
 
 model SiteConfig {
-  id                 String   @id @default("singleton")
-  announcementText   String   @default("Envíos gratis en compras superiores a $200.000")
-  announcementActive Boolean  @default(true)
+  id                      String  @id @default("singleton")
+  announcementText        String  @default("Envíos gratis en compras superiores a $200.000")
+  announcementActive      Boolean @default(true)
   /// Parallax backdrops for the two homepage bands that scroll their
   /// background against their content: BrandStatement ("Cada pieza, una
   /// historia.") and WholesaleCallout ("¿Tienes un negocio?").
@@ -308,8 +323,8 @@ model SiteConfig {
   /// `Discount.productId` set: the column holds a real URL the client
   /// uploaded, and dropping it is the one change that cannot be undone if the
   /// section ever wants a still again. Nothing reads it.
-  brandStatementImageUrl String?
-  wholesaleImageUrl      String?
+  brandStatementImageUrl  String?
+  wholesaleImageUrl       String?
   /// The video+text band that replaced the flat "Cada pieza, una historia."
   /// statement. Named after the SECTION rather than the copy, matching the
   /// convention above, so rewording it doesn't strand the columns.
@@ -318,13 +333,13 @@ model SiteConfig {
   /// original centred statement when the title/body are unset, and to a still
   /// frame treatment when only the video is missing. A half-configured section
   /// is a valid state, not a broken one.
-  videoSectionTitle    String?
-  videoSectionBody     String?
-  videoSectionVideoUrl String?
+  videoSectionTitle       String?
+  videoSectionBody        String?
+  videoSectionVideoUrl    String?
   /// Where the band links to — any internal path the admin types, e.g.
   /// "/catalogo/aretes" or "/catalogo?tag=nuevo". Null means the section is
   /// not clickable at all, which is the state it shipped in.
-  videoSectionLinkUrl  String?
+  videoSectionLinkUrl     String?
   /// ── Wholesale band background ──────────────────────────────────────
   /// Which media the band actually renders: "NONE" | "VIDEO" | "IMAGE".
   ///
@@ -351,7 +366,7 @@ model SiteConfig {
   wholesaleImageUrlMobile String?
   /// Desktop/primary assets for their respective types. Names kept as-is so
   /// nothing already uploaded is stranded.
-  wholesaleVideoUrl    String?
+  wholesaleVideoUrl       String?
 
   /// ── Legal pages ────────────────────────────────────────────────────
   /// Long-form body text for /legal/terminos and /legal/privacidad, in the
@@ -365,21 +380,34 @@ model SiteConfig {
   termsAndConditionsText String?
   privacyPolicyText      String?
 
-  updatedAt          DateTime @updatedAt
+  /// -- Wholesale welcome & info video --------------------------------
+  /// Shown once, in-app, the first time an APPROVED wholesaler logs in -- see
+  /// `User.wholesaleWelcomeSeenAt`, which is the per-user flag that gates it.
+  /// Null falls back to a sensible default rendered by the client, so an
+  /// admin who never touches this field still gets a working message.
+  wholesaleWelcomeMessage String?
+  /// Optional video for the /mayoristas explainer page specifically -- NOT
+  /// the homepage wholesale CTA band's background loop (`wholesaleVideoUrl`
+  /// above). Deliberately its own column: the homepage band is a background
+  /// loop behind a CTA, this is inline content on an informational page, and
+  /// conflating them would mean one upload could never serve both roles well.
+  wholesaleInfoVideoUrl   String?
+
+  updatedAt DateTime @updatedAt
 }
 
 model HeroSlide {
-  id         String        @id @default(cuid())
-  type       HeroSlideType @default(IMAGE)
-  desktopUrl String
-  mobileUrl  String?
-  posterUrl  String?
-  title      String?
-  subtitle   String?
-  ctaText    String?
-  ctaHref    String?
-  order      Int           @default(0)
-  active     Boolean       @default(true)
+  id          String        @id @default(cuid())
+  type        HeroSlideType @default(IMAGE)
+  desktopUrl  String
+  mobileUrl   String?
+  posterUrl   String?
+  title       String?
+  subtitle    String?
+  ctaText     String?
+  ctaHref     String?
+  order       Int           @default(0)
+  active      Boolean       @default(true)
   /// Focal point (CSS object-position) as whole percentages, 0-100, stored per
   /// breakpoint because the same media almost never crops well on both: a
   /// 16:9 desktop frame and a 9:16 phone frame keep entirely different parts
@@ -389,11 +417,11 @@ model HeroSlide {
   /// Kept as four Ints rather than two "50% 50%" strings: the drag control
   /// does arithmetic on these, and a numeric column is clamped and validated
   /// at the edge instead of being parsed back out of a string on every read.
-  desktopPosX Int          @default(50)
-  desktopPosY Int          @default(50)
-  mobilePosX  Int          @default(50)
-  mobilePosY  Int          @default(50)
-  createdAt  DateTime      @default(now())
+  desktopPosX Int           @default(50)
+  desktopPosY Int           @default(50)
+  mobilePosX  Int           @default(50)
+  mobilePosY  Int           @default(50)
+  createdAt   DateTime      @default(now())
 }
 
 enum HeroSlideType {

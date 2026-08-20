@@ -32,6 +32,11 @@ interface SiteConfigFields {
   wholesaleBgPosYMobile?: number;
   termsAndConditionsText?: string;
   privacyPolicyText?: string;
+  /** Blank clears back to the client-side default -- see WholesaleWelcomeMessage. */
+  wholesaleWelcomeMessage?: string;
+  /** Optional inline video for /mayoristas specifically -- nullable, same
+   * "clear this deliberately" reasoning as the wholesale background above. */
+  wholesaleInfoVideoUrl?: string | null;
 }
 
 /** The only three values the band knows how to render. */
@@ -72,6 +77,9 @@ const VIDEO_SLOTS = [
     formKey: 'wholesaleVideoMobileFile',
     slug: 'wholesale-mobile',
   },
+  // The /mayoristas explainer page's own optional video -- distinct from
+  // `wholesaleVideoUrl`, which is the homepage CTA band's background loop.
+  { column: 'wholesaleInfoVideoUrl', formKey: 'wholesaleInfoVideoFile', slug: 'wholesale-info' },
 ] as const;
 
 /**
@@ -172,6 +180,7 @@ export async function PATCH(request: Request) {
         'videoSectionTitle',
         'videoSectionBody',
         'videoSectionLinkUrl',
+        'wholesaleWelcomeMessage',
       ] as const) {
         const value = formData.get(key);
         if (typeof value === 'string') data[key] = value.trim();
@@ -261,6 +270,14 @@ export async function PATCH(request: Request) {
           if (previous) await deleteFromStorageByUrl('hero-media', previous);
           data[column] = null;
         }
+      }
+
+      // Single-asset clear, no mobile companion to worry about -- the
+      // /mayoristas page video is one file, not a desktop/mobile pair.
+      if (formData.get('clearWholesaleInfoVideo') === 'true') {
+        const previous = existing?.wholesaleInfoVideoUrl;
+        if (previous) await deleteFromStorageByUrl('hero-media', previous);
+        data.wholesaleInfoVideoUrl = null;
       }
     } else {
       const body = (await request.json()) as {

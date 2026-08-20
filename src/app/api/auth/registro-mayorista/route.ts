@@ -2,22 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registroMayoristaSchema } from '@/lib/validators';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { prisma } from '@/lib/prisma';
-
-let resendClient: import('resend').Resend | null = null;
-
-function getResend() {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!resendClient) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Resend } = require('resend') as typeof import('resend');
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
-}
+import { getResend } from '@/lib/email/resend-client';
 
 function buildNotificationHtml(data: {
   nombre: string;
-  nombreNegocio: string;
+  nombreNegocio: string | null;
   nitCedula: string;
   email: string;
   telefono: string;
@@ -26,7 +15,7 @@ function buildNotificationHtml(data: {
   return `
     <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse;width:100%">
       <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;width:180px">Nombre completo</td><td style="padding:8px;border:1px solid #ddd">${data.nombre}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Nombre del negocio</td><td style="padding:8px;border:1px solid #ddd">${data.nombreNegocio}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Nombre del negocio</td><td style="padding:8px;border:1px solid #ddd">${data.nombreNegocio ?? '—'}</td></tr>
       <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">NIT / Cédula</td><td style="padding:8px;border:1px solid #ddd">${data.nitCedula}</td></tr>
       <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Email</td><td style="padding:8px;border:1px solid #ddd">${data.email}</td></tr>
       <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Teléfono</td><td style="padding:8px;border:1px solid #ddd">${data.telefono}</td></tr>
@@ -53,6 +42,11 @@ export async function POST(request: NextRequest) {
 
   const { nombre, nombreNegocio, nitCedula, ciudad, telefono, email, password } =
     parsed.data;
+  // Optional field per Part 5: a blank string is what a left-empty controlled
+  // input submits, and it should read as "not provided" everywhere downstream
+  // -- the stored column, the email subject, and the admin list -- not as an
+  // empty label.
+  const businessName = nombreNegocio?.trim() || null;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -91,7 +85,7 @@ export async function POST(request: NextRequest) {
         email,
         name: nombre,
         role: 'MAYORISTA',
-        businessName: nombreNegocio,
+        businessName: businessName,
         taxId: nitCedula,
         city: ciudad,
         phone: telefono,
@@ -113,10 +107,12 @@ export async function POST(request: NextRequest) {
       await resend.emails.send({
         from: 'Brisal Web <noreply@brisalbysalvador.com>',
         to: process.env.RESEND_TO_EMAIL ?? '',
-        subject: `Nueva solicitud de mayorista — ${nombreNegocio}`,
+        // Falls back to the applicant's own name so a blank business name
+        // never leaves the subject reading "... — " with nothing after the dash.
+        subject: `Nueva solicitud de mayorista — ${businessName ?? nombre}`,
         html: buildNotificationHtml({
           nombre,
-          nombreNegocio,
+          nombreNegocio: businessName,
           nitCedula,
           email,
           telefono,

@@ -281,34 +281,57 @@ export function Header({ categories, announcementText, announcementActive }: Hea
             Height is a fixed step, not a min-height, so the sticky offset
             stays constant and nothing shifts as the header goes translucent. */}
         <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 md:h-20 lg:px-8">
-          {/* Mobile: hamburger left */}
-          <button
-            className={cn(
-              'hover:bg-brand-gold/10 focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none md:hidden',
-              inkPrimary,
-            )}
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Abrir menú"
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-nav"
-          >
-            <span className="sr-only">Menú</span>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          {/*
+            Mobile: hamburger + account icon, grouped together on the left.
+
+            Kept as ONE flex child (this wrapper), not two siblings: the row
+            is `justify-between` with exactly two participants at this width
+            (this wrapper, and the icons div at the far right) so each is
+            pinned to its edge. A bare third top-level child here would get
+            floated by `justify-between`'s own spacing algorithm instead,
+            landing somewhere in the middle -- directly under the
+            absolutely-centered wordmark below.
+
+            The account icon does NOT go in the right-hand icon cluster
+            (search/cart) despite that being the more obvious "alongside
+            existing icons" reading: that cluster's current 92px footprint
+            (measured live) already leaves only ~26-34px of clearance before
+            the centered wordmark at 360-375px, and a full 44px icon+gap would
+            overlap it. The left side, by contrast, has ~90px of clearance
+            next to the 36px hamburger — plenty of room, and pairing "menu +
+            account" on the left / "cart" on the right is a common mobile
+            ecommerce pattern in its own right.
+          */}
+          <div className="flex items-center gap-1 md:hidden">
+            <button
+              className={cn(
+                'hover:bg-brand-gold/10 focus-visible:ring-brand-gold flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-300 focus-visible:ring-2 focus-visible:outline-none',
+                inkPrimary,
+              )}
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Abrir menú"
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav"
             >
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+              <span className="sr-only">Menú</span>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <WholesaleNavIndicator overHero={overHero} menuAlign="left" />
+          </div>
 
           {/*
             The wordmark, at two sizes. Stays Playfair Display (font-wordmark)

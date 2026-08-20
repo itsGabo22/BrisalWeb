@@ -12,6 +12,7 @@ import type {
   Product as PrismaProduct,
   ProductTag,
   Tag as PrismaTag,
+  User as PrismaUser,
 } from '@prisma/client';
 import type {
   Category,
@@ -21,6 +22,7 @@ import type {
   Material,
   Product,
   Tag,
+  Wholesaler,
 } from '@/types';
 
 export function toCategory(
@@ -148,5 +150,32 @@ export function toColorVariant(variant: PrismaColorVariant): ColorVariant {
       : null,
     stock: variant.stock,
     order: variant.order,
+  };
+}
+
+/**
+ * The wholesaler shape the admin panel reads, derived from the one `User` row
+ * a wholesale applicant is. There is no separate application/status model --
+ * see the schema comments on `User.approved` and `User.rejectedAt`.
+ *
+ * `estado` is derived, not stored as an enum column, from two independent
+ * signals: `approved` (a plain boolean, `false` while pending review) and
+ * `rejectedAt` (null until an admin rejects the application). Checking
+ * `rejectedAt` FIRST matters -- a rejected row also has `approved: false`, so
+ * checking `approved` first would read a rejected application as merely
+ * pending.
+ */
+export function toWholesaler(user: PrismaUser): Wholesaler {
+  return {
+    id: user.id,
+    nombre: user.name ?? '',
+    negocio: user.businessName ?? '',
+    nit: user.taxId ?? '',
+    email: user.email,
+    telefono: user.phone ?? '',
+    ciudad: user.city ?? '',
+    mensaje: user.notes,
+    fechaRegistro: user.createdAt.toISOString(),
+    estado: user.rejectedAt ? 'RECHAZADO' : user.approved ? 'APROBADO' : 'PENDIENTE',
   };
 }

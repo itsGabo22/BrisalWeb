@@ -5,6 +5,7 @@ import { Tag, BookOpen, Users } from 'lucide-react';
 import { WholesaleForm } from '@/components/forms/WholesaleForm';
 import { CategoryIcon } from '@/components/marketing';
 import { categoryRepository } from '@/lib/repositories';
+import { prisma } from '@/lib/prisma';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -50,6 +51,11 @@ const FALLBACK_ICONS: Record<string, string> = {
 export default async function MayoristasPage() {
   const allCategories = await categoryRepository.getAll();
   const rootCategories = allCategories.filter((cat) => cat.parentId === null);
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: 'singleton' },
+    select: { wholesaleInfoVideoUrl: true },
+  });
+  const infoVideoUrl = siteConfig?.wholesaleInfoVideoUrl;
 
   return (
     <main>
@@ -116,6 +122,33 @@ export default async function MayoristasPage() {
           ))}
         </div>
       </section>
+
+      {/* ── Video informativo (opcional) ────────────────────────────
+          Entirely optional -- when unset, this section does not render at
+          all, so the page looks exactly as it did before this field existed:
+          no gap, no placeholder frame. Autoplay muted loop playsInline
+          matches every other video on the site (the homepage hero, the
+          wholesale CTA band, the video+text section) rather than
+          introducing a click-to-play control that would be this codebase's
+          first. */}
+      {infoVideoUrl && (
+        <section
+          className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16"
+          aria-label="Video informativo sobre el programa de mayoristas"
+        >
+          <div className="overflow-hidden rounded-2xl shadow-sm">
+            <video
+              src={infoVideoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="h-full w-full object-cover"
+              aria-hidden="true"
+            />
+          </div>
+        </section>
+      )}
 
       {/* ── Categorías que ofrecemos ───────────────────────────────── */}
       <section

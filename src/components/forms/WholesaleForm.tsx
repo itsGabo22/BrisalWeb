@@ -100,7 +100,7 @@ export function WholesaleForm() {
         />
 
         <Input
-          label="Nombre del negocio *"
+          label="Nombre del negocio (opcional)"
           id="wholesale-nombreNegocio"
           autoComplete="organization"
           placeholder="Accesorios XYZ"

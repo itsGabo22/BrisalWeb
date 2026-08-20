@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
+import { WholesaleWelcomeMessage } from '@/components/layout/WholesaleWelcomeMessage';
 import { ScrollToTopButton } from '@/components/ui/ScrollToTopButton';
 import type { Category } from '@/types';
 
@@ -57,6 +58,11 @@ export function SiteChrome({
       <Footer />
       <WhatsAppButton />
       {isScrollToTopRoute(pathname) && <ScrollToTopButton />}
+      {/* Checks its own session on mount; renders nothing for a guest, a
+          pending applicant, or an approved wholesaler who has already seen
+          it. Mounted here (not on a single page) so it fires regardless of
+          which storefront page a wholesaler lands on right after logging in. */}
+      <WholesaleWelcomeMessage />
     </>
   );
 }

@@ -29,14 +29,25 @@ async function logoutWholesaler(router: ReturnType<typeof useRouter>) {
   router.refresh();
 }
 
-/** Desktop header icon: routes to login, pending review, or the wholesale
- * account depending on session state. Approved wholesalers get a dropdown
- * with a logout option instead of a plain link. */
+/** Header icon: routes to login, pending review, or the wholesale account
+ * depending on session state. Approved wholesalers get a dropdown with a
+ * logout option instead of a plain link. Used both at desktop (top-right,
+ * `menuAlign="right"`, the default) and in the mobile header bar
+ * (top-left, next to the hamburger, `menuAlign="left"`). */
 export function WholesaleNavIndicator({
   /** True while the header sits transparent over the homepage hero. */
   overHero = false,
+  /**
+   * Which edge of the trigger the dropdown hangs from. A top-right trigger
+   * needs the menu to open leftward (`right-0`, the default); a top-left
+   * trigger -- the mobile header placement -- needs it to open rightward
+   * (`left-0`), or a `w-48` menu anchored `right-0` on a button sitting near
+   * x=0 would render mostly off the left edge of the viewport.
+   */
+  menuAlign = 'right',
 }: {
   overHero?: boolean;
+  menuAlign?: 'left' | 'right';
 } = {}) {
   const status = useWholesaleSession();
   const router = useRouter();
@@ -97,7 +108,10 @@ export function WholesaleNavIndicator({
         <div
           role="menu"
           aria-label="Cuenta mayorista"
-          className="border-brand-neutral-200/60 bg-brand-pearl/95 absolute top-full right-0 z-10 mt-3 w-48 rounded-xl border p-2 shadow-xl backdrop-blur-md"
+          className={cn(
+            'border-brand-neutral-200/60 bg-brand-pearl/95 absolute top-full z-10 mt-3 w-48 rounded-xl border p-2 shadow-xl backdrop-blur-md',
+            menuAlign === 'left' ? 'left-0' : 'right-0',
+          )}
         >
           <Link
             href="/catalogo"

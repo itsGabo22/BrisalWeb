@@ -34,10 +34,17 @@ export const registroMayoristaSchema = z
       .string()
       .min(2, 'El nombre debe tener al menos 2 caracteres')
       .max(80, 'El nombre no puede superar 80 caracteres'),
+    /** Optional: not every wholesale applicant operates under a registered
+     * business name. Matches the `telefono`-in-`contactSchema` idiom above --
+     * `.optional()` alone only accepts `undefined`, and a blank controlled
+     * input submits `''`, so `.or(z.literal(''))` is what actually lets an
+     * empty field through. */
     nombreNegocio: z
       .string()
       .min(2, 'El nombre del negocio debe tener al menos 2 caracteres')
-      .max(120, 'El nombre del negocio no puede superar 120 caracteres'),
+      .max(120, 'El nombre del negocio no puede superar 120 caracteres')
+      .optional()
+      .or(z.literal('')),
     nitCedula: z
       .string()
       .min(6, 'El NIT o cédula debe tener al menos 6 caracteres')
