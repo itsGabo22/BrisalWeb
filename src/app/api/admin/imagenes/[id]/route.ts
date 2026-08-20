@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { deleteFromStorageByUrl } from '@/lib/supabase/storage';
+import { bandejaAssignSchema } from '@/lib/validators';
 
 export async function DELETE(
   request: Request,
@@ -29,12 +30,23 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { productId } = body as { productId?: string | null };
 
-    if (typeof productId !== 'string' && productId !== null) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 });
+    }
+
+    // The hand-rolled `typeof productId !== 'string' && productId !== null`
+    // check this replaces was actually correct — it just also accepted an empty
+    // string as a product id, and lived here instead of with the other schemas.
+    const parsed = bandejaAssignSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json({ error: 'productId inválido' }, { status: 400 });
     }
+    // `undefined` (field omitted) and `null` both mean "unassign".
+    const productId = parsed.data.productId ?? null;
 
     const image = await prisma.imageBandeja.findUnique({ where: { id } });
     if (!image) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { computeBackorderQty, resolveLineVariant } from '@/lib/orders/backorder';
 import { releaseCouponRedemption } from '@/lib/coupons';
+import { orderActionSchema } from '@/lib/validators';
 
 export async function PATCH(
   request: Request,
@@ -9,12 +10,23 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { action } = body as { action?: string };
 
-    if (action !== 'confirm' && action !== 'reject') {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 });
+    }
+
+    // Was `body as { action?: string }` — a cast, which asserts a shape without
+    // checking it — followed by a manual equality guard. The schema is now the
+    // guard, and an unparseable body no longer throws into the outer catch as a
+    // 500 when it is plainly a 400.
+    const parsed = orderActionSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
     }
+    const { action } = parsed.data;
 
     const order = await prisma.order.findUnique({
       where: { id },

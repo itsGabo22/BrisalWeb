@@ -5,6 +5,12 @@ import {
   findRedeemableCoupon,
   INVALID_COUPON_MESSAGE,
 } from '@/lib/coupons';
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +28,19 @@ export const runtime = 'nodejs';
  * can expire or run out between applying it and checking out.
  */
 export async function POST(request: Request) {
+  /**
+   * Throttled before the body is even read. This endpoint is the one place a
+   * stranger can ask "is this coupon real?", and RLS denying the table is only
+   * half the defence — without a limit, a script can still brute-force the
+   * code space one guess at a time. 20/hour is far more than a shopper trying
+   * the code from an Instagram post.
+   */
+  const ip = getClientIp(request);
+  if (ip) {
+    const limit = await checkRateLimit(RATE_LIMITS.couponValidate, `ip:${ip}`, ip);
+    if (!limit.allowed) return rateLimitResponse(limit);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

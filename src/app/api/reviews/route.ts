@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processAndUploadImage, slugifyFilename } from '@/lib/supabase/storage';
 import { MAX_REVIEW_IMAGES, createReviewSchema } from '@/lib/validators';
+import { publicReadErrorResponse } from '@/lib/public-errors';
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +24,18 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
  * only there to keep obvious junk out of the queue the client has to read.
  */
 export async function POST(request: Request) {
+  /**
+   * Deliberately unauthenticated (see above), so moderation is the only spam
+   * gate — and a queue flooded with junk is a moderation gate nobody can use.
+   * Five a DAY per connection: this endpoint also accepts up to four 8MB
+   * uploads per call, which makes it the costliest thing a stranger can do.
+   */
+  const ip = getClientIp(request);
+  if (ip) {
+    const limit = await checkRateLimit(RATE_LIMITS.reviewCreate, `ip:${ip}`, ip);
+    if (!limit.allowed) return rateLimitResponse(limit);
+  }
+
   try {
     const formData = await request.formData();
 
@@ -135,25 +154,37 @@ export async function POST(request: Request) {
  * server, so this exists for the client to refresh without a full reload.
  */
 export async function GET(request: Request) {
-  const productId = new URL(request.url).searchParams.get('productId');
-  if (!productId) {
-    return NextResponse.json({ error: 'Falta productId' }, { status: 400 });
+  try {
+    const productId = new URL(request.url).searchParams.get('productId');
+    if (!productId) {
+      return NextResponse.json({ error: 'Falta productId' }, { status: 400 });
+    }
+
+    const reviews = await prisma.review.findMany({
+      where: { productId, status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      // Bounded: this is public and unauthenticated, and a product with a
+      // thousand approved reviews should not serialise all of them into one
+      // response because someone asked. The page renders its own set
+      // server-side; this exists only for the client to refresh.
+      take: 200,
+    });
+
+    return NextResponse.json(
+      reviews.map((review) => ({
+        id: review.id,
+        authorName: review.authorName,
+        rating: review.rating,
+        title: review.title,
+        body: review.body,
+        imageUrls: review.imageUrls,
+        createdAt: review.createdAt.toISOString(),
+      })),
+    );
+  } catch (err) {
+    // The POST above had a try/catch from the start; this one never did, so a
+    // failed read became an unhandled rejection and the reviews list silently
+    // rendered empty with nothing logged under a findable tag.
+    return publicReadErrorResponse('reviews', err, 'No se pudieron cargar las reseñas.');
   }
-
-  const reviews = await prisma.review.findMany({
-    where: { productId, status: 'APPROVED' },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return NextResponse.json(
-    reviews.map((review) => ({
-      id: review.id,
-      authorName: review.authorName,
-      rating: review.rating,
-      title: review.title,
-      body: review.body,
-      imageUrls: review.imageUrls,
-      createdAt: review.createdAt.toISOString(),
-    })),
-  );
 }

@@ -20,6 +20,10 @@ export interface IProductRepository {
   getBySlug(slug: string): Promise<Product | null>;
   getFeatured(tagSlug?: string): Promise<Product[]>;
   search(query: string): Promise<Product[]>;
+  searchPreview(
+    query: string,
+    limit: number,
+  ): Promise<{ products: Product[]; total: number }>;
   getRelated(product: Product, limit?: number): Promise<Product[]>;
 }
 
@@ -176,6 +180,46 @@ class PrismaProductRepository implements IProductRepository {
     });
 
     return finalize(products);
+  }
+
+  /**
+   * A capped search for the type-ahead endpoint.
+   *
+   * `search` deliberately returns everything, because the full results page
+   * wants it. The preview box wants six — and fetching the whole matching set
+   * with every relation only to slice six off in the route handler is the same
+   * query cost as the full page on an endpoint anonymous callers can hit as
+   * fast as they can type.
+   *
+   * `total` comes from a COUNT rather than the length of the rows, so the
+   * "6 de 23" figure survives the `take` that makes this cheap.
+   */
+  async searchPreview(
+    query: string,
+    limit: number,
+  ): Promise<{ products: Product[]; total: number }> {
+    const trimmed = query.trim();
+    if (!trimmed) return { products: [], total: 0 };
+
+    const where = {
+      active: true,
+      OR: [
+        { name: { contains: trimmed, mode: 'insensitive' as const } },
+        { description: { contains: trimmed, mode: 'insensitive' as const } },
+      ],
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: PRODUCT_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return { products: await finalize(rows), total };
   }
 
   async search(query: string): Promise<Product[]> {

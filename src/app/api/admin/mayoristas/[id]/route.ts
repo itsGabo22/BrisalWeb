@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { toWholesaler } from '@/lib/repositories/mappers';
 import { getResend } from '@/lib/email/resend-client';
+import { wholesalerStatusSchema } from '@/lib/validators';
 
 function buildApprovalHtml(nombre: string): string {
   return `
@@ -23,15 +24,25 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { estado } = body;
 
-    if (!estado || !['PENDIENTE', 'APROBADO', 'RECHAZADO'].includes(estado)) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 });
+    }
+
+    // `const { estado } = body` destructured an `any` and then checked it
+    // against a literal array. Same three values, now declared once in the
+    // validators module instead of inline here.
+    const parsed = wholesalerStatusSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'Estado inválido o no provisto' },
         { status: 400 },
       );
     }
+    const { estado } = parsed.data;
 
     const wholesaler = await prisma.user.findUnique({ where: { id } });
     if (!wholesaler || wholesaler.role !== 'MAYORISTA') {

@@ -7,7 +7,6 @@ import { Eye, EyeOff, Lock, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -23,17 +22,31 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      const { data, error: signInError } =
-        await supabase.auth.signInWithPassword({ email, password });
+      /**
+       * Posts to our own route instead of calling
+       * `supabase.auth.signInWithPassword` from here.
+       *
+       * The direct browser call left nowhere to count failed attempts — the
+       * request never reached this application — so there was no lockout on
+       * password guessing. `POST /api/auth/admin-login` does the sign-in
+       * server-side, records failures per email, and refuses after five inside
+       * fifteen minutes. It sets the same session cookies, so everything after
+       * this point is unchanged.
+       *
+       * The route answers one generic message for every failure (wrong
+       * password, unknown email, non-admin account) and this renders it
+       * verbatim rather than substituting a friendlier per-case string — the
+       * distinction is exactly what an attacker wants.
+       */
+      const res = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (signInError) {
-        throw new Error('Credenciales incorrectas.');
-      }
-
-      if (data.user?.user_metadata?.role !== 'admin') {
-        await supabase.auth.signOut();
-        throw new Error('No tienes permisos de administrador.');
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? 'Credenciales incorrectas.');
       }
 
       router.push('/admin');

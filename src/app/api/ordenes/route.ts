@@ -4,6 +4,12 @@ import { createOrderSchema } from '@/lib/validators';
 import { formatCOP } from '@/lib/utils/pricing';
 import { getAvailableStock } from '@/lib/orders/backorder';
 import { computeCouponDiscount, findRedeemableCoupon, redeemCoupon } from '@/lib/coupons';
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit';
 
 interface MessageItem {
   name: string;
@@ -65,6 +71,17 @@ function buildWhatsAppMessage(
 }
 
 export async function POST(request: Request) {
+  /**
+   * Order creation writes rows and sends the client to WhatsApp, so an
+   * unthrottled loop here fills the pedidos list with junk the client has to
+   * hand-reject. Ten an hour per connection is beyond any real shopper.
+   */
+  const ip = getClientIp(request);
+  if (ip) {
+    const limit = await checkRateLimit(RATE_LIMITS.orderCreate, `ip:${ip}`, ip);
+    if (!limit.allowed) return rateLimitResponse(limit);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

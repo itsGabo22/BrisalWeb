@@ -318,3 +318,37 @@ export const createReviewSchema = z.object({
 
 export type CreateReviewData = z.infer<typeof createReviewSchema>;
 
+
+// ─── Acciones admin sobre registros existentes ─────────────────────────────────
+
+/**
+ * The small JSON bodies the admin panel PATCHes at single records.
+ *
+ * These routes previously read `body as { action?: string }` and friends — a
+ * cast, which asserts a shape without checking it. Each then guarded the value
+ * against an allowlist, so they were not actually exploitable; what they lacked
+ * was the uniform 400 and the single place to read what a route accepts. They
+ * are behind the Supabase admin gate either way, so this is consistency and
+ * legibility rather than a closed hole.
+ *
+ * `z.enum` rather than `z.string()` plus a manual check: the union IS the
+ * validation, and it keeps the accepted values next to the type.
+ */
+export const orderActionSchema = z.object({
+  action: z.enum(['confirm', 'reject']),
+});
+
+export const wholesalerStatusSchema = z.object({
+  estado: z.enum(['PENDIENTE', 'APROBADO', 'RECHAZADO']),
+});
+
+/**
+ * Assigning a bandeja image to a product, or freeing it.
+ *
+ * `null` is a real, meaningful value here — "unassign this image" — which is
+ * why it is nullable rather than optional. `undefined` (field absent) means the
+ * same thing for this route, so both are accepted and normalised downstream.
+ */
+export const bandejaAssignSchema = z.object({
+  productId: z.string().min(1).nullish(),
+});

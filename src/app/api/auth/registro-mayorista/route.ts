@@ -3,6 +3,13 @@ import { registroMayoristaSchema } from '@/lib/validators';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { prisma } from '@/lib/prisma';
 import { getResend } from '@/lib/email/resend-client';
+import { escapeHtml } from '@/lib/email/escape';
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit';
 
 function buildNotificationHtml(data: {
   nombre: string;
@@ -14,17 +21,28 @@ function buildNotificationHtml(data: {
 }): string {
   return `
     <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse;width:100%">
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;width:180px">Nombre completo</td><td style="padding:8px;border:1px solid #ddd">${data.nombre}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Nombre del negocio</td><td style="padding:8px;border:1px solid #ddd">${data.nombreNegocio ?? '—'}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">NIT / Cédula</td><td style="padding:8px;border:1px solid #ddd">${data.nitCedula}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Email</td><td style="padding:8px;border:1px solid #ddd">${data.email}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Teléfono</td><td style="padding:8px;border:1px solid #ddd">${data.telefono}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Ciudad</td><td style="padding:8px;border:1px solid #ddd">${data.ciudad}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;width:180px">Nombre completo</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.nombre)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Nombre del negocio</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.nombreNegocio ?? '—')}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">NIT / Cédula</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.nitCedula)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Email</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.email)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Teléfono</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.telefono)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Ciudad</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.ciudad)}</td></tr>
     </table>
   `;
 }
 
 export async function POST(request: NextRequest) {
+  /**
+   * Creates a Supabase auth user AND sends mail, so this is the most expensive
+   * public endpoint on the site — and the one where abuse costs real money at
+   * the email provider. Five an hour per connection.
+   */
+  const ip = getClientIp(request);
+  if (ip) {
+    const limit = await checkRateLimit(RATE_LIMITS.wholesaleRegister, `ip:${ip}`, ip);
+    if (!limit.allowed) return rateLimitResponse(limit);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

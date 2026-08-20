@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contactSchema } from '@/lib/validators';
 import { getResend } from '@/lib/email/resend-client';
+import { escapeHtml } from '@/lib/email/escape';
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit';
 
 function buildContactHtml(data: {
   nombre: string;
@@ -10,15 +17,25 @@ function buildContactHtml(data: {
 }): string {
   return `
     <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse;width:100%">
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;width:160px">Nombre</td><td style="padding:8px;border:1px solid #ddd">${data.nombre}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Email</td><td style="padding:8px;border:1px solid #ddd">${data.email}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Teléfono</td><td style="padding:8px;border:1px solid #ddd">${data.telefono ?? '—'}</td></tr>
-      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;vertical-align:top">Mensaje</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${data.mensaje}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;width:160px">Nombre</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.nombre)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Email</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.email)}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd">Teléfono</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(data.telefono ?? '—')}</td></tr>
+      <tr><td style="padding:8px;font-weight:bold;background:#f5f5f5;border:1px solid #ddd;vertical-align:top">Mensaje</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${escapeHtml(data.mensaje)}</td></tr>
     </table>
   `;
 }
 
 export async function POST(request: NextRequest) {
+  /**
+   * Sends mail on every call, so an unthrottled form is a free relay for
+   * flooding the client's inbox. Five an hour per connection.
+   */
+  const ip = getClientIp(request);
+  if (ip) {
+    const limit = await checkRateLimit(RATE_LIMITS.contact, `ip:${ip}`, ip);
+    if (!limit.allowed) return rateLimitResponse(limit);
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -47,7 +64,7 @@ export async function POST(request: NextRequest) {
     await resend.emails.send({
       from: 'Brisal Web <noreply@brisalbysalvador.com>',
       to: process.env.RESEND_TO_EMAIL ?? '',
-      subject: `Nuevo mensaje de contacto — ${data.nombre}`,
+      subject: `Nuevo mensaje de contacto — ${escapeHtml(data.nombre)}`,
       html: buildContactHtml(data),
     });
     return NextResponse.json({ success: true });

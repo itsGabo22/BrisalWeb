@@ -483,3 +483,37 @@ model PromoPopup {
   showOnce  Boolean  @default(true)
   updatedAt DateTime @updatedAt
 }
+
+/// One row per counted request, for the sliding-window rate limiter in
+/// `src/lib/rate-limit.ts`.
+///
+/// A table rather than Redis because this project has no Redis/KV configured
+/// and adding one for a shop this size would be infrastructure nobody
+/// maintains. The cost is a row per request on the handful of guarded
+/// endpoints, which `pruneRateLimitHits` trims opportunistically.
+///
+/// `key` is `<bucket>:<subject>` — e.g. `orders:ip:190.0.0.1` or
+/// `admin-login:someone@example.com`. Deliberately opaque: the limiter does not
+/// care what a subject is, which is what lets login count per EMAIL while the
+/// public endpoints count per IP.
+///
+/// For admin login these rows double as the failed-attempt log (hence `ip`,
+/// which is forensic rather than functional): a successful sign-in deletes the
+/// key's rows, so a lockout resets on success without a second table.
+///
+/// RLS: enabled with NO policy — deny-all. Nothing but the server (Prisma, as
+/// table owner) ever touches this, and letting anon read it would hand an
+/// attacker the exact state of their own throttling.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  /// Best-effort, for reading the log after the fact. Null when no forwarding
+  /// header was present.
+  ip        String?
+  createdAt DateTime @default(now())
+
+  /// The limiter only ever asks "how many rows for this key since T", which is
+  /// exactly this index, and the prune asks by createdAt alone.
+  @@index([key, createdAt])
+  @@index([createdAt])
+}
