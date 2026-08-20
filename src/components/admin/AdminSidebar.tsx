@@ -96,14 +96,14 @@ export function AdminSidebar() {
       {isMobileOpen && (
         <div
           onClick={() => setIsMobileOpen(false)}
-          className="fixed inset-0 z-45 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-brand-neutral-200 bg-brand-neutral-950 text-brand-neutral-200 transition-all duration-300 dark:border-brand-neutral-800',
+          'fixed inset-y-0 left-0 z-45 flex flex-col border-r border-brand-neutral-200 bg-brand-neutral-950 text-brand-neutral-200 transition-all duration-300 dark:border-brand-neutral-800',
           isCollapsed ? 'w-16' : 'w-64',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
