@@ -43,10 +43,17 @@ export type ProductWithVariants = Product & { colorVariants: ColorVariant[] };
  * a variant renamed after the cart was filled — falls back to the primary
  * colour, which is what this code did for every line before Phase 5.
  */
-export function resolveLineVariant(
-  product: ProductWithVariants,
+/**
+ * Structurally typed rather than pinned to the Prisma row, so the server-side
+ * price quote (src/lib/pricing/quote.ts) can reuse the SAME resolution rules
+ * against the mapped `@/types` Product instead of reimplementing them. Pricing
+ * and stock disagreeing about which colour a line is would be a silent
+ * mispricing, which is exactly the class of bug one shared resolver prevents.
+ */
+export function resolveLineVariant<V extends { id: string; colorName: string }>(
+  product: { colorName?: string | null; colorVariants: V[] },
   line: OrderLineColorRef,
-): ColorVariant | null {
+): V | null {
   if (line.colorVariantId) {
     return product.colorVariants.find((variant) => variant.id === line.colorVariantId) ?? null;
   }

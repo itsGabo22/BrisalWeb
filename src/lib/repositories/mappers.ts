@@ -19,10 +19,12 @@ import type {
   ColorVariant,
   Coupon,
   Discount,
+  DiscountAudience,
   Material,
   Product,
   Tag,
   Wholesaler,
+  WholesalerStatus,
 } from '@/types';
 
 export function toCategory(
@@ -74,7 +76,23 @@ export function toDiscount(
     startsAt: discount.startsAt?.toISOString() ?? null,
     endsAt: discount.endsAt?.toISOString() ?? null,
     active: discount.active,
+    audience: toDiscountAudience(discount.audience),
+    minQuantity: discount.minQuantity,
   };
+}
+
+/**
+ * Narrows the `audience` text column to the union the app reasons about.
+ *
+ * Falls back to 'ALL' rather than throwing or dropping the row: the column is a
+ * String (see schema.prisma), so an unexpected value is conceivable — from a
+ * hand-written SQL update, say. 'ALL' is the safe landing spot because it is
+ * what the discount did before the column existed, so a typo in the database
+ * degrades to "applies to everyone" instead of making a live campaign vanish
+ * with nothing to explain it.
+ */
+export function toDiscountAudience(value: string): DiscountAudience {
+  return value === 'WHOLESALE_ONLY' || value === 'RETAIL_ONLY' ? value : 'ALL';
 }
 
 export function toCoupon(coupon: PrismaCoupon): Coupon {
@@ -178,6 +196,23 @@ export function toWholesaler(user: PrismaUser): Wholesaler {
     ciudad: user.city ?? '',
     mensaje: user.notes,
     fechaRegistro: user.createdAt.toISOString(),
-    estado: user.rejectedAt ? 'RECHAZADO' : user.approved ? 'APROBADO' : 'PENDIENTE',
+    estado: toWholesalerStatus(user),
   };
+}
+
+/**
+ * The four wholesale states, derived from one boolean and two timestamps.
+ *
+ * Order matters only because the transitions keep the flags mutually exclusive
+ * (each one clears the others) — so at most one of `rejectedAt` / `revokedAt` is
+ * ever set. `approved` is checked last so it cannot mask either: a revoked
+ * account has `approved = false`, and that flag is what actually stops
+ * wholesale pricing.
+ */
+function toWholesalerStatus(
+  user: Pick<PrismaUser, 'approved' | 'rejectedAt' | 'revokedAt'>,
+): WholesalerStatus {
+  if (user.rejectedAt) return 'RECHAZADO';
+  if (user.revokedAt) return 'REVOCADO';
+  return user.approved ? 'APROBADO' : 'PENDIENTE';
 }

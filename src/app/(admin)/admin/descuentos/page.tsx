@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Plus, Edit, Trash2, Tag, Percent, RefreshCw } from 'lucide-react';
-import type { Discount, Category, Product } from '@/types';
+import type { Discount, DiscountAudience, Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { DiscountProductPicker } from '@/components/admin/DiscountProductPicker';
@@ -53,6 +53,16 @@ export default function AdminDescuentosPage() {
   const [startsAt, setStartsAt] = React.useState('');
   const [endsAt, setEndsAt] = React.useState('');
   const [active, setActive] = React.useState(true);
+  const [audience, setAudience] = React.useState<DiscountAudience>('ALL');
+  /**
+   * A STRING, not a number, and empty by default.
+   *
+   * Empty means "no quantity requirement", which is what the client wants for
+   * almost every campaign and what every existing discount does. A numeric
+   * state initialised to 0 or 1 would quietly turn an optional field into one
+   * that always sends a value.
+   */
+  const [minQuantity, setMinQuantity] = React.useState('');
 
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -93,6 +103,10 @@ export default function AdminDescuentosPage() {
     setStartsAt(toDateInput(d?.startsAt));
     setEndsAt(toDateInput(d?.endsAt));
     setActive(d?.active ?? true);
+    setAudience(d?.audience ?? 'ALL');
+    // A new discount opens with this BLANK, never prefilled — the field is the
+    // exception, not the norm.
+    setMinQuantity(d?.minQuantity ? String(d.minQuantity) : '');
     setFormError(null);
   };
 
@@ -184,6 +198,11 @@ export default function AdminDescuentosPage() {
       startsAt: fromDateInput(startsAt, 'start'),
       endsAt: fromDateInput(endsAt, 'end'),
       active,
+      audience,
+      // Empty input → null, i.e. no quantity requirement. The validator
+      // normalises '' and 0 the same way, so this cannot accidentally gate a
+      // campaign the admin did not mean to gate.
+      minQuantity: minQuantity.trim() === '' ? null : Number(minQuantity),
     };
 
     try {
@@ -290,6 +309,24 @@ export default function AdminDescuentosPage() {
                             {discount.productIds.length === 1 ? 'producto' : 'productos'}
                           </span>
                         )}
+                        {/*
+                          Only rendered when the campaign actually narrows
+                          itself. An "Audiencia: Todos / Sin mínimo" line on
+                          every row would be noise on the overwhelming majority
+                          of discounts, which set neither.
+                        */}
+                        {discount.audience !== 'ALL' && (
+                          <span className="mt-1 block text-xs font-medium text-brand-gold-deep">
+                            {discount.audience === 'WHOLESALE_ONLY'
+                              ? 'Solo mayoristas'
+                              : 'Solo minoristas'}
+                          </span>
+                        )}
+                        {discount.minQuantity ? (
+                          <span className="block text-xs font-medium text-brand-gold-deep">
+                            Desde {discount.minQuantity} unidades
+                          </span>
+                        ) : null}
                       </td>
 
                       <td className="px-6 py-4 text-xs whitespace-nowrap text-brand-neutral-600 dark:text-brand-neutral-400">
@@ -463,6 +500,48 @@ export default function AdminDescuentosPage() {
           <p className="-mt-2 text-xs text-brand-neutral-400">
             Deja una fecha en blanco para que no tenga límite por ese lado.
           </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Audiencia *
+              </label>
+              <select
+                value={audience}
+                onChange={(e) => setAudience(e.target.value as DiscountAudience)}
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              >
+                <option value="ALL">Todos</option>
+                <option value="WHOLESALE_ONLY">Solo mayoristas</option>
+                <option value="RETAIL_ONLY">Solo minoristas</option>
+              </select>
+              <p className="mt-1 text-xs text-brand-neutral-400">
+                «Todos» es lo normal. «Solo mayoristas» aplica únicamente a
+                cuentas mayoristas aprobadas.
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-medium text-brand-neutral-700 dark:text-brand-neutral-300 mb-1">
+                Cantidad mínima (opcional)
+              </label>
+              <input
+                type="number"
+                min={2}
+                step={1}
+                placeholder="Sin mínimo"
+                value={minQuantity}
+                onChange={(e) => setMinQuantity(e.target.value)}
+                className="w-full rounded border border-brand-neutral-200 bg-white px-3 py-2 text-brand-neutral-850 focus:outline-none focus:ring-1 focus:ring-brand-gold dark:border-brand-neutral-800 dark:bg-brand-neutral-950 dark:text-brand-neutral-100"
+              />
+              <p className="mt-1 text-xs text-brand-neutral-400">
+                Opcional. Si lo dejas vacío, el descuento aplica sin importar la
+                cantidad comprada — así funciona hoy. Solo actívalo si quieres
+                que este descuento en particular requiera una cantidad mínima
+                para aplicar.
+              </p>
+            </div>
+          </div>
 
           {scope === 'CATEGORY' && (
             <div>

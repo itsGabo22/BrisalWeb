@@ -5,6 +5,7 @@ import type { Prisma, Discount as PrismaDiscount } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { Product } from '@/types';
 import { getRatingSummaries } from '@/lib/reviews';
+import { findRankedProductIds } from '@/lib/search/product-search';
 import { toProduct } from './mappers';
 
 export interface GetAllProductsOptions {
@@ -19,6 +20,15 @@ export interface IProductRepository {
   getAll(options?: GetAllProductsOptions): Promise<Product[]>;
   getBySlug(slug: string): Promise<Product | null>;
   getFeatured(tagSlug?: string): Promise<Product[]>;
+  /**
+   * Products by id, with discounts and ratings attached like every other read.
+   *
+   * Exists for the server-side price quote, which is handed cart lines and has
+   * to price them from the database rather than from what the client posted.
+   * Missing ids are simply absent from the result — a product deleted since the
+   * cart was filled is the caller's problem to report, not this method's.
+   */
+  getByIds(ids: string[]): Promise<Product[]>;
   search(query: string): Promise<Product[]>;
   searchPreview(
     query: string,
@@ -118,6 +128,29 @@ async function finalize(
   });
 }
 
+/**
+ * Loads products for an already-ranked list of ids, preserving that order.
+ *
+ * `WHERE id IN (...)` returns rows in whatever order the planner likes, which
+ * would throw away the relevance ranking the search query just computed — so
+ * the rows are re-sorted against the id list before `finalize` maps them. The
+ * sort happens BEFORE finalize because finalize preserves input order, and
+ * doing it after would mean re-sorting the mapped type instead.
+ */
+async function hydrateRanked(rankedIds: string[]): Promise<Product[]> {
+  if (rankedIds.length === 0) return [];
+
+  const rows = await prisma.product.findMany({
+    where: { id: { in: rankedIds } },
+    include: PRODUCT_INCLUDE,
+  });
+
+  const rank = new Map(rankedIds.map((id, index) => [id, index]));
+  rows.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+
+  return finalize(rows);
+}
+
 class PrismaProductRepository implements IProductRepository {
   async getAll(options: GetAllProductsOptions = {}): Promise<Product[]> {
     const where: Prisma.ProductWhereInput = {
@@ -166,6 +199,24 @@ class PrismaProductRepository implements IProductRepository {
     return finalized;
   }
 
+  async getByIds(ids: string[]): Promise<Product[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+
+    /**
+     * No `active: true` filter, deliberately. A line already sitting in
+     * someone's cart for a product the admin has since deactivated still has to
+     * be PRICED — refusing to price it here would surface as a mysterious zero
+     * rather than as the clear "ya no está disponible" the order route gives.
+     */
+    const products = await prisma.product.findMany({
+      where: { id: { in: unique } },
+      include: PRODUCT_INCLUDE,
+    });
+
+    return finalize(products);
+  }
+
   async getFeatured(tagSlug?: string): Promise<Product[]> {
     const where: Prisma.ProductWhereInput = { featured: true, active: true };
 
@@ -191,54 +242,30 @@ class PrismaProductRepository implements IProductRepository {
    * query cost as the full page on an endpoint anonymous callers can hit as
    * fast as they can type.
    *
-   * `total` comes from a COUNT rather than the length of the rows, so the
-   * "6 de 23" figure survives the `take` that makes this cheap.
+   * `total` is the length of the ranked id list rather than a second COUNT
+   * query. The ranking pass has to evaluate every candidate row to order them
+   * anyway, so it already knows the figure — and it returns ids only, which is
+   * what keeps that cheap. The expensive part, loading relations, is still
+   * capped at `limit`.
    */
   async searchPreview(
     query: string,
     limit: number,
   ): Promise<{ products: Product[]; total: number }> {
-    const trimmed = query.trim();
-    if (!trimmed) return { products: [], total: 0 };
+    const rankedIds = await findRankedProductIds(query);
+    if (rankedIds.length === 0) return { products: [], total: 0 };
 
-    const where = {
-      active: true,
-      OR: [
-        { name: { contains: trimmed, mode: 'insensitive' as const } },
-        { description: { contains: trimmed, mode: 'insensitive' as const } },
-      ],
+    return {
+      products: await hydrateRanked(rankedIds.slice(0, limit)),
+      total: rankedIds.length,
     };
-
-    const [rows, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: PRODUCT_INCLUDE,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      }),
-      prisma.product.count({ where }),
-    ]);
-
-    return { products: await finalize(rows), total };
   }
 
   async search(query: string): Promise<Product[]> {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
+    const rankedIds = await findRankedProductIds(query);
+    if (rankedIds.length === 0) return [];
 
-    const products = await prisma.product.findMany({
-      where: {
-        active: true,
-        OR: [
-          { name: { contains: trimmed, mode: 'insensitive' } },
-          { description: { contains: trimmed, mode: 'insensitive' } },
-        ],
-      },
-      include: PRODUCT_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return finalize(products);
+    return hydrateRanked(rankedIds);
   }
 
   /** Same category first, then fills remaining slots with same-tag products. */

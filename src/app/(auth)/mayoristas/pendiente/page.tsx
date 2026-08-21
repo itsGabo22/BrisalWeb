@@ -3,9 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, MessageCircle } from 'lucide-react';
+import { Clock, MessageCircle, ShieldOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { useWholesaleSession } from '@/hooks/useWholesaleSession';
 import { createClient } from '@/lib/supabase/client';
 
 // WhatsApp number read from env — NEVER hardcoded (matches src/components/layout/WhatsAppButton.tsx).
@@ -17,6 +18,15 @@ const WHATSAPP_MESSAGE = encodeURIComponent(
 export default function MayoristaPendientePage() {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  /**
+   * A revoked account lands here too — it is signed in and not approved, which
+   * is the only condition the login redirect can see. Without this branch it
+   * read "Solicitud en revisión · te notificaremos cuando sea aprobada", which
+   * is false for someone whose access was deliberately withdrawn and would send
+   * them to WhatsApp chasing a decision that already happened.
+   */
+  const status = useWholesaleSession();
+  const isRevoked = status === 'revoked';
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -30,15 +40,20 @@ export default function MayoristaPendientePage() {
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-12 text-center sm:px-6">
       <div className="w-full max-w-md rounded-2xl border border-brand-neutral-100 bg-white px-6 py-10 shadow-sm sm:px-10">
         <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
-          <Clock className="size-6" aria-hidden="true" />
+          {isRevoked ? (
+            <ShieldOff className="size-6" aria-hidden="true" />
+          ) : (
+            <Clock className="size-6" aria-hidden="true" />
+          )}
         </div>
 
         <h1 className="mb-2 font-heading text-2xl font-medium text-brand-text">
-          Solicitud en revisión
+          {isRevoked ? 'Acceso mayorista inactivo' : 'Solicitud en revisión'}
         </h1>
         <p className="mb-8 font-body text-sm text-brand-neutral-600">
-          Tu solicitud está siendo revisada por nuestro equipo. Te
-          notificaremos por correo cuando tu cuenta mayorista sea aprobada.
+          {isRevoked
+            ? 'Tu acceso a precios mayoristas está inactivo por el momento. Puedes seguir comprando con los precios habituales, o escribirnos si crees que se trata de un error.'
+            : 'Tu solicitud está siendo revisada por nuestro equipo. Te notificaremos por correo cuando tu cuenta mayorista sea aprobada.'}
         </p>
 
         {WHATSAPP_NUMBER && (

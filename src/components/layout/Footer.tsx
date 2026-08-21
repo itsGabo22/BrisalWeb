@@ -8,6 +8,7 @@ import {
   CONTACT_PHONE_E164,
   SOCIAL_PROFILES,
 } from '@/lib/constants/contact';
+import { SEARCH_SECTION } from '@/lib/navigation';
 import { DeveloperCredit } from './DeveloperCredit';
 // lucide-react v1.x exports neither Instagram nor TikTok — inline SVGs below.
 function InstagramIcon({ size = 18 }: { size?: number }) {
@@ -43,9 +44,14 @@ function TikTokIcon({ size = 18 }: { size?: number }) {
 }
 
 // ─── Footer data ──────────────────────────────────────────────────────────────
+// `Buscar` comes from SEARCH_SECTION rather than being written out again: this
+// link used to land on /buscar when that page had no search input at all, so it
+// was a dead end — the only way to actually search was the header's icon. The
+// page now carries a real input, and pointing at the shared constant is what
+// keeps the two entry points on the same route from here on.
 const NAV_LINKS = [
   { label: 'Catálogo', href: '/catalogo' },
-  { label: 'Buscar', href: '/buscar' },
+  SEARCH_SECTION,
   { label: 'Mayoristas', href: '/mayoristas' },
   { label: 'Contacto', href: '/contacto' },
 ];

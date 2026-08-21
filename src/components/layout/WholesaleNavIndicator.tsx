@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, User, UserCheck, LogOut } from 'lucide-react';
+import { Clock, User, UserCheck, UserX, LogOut } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useWholesaleSession } from '@/hooks/useWholesaleSession';
@@ -18,6 +18,17 @@ const CONFIG = {
     icon: Clock,
   },
   approved: { href: '/catalogo', label: 'Cuenta mayorista', icon: UserCheck },
+  /**
+   * Points at the same page as `pending`, which now tells the two apart and
+   * shows revocation copy. Deliberately NOT the approved branch: a revoked
+   * account gets no account dropdown, because there is no wholesale account
+   * behind it any more.
+   */
+  revoked: {
+    href: '/mayoristas/pendiente',
+    label: 'Acceso mayorista revocado',
+    icon: UserX,
+  },
 } as const;
 
 /** Signs the wholesaler out and sends them to the login page — matches the

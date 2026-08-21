@@ -70,6 +70,79 @@ export function isDiscountActive(discount: Discount, now: Date = new Date()): bo
 }
 
 /**
+ * Who the viewer is, and how many units they hold, for discount gating.
+ *
+ * `quantities` maps DISCOUNT ID → the number of units in the cart that count
+ * toward that discount's `minQuantity`. It is keyed per discount rather than
+ * per product because the qualifying basis depends on the discount's scope: a
+ * PRODUCT-scoped rule counts units of its products, a CATEGORY-scoped one
+ * counts across the whole category. Working that out needs the whole cart, so
+ * it is the caller's job — see `qualifyingQuantities` in
+ * src/lib/pricing/quote.ts — and this module stays a pure function of what it
+ * is handed.
+ *
+ * An ABSENT map means "quantity unknown", which is the catalog-display case: a
+ * product card has no cart context. Unknown deliberately FAILS a minQuantity
+ * gate, so a card never advertises a price the shopper would not actually be
+ * charged at one unit.
+ */
+export interface DiscountGate {
+  isApprovedWholesaler: boolean;
+  quantities?: ReadonlyMap<string, number> | null;
+  /**
+   * True when the price being discounted is a negotiated WHOLESALE price, in
+   * which case only WHOLESALE_ONLY campaigns compose with it — see the note on
+   * `getEffectivePrice`.
+   *
+   * This has to be part of eligibility rather than a filter applied to the
+   * winner afterwards: a wholesaler facing an ALL 30% campaign and a
+   * WHOLESALE_ONLY 10% campaign must get the 10%. Picking the deepest first and
+   * then rejecting it for being ALL-audience would hand them nothing.
+   */
+  onWholesaleBase?: boolean;
+}
+
+const DISPLAY_GATE: DiscountGate = { isApprovedWholesaler: false };
+
+/**
+ * Whether a discount reaches this particular viewer, at this quantity.
+ *
+ * Three independent gates, all of which must pass: the campaign is live
+ * (`isDiscountActive`), the viewer is in its audience, and the cart holds
+ * enough units.
+ *
+ * Both new gates are OPT-IN and default to open. `audience` is 'ALL' for every
+ * discount that predates the column, and `minQuantity` is null — so a discount
+ * that does not deliberately narrow itself behaves exactly as discounts always
+ * have.
+ */
+export function isDiscountEligible(
+  discount: Discount,
+  gate: DiscountGate,
+  now: Date = new Date(),
+): boolean {
+  if (!isDiscountActive(discount, now)) return false;
+
+  const audience = discount.audience ?? 'ALL';
+  if (audience === 'WHOLESALE_ONLY' && !gate.isApprovedWholesaler) return false;
+  if (audience === 'RETAIL_ONLY' && gate.isApprovedWholesaler) return false;
+  if (gate.onWholesaleBase && audience !== 'WHOLESALE_ONLY') return false;
+
+  /**
+   * `0` and a negative threshold read as "no requirement" alongside null — the
+   * validator already normalises them away on the way in, and treating them as
+   * a real floor here would mean a stray value silently gating a campaign.
+   */
+  const minQuantity = discount.minQuantity ?? null;
+  if (minQuantity !== null && minQuantity > 1) {
+    const held = gate.quantities?.get(discount.id);
+    if (held === undefined || held < minQuantity) return false;
+  }
+
+  return true;
+}
+
+/**
  * The discount a product actually gets.
  *
  * Discounts do NOT stack: several could apply at once (a global sale plus a
@@ -86,9 +159,10 @@ export function isDiscountActive(discount: Discount, now: Date = new Date()): bo
 export function getBestActiveDiscount(
   product: Product,
   now: Date = new Date(),
+  gate: DiscountGate = DISPLAY_GATE,
 ): Discount | null {
   const applicable = product.discounts.filter((discount) =>
-    isDiscountActive(discount, now),
+    isDiscountEligible(discount, gate, now),
   );
   if (applicable.length === 0) return null;
 
@@ -137,18 +211,35 @@ export function getDisplayPrice(product: Product, isApprovedWholesaler: boolean)
  * of a wholesale price. A wholesale price is already a negotiated rate, and
  * silently compounding a public promo onto it would erode margin without the
  * admin ever asking for it. An approved wholesaler therefore sees their
- * wholesale price unchanged. Flip the `isApprovedWholesaler` guard below if
- * the business wants promos to stack for wholesalers too.
+ * wholesale price unchanged.
+ *
+ * ONE EXCEPTION, added with the audience field: a WHOLESALE_ONLY discount does
+ * compose with a wholesale price. The rule above exists to stop promos the
+ * admin aimed at the public from quietly eroding a negotiated rate — but a
+ * campaign scoped explicitly to wholesalers is the admin aiming one AT them,
+ * and refusing to apply it would make the audience setting do nothing at all
+ * for precisely the products wholesalers buy. ALL-audience promos still never
+ * stack on a wholesale base.
+ *
+ * `options.quantities` carries the cart context that `minQuantity` needs.
+ * Omitted — every catalog and product-page caller — means "quantity unknown",
+ * and a quantity-gated discount then does not apply, so the displayed price is
+ * always one the shopper qualifies for.
  */
 export function getEffectivePrice(
   product: Product,
   isApprovedWholesaler = false,
   now: Date = new Date(),
+  options: { quantities?: ReadonlyMap<string, number> | null } = {},
 ): EffectivePrice {
   const base = getDisplayPrice(product, isApprovedWholesaler);
 
   const usingWholesale = isApprovedWholesaler && hasWholesalePrice(product);
-  const discount = usingWholesale ? null : getBestActiveDiscount(product, now);
+  const discount = getBestActiveDiscount(product, now, {
+    isApprovedWholesaler,
+    quantities: options.quantities ?? null,
+    onWholesaleBase: usingWholesale,
+  });
 
   if (discount) {
     // COP is not subdivided, so the result is whole pesos.

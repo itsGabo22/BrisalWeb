@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const { user, isAuthenticated, isApproved } = await getSessionResult();
+    const { user, isAuthenticated, isApproved, isRevoked } = await getSessionResult();
 
     /**
      * `showWelcome` fires exactly once per approval: true only while the
@@ -25,6 +25,9 @@ export async function GET() {
     return NextResponse.json({
       authenticated: isAuthenticated,
       approved: isApproved,
+      // Drives copy only — "acceso revocado" instead of "solicitud en
+      // revisión". Never a pricing input; `approved` is.
+      revoked: isRevoked,
       userId: user?.id ?? null,
       showWelcome,
       welcomeMessage,
@@ -46,6 +49,7 @@ export async function GET() {
     return NextResponse.json({
       authenticated: false,
       approved: false,
+      revoked: false,
       userId: null,
       showWelcome: false,
       welcomeMessage: null,

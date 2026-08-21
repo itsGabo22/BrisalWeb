@@ -43,6 +43,15 @@ export interface Material {
 }
 
 // ─── Discount ─────────────────────────────────────────────────────────────────
+/**
+ * Who a discount campaign is for.
+ *
+ * Stored as a plain string column (see the note on `Discount.audience` in
+ * schema.prisma) and narrowed to this union at both boundaries, so nothing
+ * downstream has to defend against a fourth value.
+ */
+export type DiscountAudience = 'ALL' | 'WHOLESALE_ONLY' | 'RETAIL_ONLY';
+
 export interface Discount {
   id: string;
   label?: string | null;
@@ -64,6 +73,20 @@ export interface Discount {
   startsAt?: string | null;
   endsAt?: string | null;
   active: boolean;
+  /**
+   * Which shoppers qualify. Defaults to 'ALL', which is how every discount
+   * created before this field existed behaves — and how the admin form leaves
+   * it unless someone deliberately narrows it.
+   */
+  audience: DiscountAudience;
+  /**
+   * Units required before the discount applies, or null for "no quantity
+   * requirement" — the default, and the behaviour of every existing discount.
+   *
+   * Counted across every cart line the discount reaches rather than per line;
+   * see `qualifyingQuantities` in src/lib/pricing/quote.ts.
+   */
+  minQuantity?: number | null;
 }
 
 // ─── Coupon ───────────────────────────────────────────────────────────────────
@@ -223,7 +246,19 @@ export interface HeroSlide {
 }
 
 // ─── Wholesaler ───────────────────────────────────────────────────────────────
-export type WholesalerStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+/**
+ * REVOCADO is distinct from RECHAZADO on purpose.
+ *
+ * RECHAZADO is an application that was never granted — nobody ever transacted
+ * on it, which is why deleting one is offered at all. REVOCADO is an account
+ * that WAS active and very likely has order history behind it. Collapsing the
+ * two would have put a delete button, and "solicitud rechazada" copy, on a
+ * former customer's record.
+ *
+ * The four are mutually exclusive: every transition in the PATCH handler clears
+ * the timestamps belonging to the others.
+ */
+export type WholesalerStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'REVOCADO';
 
 export interface Wholesaler {
   id: string;

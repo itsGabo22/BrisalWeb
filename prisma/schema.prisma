@@ -117,6 +117,19 @@ model Product {
   reviews          Review[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  /// Trigram index backing the typo-tolerant search.
+  ///
+  /// DECLARED HERE ON PURPOSE. It was first created by
+  /// prisma/sql/2026-08-21-search-trigram.sql, and `migrate diff` then reported
+  /// `DROP INDEX "Product_name_trgm_idx"` — Prisma prunes indexes the schema
+  /// does not mention, so the very next `db push` would have silently deleted
+  /// it and quietly turned every search back into a sequential scan. Declaring
+  /// it makes the diff additive and keeps the index alive across pushes.
+  ///
+  /// Requires the pg_trgm extension (see that SQL file). It serves both the
+  /// similarity operators and the pre-existing `ILIKE '%…%'` substring scans.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_name_trgm_idx")
 }
 
 /// A shopper-submitted review. Anyone can write one without an account, which
@@ -195,6 +208,30 @@ model Discount {
   startsAt   DateTime?
   endsAt     DateTime?
   active     Boolean       @default(true)
+  /// Who the campaign is for: "ALL" | "WHOLESALE_ONLY" | "RETAIL_ONLY".
+  ///
+  /// A plain String with a default rather than an enum, so this is a pure
+  /// column add — no CREATE TYPE, and every existing row reads as "ALL", which
+  /// is exactly how discounts behaved before the column existed. The three
+  /// legal values are enforced at both boundaries by `discountAudienceSchema`
+  /// in src/lib/validators, and normalised on read by `toDiscountAudience` in
+  /// src/lib/repositories/mappers.ts, which falls back to "ALL" for anything
+  /// unrecognised rather than silently dropping the discount.
+  ///
+  /// WHOLESALE_ONLY is the one case that composes with a wholesale price. See
+  /// the note in src/lib/utils/pricing.ts: ALL-audience promos still never
+  /// stack on a negotiated wholesale rate, but a discount authored
+  /// specifically FOR wholesalers is an explicit instruction to give them one.
+  audience    String       @default("ALL")
+  /// Units required before this discount applies. NULL = no quantity
+  /// requirement at all, which is the default and what every pre-existing
+  /// discount has — those keep applying at any quantity, unchanged.
+  ///
+  /// Counted across every cart line the discount reaches, not per line: two
+  /// colours of the same product are 5 units of that product to a shopper, and
+  /// a CATEGORY-scoped rule aggregates over the whole category. See
+  /// `qualifyingQuantities` in src/lib/pricing/quote.ts.
+  minQuantity Int?
   createdAt  DateTime      @default(now())
 }
 
@@ -245,6 +282,21 @@ model User {
   /// so PENDIENTE and RECHAZADO can both be told apart from one boolean plus
   /// this timestamp.
   rejectedAt             DateTime?
+  /// Set when an admin revokes an ALREADY-APPROVED wholesaler's access.
+  ///
+  /// Deliberately its own field rather than reusing `rejectedAt`: the two are
+  /// different events about different people. A rejection is an application
+  /// that was never granted and never transacted — which is why the DELETE
+  /// handler is scoped to it. A revocation is a formerly active account that
+  /// very likely HAS order history, and must never become deletable by
+  /// inheriting the rejected path's copy and actions.
+  ///
+  /// Revoking sets `approved = false` alongside this, which is the single flag
+  /// `getSessionResult` reads — so wholesale pricing stops on the account's
+  /// very next price check, with no stale-session window. Re-approval clears
+  /// this (and `rejectedAt`) and flips `approved` back to true, so reinstating
+  /// someone is a status change, not a re-registration.
+  revokedAt              DateTime?
   /// Null until shown once. Gates the in-app wholesale welcome message on
   /// first login after approval -- see `SiteConfig.wholesaleWelcomeMessage`.
   /// Reset to null on every transition INTO approved, so a wholesaler who is

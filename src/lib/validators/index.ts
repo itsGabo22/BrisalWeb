@@ -202,6 +202,30 @@ export const discountAdminSchema = z.object({
   startsAt: optionalDate,
   endsAt: optionalDate,
   active: z.boolean().default(true),
+  /**
+   * Defaults to ALL, so a payload from anywhere that does not know about this
+   * field yet creates exactly the discount it used to.
+   */
+  audience: z.enum(['ALL', 'WHOLESALE_ONLY', 'RETAIL_ONLY']).default('ALL'),
+  /**
+   * Optional by design, and the default is genuinely absent — not 1.
+   *
+   * `null` means "no quantity requirement", which is how every existing
+   * discount behaves and what the client wants for most campaigns. Empty
+   * string and 0 both normalise to null as well: the admin's number input
+   * yields '' when cleared, and a 0 threshold is meaningless (every cart line
+   * has at least one unit), so accepting it as a real value would only create
+   * discounts that look gated but are not.
+   */
+  minQuantity: z
+    .union([z.number(), z.string(), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const parsed = typeof value === 'number' ? value : Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) return null;
+      return Math.floor(parsed);
+    }),
 });
 
 export type DiscountAdminFormData = z.infer<typeof discountAdminSchema>;
@@ -232,6 +256,27 @@ export const couponAdminSchema = z.object({
 
 export type CouponAdminFormData = z.infer<typeof couponAdminSchema>;
 
+/**
+ * What the cart posts to /api/carrito/cotizar.
+ *
+ * Note what is NOT here: `price`. The whole point of the endpoint is that the
+ * server derives prices, so accepting one would defeat it. Lines are identified
+ * by product and colour, plus the quantity that decides whether a volume
+ * discount applies.
+ */
+export const cartQuoteSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        colorVariantId: z.string().optional().nullable(),
+        color: z.string().optional().nullable(),
+        quantity: z.number().int().positive().max(9999),
+      }),
+    )
+    .max(200),
+});
+
 /** What the cart posts to /api/cupones/validar. */
 export const couponValidateSchema = z.object({
   code: z.string().trim().min(1, 'Escribe un código').max(32),
@@ -243,7 +288,16 @@ export const couponValidateSchema = z.object({
 export const orderItemSchema = z.object({
   productId: z.string().min(1),
   name: z.string().min(1),
-  price: z.number().nonnegative(),
+  /**
+   * IGNORED. The route re-derives every unit price from the database via
+   * `quoteCartLines` — see the note there — so whatever arrives here has no
+   * effect on what is charged or stored.
+   *
+   * Still accepted, and optional, purely so a browser holding the previous
+   * bundle (or a cart persisted by it) does not get a 400 mid-checkout. Do not
+   * read it.
+   */
+  price: z.number().nonnegative().optional(),
   quantity: z.number().int().positive(),
   imageUrl: z.string().optional().nullable(),
   color: z.string().optional().nullable(),
@@ -339,7 +393,7 @@ export const orderActionSchema = z.object({
 });
 
 export const wholesalerStatusSchema = z.object({
-  estado: z.enum(['PENDIENTE', 'APROBADO', 'RECHAZADO']),
+  estado: z.enum(['PENDIENTE', 'APROBADO', 'RECHAZADO', 'REVOCADO']),
 });
 
 /**

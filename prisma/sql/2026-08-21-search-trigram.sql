@@ -1,0 +1,86 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Typo-tolerant product search (pg_trgm).
+--
+-- WHY: the contract requires a "buscador con tolerancia a errores
+-- ortográficos". Search was `contains` + `mode: 'insensitive'` on name and
+-- description — a pure substring scan, so "colar" returned NOTHING while
+-- "Collar Perlas" and "Collar maximalista" sat in the catalog.
+--
+-- Raw SQL rather than a Prisma migration, matching how this project has always
+-- applied non-model database changes (see prisma/rls/). `prisma db push` does
+-- not manage extensions or trigram indexes, and `migrate diff` reports no
+-- change for either, so nothing here can be clobbered by a later push.
+--
+-- ── Schema choice ────────────────────────────────────────────────────────────
+-- Installed into `extensions`, NOT `public`:
+--   * it is the Supabase convention, and keeps the "extension_in_public"
+--     advisor warning off the dashboard;
+--   * this database's search_path is already `"$user", public, extensions`
+--     (verified on the pooler connection the app uses), so unqualified
+--     `similarity()` / `word_similarity()` calls resolve fine from Prisma.
+--
+-- ── Index ────────────────────────────────────────────────────────────────────
+-- A GIN trigram index on "name" earns its place twice over: it backs the
+-- similarity operators AND it lets Postgres serve the pre-existing
+-- `ILIKE '%needle%'` substring scans from an index instead of a seq scan.
+-- Description is deliberately NOT indexed for trigrams — see the note on
+-- fuzzy scope below.
+--
+-- ── Fuzzy scope: name only ───────────────────────────────────────────────────
+-- Exact substring matching still covers name AND description, unchanged.
+-- Trigram similarity is applied to `name` only: a paragraph-length description
+-- makes `similarity()` meaningless (the trigram union is dominated by words the
+-- query never mentioned), so fuzzy-matching it would return noise, not results.
+--
+-- ── Threshold: 0.4 ───────────────────────────────────────────────────────────
+-- Measured against this catalog, using
+--   GREATEST(similarity(name, q), word_similarity(q, name)):
+--
+--   colar       -> Collar Perlas / Collar maximalista   0.625  ✓
+--   pulcera     -> Pulsera ojo turco                    0.455  ✓
+--   anilo       -> Anillo *                             0.667  ✓
+--   tureco      -> Pulsera ojo turco                    0.444  ✓  (lowest real hit)
+--   aretez      -> Aretes flor tropical                 0.714  ✓
+--   perlaz      -> Pulsera/Collar Perlas                0.714  ✓
+--   maximalsta  -> Collar maximalista                   0.643  ✓
+--   colar       -> Anillo corazón angelical             0.333  ✗  (false positive)
+--
+-- 0.4 is the gap: it keeps every genuine typo (worst is 0.444) and drops the
+-- one false positive (0.333). A plain 0.3 on `similarity()` alone — the
+-- obvious first guess — would have MISSED "Collar maximalista" for "colar"
+-- (0.250) while admitting the false positive, which is why the query uses
+-- word_similarity as well: it scores the query against the best-matching word
+-- inside the name rather than against the whole string, so a one-word typo is
+-- not penalised for the other words in a multi-word product name.
+--
+-- The threshold lives in TypeScript (`SIMILARITY_THRESHOLD` in
+-- src/lib/search/product-search.ts) and is passed as a bound parameter, so it
+-- is tunable without a database change.
+--
+-- Run in the Supabase SQL editor (or psql), then the verification block below.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+
+CREATE INDEX IF NOT EXISTS "Product_name_trgm_idx"
+  ON "Product" USING gin (name gin_trgm_ops);
+
+-- ── Verification ─────────────────────────────────────────────────────────────
+-- Expect: one pg_trgm row in schema `extensions`, and one index row.
+--
+--   SELECT extname, extnamespace::regnamespace::text AS schema
+--     FROM pg_extension WHERE extname = 'pg_trgm';
+--
+--   SELECT indexname FROM pg_indexes
+--    WHERE tablename = 'Product' AND indexname = 'Product_name_trgm_idx';
+--
+-- And the behaviour the whole file exists for — "colar" finding "Collar":
+--
+--   SELECT name,
+--          GREATEST(similarity(name, 'colar'), word_similarity('colar', name)) AS score
+--     FROM "Product"
+--    WHERE GREATEST(similarity(name, 'colar'), word_similarity('colar', name)) >= 0.4
+--    ORDER BY score DESC;
+--
+-- RLS: untouched. No table is created or altered here, so every existing
+-- policy and relrowsecurity flag stays exactly as it was.

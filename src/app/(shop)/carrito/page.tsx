@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { formatCOP } from '@/lib/utils/pricing';
+import { useCartQuote } from '@/hooks/useCartQuote';
 import { cartLineId, useCartStore } from '@/stores/cartStore';
 
 /** A coupon the shopper has applied. `percentage` drives the live recompute. */
@@ -24,10 +25,41 @@ export default function CartPage() {
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
-  /** Subtotal AFTER product-level discounts — the cart lines hold final prices. */
-  const subtotal = useCartStore((state) => state.getTotal());
-  const originalTotal = useCartStore((state) => state.getOriginalTotal());
-  const productSavings = useCartStore((state) => state.getSavings());
+  /** Fallbacks, from the prices the lines were stored with. */
+  const storedSubtotal = useCartStore((state) => state.getTotal());
+  const storedOriginalTotal = useCartStore((state) => state.getOriginalTotal());
+  const storedSavings = useCartStore((state) => state.getSavings());
+
+  /**
+   * The server's prices for this exact cart. Authoritative — a volume discount
+   * only shows once the quantity actually reaches its threshold, and a
+   * wholesale-only one only for a session that really is an approved
+   * wholesaler. The stored figures are used only until the first response
+   * arrives (and if it fails), so the cart never renders blank prices.
+   */
+  const quote = useCartQuote(items);
+
+  /** What one unit of this line costs, and what it cost before any discount. */
+  const priceFor = React.useCallback(
+    (item: (typeof items)[number]) => {
+      const quoted = quote.byLine?.get(cartLineId(item.productId, item.color));
+      if (!quoted) {
+        return { unitPrice: item.price, originalUnitPrice: item.originalPrice ?? null };
+      }
+      return {
+        unitPrice: quoted.unitPrice,
+        originalUnitPrice: quoted.originalUnitPrice,
+      };
+    },
+    [quote.byLine],
+  );
+
+  const subtotal = quote.subtotal ?? storedSubtotal;
+  const originalTotal =
+    quote.subtotal !== null && quote.savings !== null
+      ? quote.subtotal + quote.savings
+      : storedOriginalTotal;
+  const productSavings = quote.savings ?? storedSavings;
 
   const [customerName, setCustomerName] = React.useState('');
   const [customerPhone, setCustomerPhone] = React.useState('');
@@ -130,7 +162,8 @@ export default function CartPage() {
           items: items.map((item) => ({
             productId: item.productId,
             name: item.name,
-            price: item.price,
+            // No `price`. The server derives every unit price itself — sending
+            // one would only invite the belief that it mattered.
             quantity: item.quantity,
             imageUrl: item.imageUrl,
             // These two were being dropped here, which is why two colours of
@@ -209,7 +242,9 @@ export default function CartPage() {
         ) : (
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
             <section aria-label="Productos en el carrito" className="space-y-4">
-              {items.map((item) => (
+              {items.map((item) => {
+                const { unitPrice, originalUnitPrice } = priceFor(item);
+                return (
                 <Card key={cartLineId(item.productId, item.color)} className="bg-white/80">
                   <CardContent className="grid grid-cols-[80px_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:items-center">
                     <Image
@@ -235,18 +270,18 @@ export default function CartPage() {
                       {/* Struck original + final + badge, matching the
                           product card treatment. `originalPrice` is only set
                           when the line is actually discounted. */}
-                      {item.originalPrice && item.originalPrice > item.price ? (
+                      {originalUnitPrice && originalUnitPrice > unitPrice ? (
                         <p className="mt-1 flex flex-wrap items-center gap-1.5 font-body text-sm">
                           <span className="text-brand-text-soft line-through">
-                            {formatCOP(item.originalPrice)}
+                            {formatCOP(originalUnitPrice)}
                           </span>
                           <span className="text-brand-neutral-900 font-medium">
-                            {formatCOP(item.price)}
+                            {formatCOP(unitPrice)}
                           </span>
                           <span className="bg-brand-gold/15 text-brand-gold-deep rounded-full px-1.5 py-0.5 text-[11px] font-medium">
                             -
                             {Math.round(
-                              ((item.originalPrice - item.price) / item.originalPrice) * 100,
+                              ((originalUnitPrice - unitPrice) / originalUnitPrice) * 100,
                             )}
                             %
                           </span>
@@ -254,7 +289,7 @@ export default function CartPage() {
                         </p>
                       ) : (
                         <p className="text-brand-neutral-600 mt-1 font-body text-sm">
-                          {formatCOP(item.price)} unidad
+                          {formatCOP(unitPrice)} unidad
                         </p>
                       )}
 
@@ -304,18 +339,19 @@ export default function CartPage() {
                       <p className="text-brand-neutral-500 font-body text-sm">
                         Subtotal
                       </p>
-                      {item.originalPrice && item.originalPrice > item.price && (
+                      {originalUnitPrice && originalUnitPrice > unitPrice && (
                         <p className="text-brand-text-soft font-body text-sm line-through">
-                          {formatCOP(item.originalPrice * item.quantity)}
+                          {formatCOP(originalUnitPrice * item.quantity)}
                         </p>
                       )}
                       <p className="text-brand-neutral-900 font-body text-lg font-medium">
-                        {formatCOP(item.price * item.quantity)}
+                        {formatCOP(unitPrice * item.quantity)}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
 
               <button
                 type="button"

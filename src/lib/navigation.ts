@@ -25,3 +25,18 @@ export const WHOLESALE_SECTION: NavSection = {
   label: 'Mayorista',
   href: '/mayoristas',
 };
+
+/**
+ * The one search destination, so nothing can drift.
+ *
+ * The header opens `SearchOverlay` rather than navigating — but the overlay's
+ * "Ver los N resultados" pushes to exactly this href, which makes it the real
+ * search route and not a second, parallel path. The footer link now points at
+ * this constant instead of repeating the string, so a future move of the route
+ * cannot leave one of the two behind (which is how the footer's copy came to be
+ * a dead end in the first place).
+ */
+export const SEARCH_SECTION: NavSection = {
+  label: 'Buscar',
+  href: '/buscar',
+};

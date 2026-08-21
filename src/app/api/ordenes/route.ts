@@ -12,6 +12,7 @@ import {
   type StockReservation,
 } from '@/lib/orders/reservation';
 import { computeCouponDiscount, findRedeemableCoupon, redeemCoupon } from '@/lib/coupons';
+import { quoteCartLines } from '@/lib/pricing/quote';
 import {
   RATE_LIMITS,
   checkRateLimit,
@@ -237,12 +238,33 @@ export async function POST(request: Request) {
     }
 
     /**
-     * The line subtotal is recomputed from the posted prices rather than using
-     * the client's `total`, so the coupon is applied to a figure the server
-     * derived. The lines themselves already carry product-level discounts —
-     * the coupon composes on top of that, sequentially.
+     * ─── Prices come from the DATABASE, not from the request ───────────────
+     *
+     * This used to be `items.reduce((sum, i) => sum + i.price * i.quantity, 0)`
+     * — the client's own per-line prices. Recomputing the SUM server-side was
+     * never the same thing as deriving the PRICES server-side, and with
+     * audience- and quantity-scoped discounts it stopped being defensible: a
+     * logged-out shopper could post the wholesale-only price, or the 5-unit
+     * price on a cart of one, and the order would be written and quoted at it.
+     *
+     * `quoteCartLines` re-derives every unit price from the product rows, the
+     * discounts that actually reach them, the quantities in THIS cart, and the
+     * wholesale status of the real session — never `wholesaleUserId`, which is
+     * client-supplied and is only a label on the order. The posted `price` is
+     * now ignored entirely.
      */
-    const lineSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const quote = await quoteCartLines(
+      items.map((item) => ({
+        productId: item.productId,
+        colorVariantId: item.colorVariantId,
+        color: item.color,
+        quantity: item.quantity,
+      })),
+    );
+
+    /** Line index → server price, so the writes below cannot pick up a posted one. */
+    const pricedLines = quote.lines;
+    const lineSubtotal = quote.subtotal;
 
     /**
      * ─── The transaction that actually decides ────────────────────────────
@@ -311,10 +333,11 @@ export async function POST(request: Request) {
             couponCode: appliedCoupon?.code ?? null,
             couponDiscountAmount: appliedCoupon?.discountAmount ?? null,
             items: {
-              create: items.map((item) => ({
+              create: items.map((item, index) => ({
                 productId: item.productId,
                 name: item.name,
-                price: item.price,
+                // The server's price for this line, never the posted one.
+                price: pricedLines[index]?.unitPrice ?? 0,
                 quantity: item.quantity,
                 imageUrl: item.imageUrl ?? null,
                 color: item.color ?? null,
@@ -366,9 +389,21 @@ export async function POST(request: Request) {
         .catch(() => {});
     }
 
+    /**
+     * The message quotes the SERVER's line prices too. Passing `items` straight
+     * through would print the client's figures next to a total derived from the
+     * server's — and this message is what the client packs and charges from, so
+     * lines that don't add up to the total read as a pricing error.
+     */
     const message = buildWhatsAppMessage(
       order.id,
-      items,
+      items.map((item, index) => ({
+        name: item.name,
+        price: pricedLines[index]?.unitPrice ?? 0,
+        quantity: item.quantity,
+        color: item.color,
+        reference: item.reference,
+      })),
       total,
       customerName,
       customerPhone,

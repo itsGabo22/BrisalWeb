@@ -54,6 +54,13 @@ export const RATE_LIMITS = {
   reviewCreate: { bucket: 'review-create', limit: 5, windowMs: DAY },
   contact: { bucket: 'contact', limit: 5, windowMs: HOUR },
   productSearch: { bucket: 'product-search', limit: 120, windowMs: HOUR },
+  /**
+   * Generous like `productSearch` and for the same reason: this fires on every
+   * cart render and every quantity change, so a shopper nudging a spinner up to
+   * a 5-unit threshold spends a handful of calls in a few seconds. Still worth a
+   * ceiling — each call reads product rows and resolves a session.
+   */
+  cartQuote: { bucket: 'cart-quote', limit: 240, windowMs: HOUR },
 } as const satisfies Record<string, RateLimitRule>;
 
 /**

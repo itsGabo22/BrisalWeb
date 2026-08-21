@@ -64,7 +64,44 @@ export async function PATCH(
     if (estado === 'RECHAZADO') {
       const updated = await prisma.user.update({
         where: { id },
-        data: { approved: false, rejectedAt: new Date() },
+        data: { approved: false, rejectedAt: new Date(), revokedAt: null },
+      });
+      return NextResponse.json(toWholesaler(updated));
+    }
+
+    /**
+     * ─── Revocation: taking access away from an ACTIVE wholesaler ───────────
+     *
+     * A STATUS CHANGE, never a delete. This account has been buying at
+     * wholesale prices, so `Order.wholesaleUserId` very likely points at it —
+     * and that column has no database-level foreign key (see the schema comment
+     * on `Order`), so deleting the row would silently orphan real order
+     * history rather than being refused. Past orders must survive untouched;
+     * only future access is withdrawn.
+     *
+     * `approved: false` is the whole mechanism. `getSessionResult` reads exactly
+     * that flag, and it is re-read from the database on every price check, so
+     * there is no stale-session window in which the revoked account keeps
+     * seeing wholesale prices — including the server-side re-pricing in
+     * `quoteCartLines`, which is what stops an already-open cart from checking
+     * out at the old rate.
+     *
+     * Guarded to APROBADO. Revoking a pending application is meaningless (there
+     * is no access to take) and revoking a rejected one would move it out of a
+     * state the delete flow depends on. The UI only renders the button for
+     * approved accounts; this is the half that cannot be bypassed.
+     */
+    if (estado === 'REVOCADO') {
+      if (!wholesaler.approved || wholesaler.rejectedAt) {
+        return NextResponse.json(
+          { error: 'Solo se puede revocar el acceso de una cuenta aprobada' },
+          { status: 400 },
+        );
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { approved: false, revokedAt: new Date(), rejectedAt: null },
       });
       return NextResponse.json(toWholesaler(updated));
     }
@@ -75,6 +112,12 @@ export async function PATCH(
         data: {
           approved: true,
           rejectedAt: null,
+          // Clearing this is what makes a revoked wholesaler RE-APPROVABLE:
+          // reinstating someone is the same status change as approving them the
+          // first time, and they keep their id, so their order history stays
+          // attached. The welcome message resets too, which reads correctly as
+          // "you're back in".
+          revokedAt: null,
           // Reset on every transition INTO approved, not just the first one:
           // a wholesaler reverted to pending or rejected and then reapproved
           // sees the welcome message again, which reads as a real "you're
@@ -107,10 +150,10 @@ export async function PATCH(
       return NextResponse.json(toWholesaler(updated));
     }
 
-    // PENDIENTE -- "Volver a Pendientes", from either APROBADO or RECHAZADO.
+    // PENDIENTE -- "Volver a Pendientes", from APROBADO, RECHAZADO or REVOCADO.
     const updated = await prisma.user.update({
       where: { id },
-      data: { approved: false, rejectedAt: null },
+      data: { approved: false, rejectedAt: null, revokedAt: null },
     });
     return NextResponse.json(toWholesaler(updated));
   } catch (err) {
@@ -125,13 +168,18 @@ export async function PATCH(
 /**
  * Deletes a wholesale application -- scoped to REJECTED records only.
  *
- * Deliberately not extended to APROBADO or PENDIENTE: an approved account is
- * a real, active user, and a pending one hasn't been decided yet. Only a
- * rejected application is safe to consider "over" -- and even then, only if
- * nothing else in the system points at it. `Order.wholesaleUserId` has no
- * database-level foreign key (see the schema comment on `Order`), so nothing
- * would stop a delete from orphaning real order history if this check were
- * skipped.
+ * Deliberately not extended to APROBADO, PENDIENTE or REVOCADO: an approved
+ * account is a real, active user, a pending one hasn't been decided yet, and a
+ * REVOKED one is a formerly active customer who almost certainly has order
+ * history -- which is the whole reason revocation is a status change and not
+ * this. Only a rejected application is safe to consider "over" -- and even
+ * then, only if nothing else in the system points at it.
+ * `Order.wholesaleUserId` has no database-level foreign key (see the schema
+ * comment on `Order`), so nothing would stop a delete from orphaning real order
+ * history if this check were skipped.
+ *
+ * The `!wholesaler.rejectedAt` guard below already excludes REVOCADO for free,
+ * because the transitions keep `rejectedAt` and `revokedAt` mutually exclusive.
  */
 export async function DELETE(
   request: Request,
