@@ -120,16 +120,22 @@ export function AdminSidebar() {
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Sidebar Container
+          `bg-brand-neutral-950` was never a defined token (the scale stops at
+          -900), so it silently compiled to no background at all — the panel
+          was fully transparent, letting the backdrop bleed through it with
+          only its 1px border as a boundary. `border-brand-gold/20` +
+          `shadow-2xl` (the same shadow MobileNav.tsx uses for its own drawer)
+          give it a deliberate edge instead. */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-45 flex flex-col border-r border-brand-neutral-200 bg-brand-neutral-950 text-brand-neutral-200 transition-all duration-300 dark:border-brand-neutral-800',
+          'fixed inset-y-0 left-0 z-45 flex flex-col border-r border-brand-gold/20 bg-brand-neutral-900 text-brand-neutral-200 shadow-2xl transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-64',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         {/* Header Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-brand-neutral-900">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-brand-neutral-800">
           <Link
             href="/admin"
             className={cn(
@@ -167,14 +173,14 @@ export function AdminSidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-3 font-sans text-sm font-medium transition-all group relative',
                   isActive
-                    ? 'bg-brand-gold text-brand-neutral-950 font-semibold'
-                    : 'text-brand-neutral-400 hover:bg-brand-neutral-900 hover:text-brand-neutral-200'
+                    ? 'bg-brand-gold text-brand-neutral-900 font-semibold'
+                    : 'text-brand-neutral-400 hover:bg-brand-neutral-800 hover:text-brand-neutral-200'
                 )}
               >
                 <Icon
                   className={cn(
                     'size-5 flex-shrink-0',
-                    isActive ? 'text-brand-neutral-950' : 'text-brand-neutral-400 group-hover:text-brand-neutral-200'
+                    isActive ? 'text-brand-neutral-900' : 'text-brand-neutral-400 group-hover:text-brand-neutral-200'
                   )}
                 />
                 <span
@@ -204,7 +210,7 @@ export function AdminSidebar() {
         </nav>
 
         {/* Footer info */}
-        <div className="p-4 border-t border-brand-neutral-900 text-xs text-brand-neutral-500 font-sans">
+        <div className="p-4 border-t border-brand-neutral-800 text-xs text-brand-neutral-500 font-sans">
           {!isCollapsed && <p>Brisal by Salvador</p>}
         </div>
       </aside>
