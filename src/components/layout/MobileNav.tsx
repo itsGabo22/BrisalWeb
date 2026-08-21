@@ -98,17 +98,33 @@ export function MobileNav({
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
-  // Prevent body scroll when drawer is open
+  // Prevent page scroll when drawer is open.
+  //
+  // Locks <html>, not <body>: the root layout's <html> carries an explicit
+  // `overflow-x-clip`, which disqualifies the standard CSS rule that lets a
+  // <body> overflow value propagate to the viewport — document.scrollingElement
+  // is <html> here, so locking body alone is a no-op. Only overflow-y is
+  // touched so <html>'s existing overflow-x: clip is never disturbed.
+  //
+  // The unlock is NOT in this effect's cleanup: releasing overflow-y brings
+  // the real scrollbar back, a layout reflow that — if it happens the instant
+  // `isOpen` flips false, right as the exit spring starts — stalls Framer
+  // Motion's exit animation indefinitely (the drawer never leaves the DOM).
+  // Releasing from AnimatePresence's onExitComplete instead defers it until
+  // the close animation has actually finished.
   React.useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      document.documentElement.style.overflowY = 'hidden';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [isOpen]);
+
+  const releaseScrollLock = React.useCallback(() => {
+    document.documentElement.style.overflowY = '';
+  }, []);
+
+  // Defensive only: releases the lock if the drawer unmounts while open
+  // without an exit animation ever running (e.g. torn down by a route change).
+  React.useEffect(() => releaseScrollLock, [releaseScrollLock]);
 
   const handleLinkClick = () => {
     setExpandedId(null);
@@ -117,7 +133,7 @@ export function MobileNav({
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={releaseScrollLock}>
       {isOpen && (
         <>
           {/* ── Backdrop ──────────────────────────────────── */}
